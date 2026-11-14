@@ -21,10 +21,24 @@ sealed class Server with _$Server {
 
   const Server._();
 
+  /// Заголовки сервера (пароль сайта и т.п.) — только для точно того же адреса: схема, хост и порт.
+  /// Раньше сравнивалось начало строки, и https://srv.example совпадал с https://srv.example.evil.com.
   Map<String, String>? headersForUrl(String url) {
-    var useHeaders = url.startsWith(this.url);
+    var useHeaders = sameOrigin(url);
     _log.fine('need header for $url ? $useHeaders');
     return useHeaders ? customHeaders : null;
+  }
+
+  bool sameOrigin(String url) {
+    try {
+      final a = Uri.parse(this.url), b = Uri.parse(url);
+      if (!b.hasScheme || b.host.isEmpty) return false;
+      return a.scheme.toLowerCase() == b.scheme.toLowerCase() &&
+          a.host.toLowerCase() == b.host.toLowerCase() &&
+          a.port == b.port; // Uri подставляет порт по умолчанию: 443 для https, 80 для http
+    } catch (_) {
+      return false;
+    }
   }
 
   factory Server.fromJson(Map<String, Object?> json) => _$ServerFromJson(json);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clipious/videos/models/ided_video.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,23 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   int _recoverTries = 0;
   bool _forceProgressive = false;
 
+  /// Сторож: если поток не стартовал за 25 с — считаем это ошибкой и восстанавливаемся (идея из Videre)
+  Timer? _stallTimer;
+
+  void _armStallWatch() {
+    _stallTimer?.cancel();
+    final id = state.video?.videoId;
+    if (id == null || state.offlineVideo != null) return;
+    _stallTimer = Timer(const Duration(seconds: 25), () {
+      if (isClosed || state.video?.videoId != id) return;
+      final v = videoController?.videoPlayerController?.value;
+      if (v == null || !v.initialized) {
+        log.warning('playback of $id did not start in 25s');
+        _recover();
+      }
+    });
+  }
+
   VideoPlayerCubit(super.initialState, super.player, this.settings) {
     onInit();
   }
@@ -47,6 +65,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   close() async {
+    _stallTimer?.cancel();
     disposeControllers();
     super.close();
   }
@@ -175,10 +194,11 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   onVideoListener(BetterPlayerEvent event) {
     forwardEvent(event);
     if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
+      _stallTimer?.cancel();
       _recover();
-    } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized &&
-        _recoverFor != state.video?.videoId) {
-      _recoverTries = 0;
+    } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+      _stallTimer?.cancel();
+      if (_recoverFor != state.video?.videoId) _recoverTries = 0;
     }
 
     switch (event.betterPlayerEventType) {
@@ -417,9 +437,22 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         videoController!.addEventsListener(onVideoListener);
         videoController!.setBetterPlayerGlobalKey(newState.key);
         // isPipSupported = await videoController?.isPictureInPictureSupported() ?? false;
+        _armStallWatch();
       } else {
-        await videoController?.setupDataSource(betterPlayerDataSource);
+        try {
+          // подвисшая подготовка прошлого потока не должна блокировать следующее видео
+          await videoController?.setupDataSource(betterPlayerDataSource).timeout(const Duration(seconds: 20));
+        } catch (e) {
+          log.warning('setupDataSource stalled/failed: $e — recreating controller');
+          final old = videoController;
+          videoController = null;
+          old?.removeEventsListener(onVideoListener);
+          old?.dispose(forceDispose: true);
+          if (!isClosed) return playVideo(offline, startAt: startAt);
+          return;
+        }
         seek(startAt ?? Duration.zero);
+        _armStallWatch();
       }
 
       emit(newState);

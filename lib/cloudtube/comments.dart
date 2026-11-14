@@ -30,6 +30,8 @@ class CtComment {
     if (j is! Map) return null;
     String avatar = '';
     final th = j['authorThumbnails'];
+    // новые версии Invidious присылают одну строку authorThumbnail вместо списка
+    if (j['authorThumbnail'] is String) avatar = j['authorThumbnail'] as String;
     if (th is List && th.isNotEmpty) {
       Map? best;
       for (final t in th) {
@@ -331,7 +333,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     return ClipOval(
       child: CachedNetworkImage(
         imageUrl: _img(c.avatar),
-        httpHeaders: server!.customHeaders,
+        httpHeaders: server!.headersForUrl(_img(c.avatar)),
         width: size,
         height: size,
         fit: BoxFit.cover,

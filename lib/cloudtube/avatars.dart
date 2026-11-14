@@ -89,7 +89,7 @@ class CtChannelAvatar extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: full,
               cacheKey: full,
-              httpHeaders: server.customHeaders,
+              httpHeaders: server.headersForUrl(full),
               width: size,
               height: size,
               fit: BoxFit.cover,

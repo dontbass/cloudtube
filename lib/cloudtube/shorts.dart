@@ -584,7 +584,8 @@ class _CtShortItemState extends State<CtShortItem> {
               builder: (c, s) => s.hasData
                   ? Image.network(
                       thumbs.first.startsWith('/') ? s.data!.url + thumbs.first : thumbs.first,
-                      headers: s.data!.customHeaders,
+                      headers: s.data!.headersForUrl(
+                          thumbs.first.startsWith('/') ? s.data!.url + thumbs.first : thumbs.first),
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                     )

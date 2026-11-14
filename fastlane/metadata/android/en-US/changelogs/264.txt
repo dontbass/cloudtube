@@ -1,3 +1,0 @@
-Add Dislike count to vidoes (opt-in in options)
-Fix search for languages like russion
-No need to restart the app after changing theme settings anymore

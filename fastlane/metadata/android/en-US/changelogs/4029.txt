@@ -1,3 +1,0 @@
-Add foreground service to get notified on new content (subscriptions / channel / playlists)
-Fix search
-Split settings in multiple settings sub pages as it was getting too big

@@ -1,0 +1,8 @@
+name: Идея
+description: Предложить улучшение
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes: {label: Что хочется, description: "Опишите сценарий: что делаете и чего не хватает."}
+    validations: {required: true}

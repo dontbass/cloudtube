@@ -1,16 +1,13 @@
-<i>Clipious</i> is a client for Invidious, the privacy focused YouTube front end.
-<b>Features:</b>
+CloudTube is an Invidious client for Android and Android TV with the familiar mobile YouTube layout. A fork of Clipious.
+
 <ul>
-<li>Use own or public server</li>
-<li>Subscription management</li>
-<li>SponsorBlock + DeArrow</li>
-<li>Video view/progress tracking</li>
-<li>User playlists</li>
-<li>Background playback</li>
-<li>Live stream support</li>
-<li>Android TV UI</li>
-<li>Audio playback</li>
-<li>Video and audio download</li>
-<li>Video filtering</li>
-<li>Return Youtube Dislikes</li>
+<li>Home, Shorts, Subscriptions, You — bottom navigation like mobile YouTube</li>
+<li>Tabs: Music, Live, News, Sports, Gaming, Podcasts, Movies</li>
+<li>Vertical swipeable Shorts with preloading</li>
+<li>Threaded comments in a bottom sheet</li>
+<li>Invidious account: subscriptions, history, playlists</li>
+<li>SponsorBlock, video proxying, downloads, background audio, picture-in-picture</li>
+<li>In-app updates</li>
 </ul>
+
+Works with any Invidious server; optional CloudTube server add-ons provide a personal feed, curated Shorts and yt-dlp comments.

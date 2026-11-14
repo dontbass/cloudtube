@@ -1,68 +1,101 @@
-# CloudTube для Android
+<div align="center">
 
-Клиент [Invidious](https://invidious.io) для Android и Android TV в привычном виде мобильного YouTube:
-лента во всю ширину, вкладки разделов, вертикальные Shorts со свайпом, комментарии в шторке,
-страница видео с описанием и рекомендациями одной лентой.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.png">
+  <img alt="CloudTube" src=".github/assets/logo-light.png" width="440">
+</picture>
 
-Форк [Clipious](https://github.com/lamarios/clipious) (автор — lamarios). Лицензия AGPL-3.0, см. [LICENSE](LICENSE).
-Проект не связан с YouTube и Google.
+**Клиент [Invidious](https://invidious.io) для Android и Android TV в привычном виде мобильного YouTube**
+
+[![Релиз](https://img.shields.io/github/v/release/dontbass/cloudtube?label=%D1%80%D0%B5%D0%BB%D0%B8%D0%B7&color=E85D4A)](https://github.com/dontbass/cloudtube/releases/latest)
+[![Загрузки](https://img.shields.io/github/downloads/dontbass/cloudtube/total?label=%D0%B7%D0%B0%D0%B3%D1%80%D1%83%D0%B7%D0%BA%D0%B8&color=555)](https://github.com/dontbass/cloudtube/releases)
+[![Сборка](https://img.shields.io/github/actions/workflow/status/dontbass/cloudtube/build.yml?label=%D1%81%D0%B1%D0%BE%D1%80%D0%BA%D0%B0)](https://github.com/dontbass/cloudtube/actions)
+[![Лицензия](https://img.shields.io/github/license/dontbass/cloudtube?label=%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F&color=555)](LICENSE)
+![Android 7+](https://img.shields.io/badge/Android-7%2B-3DDC84?logo=android&logoColor=white)
+
+[**Скачать APK**](https://github.com/dontbass/cloudtube/releases/latest) · [Серверные дополнения](#серверные-дополнения) · [Сборка](#сборка)
+
+</div>
+
+---
+
+CloudTube — форк [Clipious](https://github.com/lamarios/clipious), переработанный под интерфейс мобильного
+YouTube. Видео идут через ваш сервер Invidious: без рекламы, без аккаунта Google и без трекинга.
+
+## Возможности
+
+|   |   |
+|---|---|
+| 🏠 **Привычная навигация** | Главная · Shorts · Подписки · «Вы» внизу, вкладки разделов сверху, лента во всю ширину |
+| 📱 **Shorts** | Вертикальная лента со свайпом, предзагрузка следующих роликов, «Не интересует», «Не рекомендовать канал» |
+| 🧭 **Разделы** | Музыка, Сейчас в эфире, Новости, Спорт, Видеоигры, Подкасты, Фильмы |
+| 💬 **Комментарии** | Шторка как в YouTube, ответы, сортировка «популярные / новые» |
+| ▶️ **Страница видео** | Описание, канал и подписка, лайки, рекомендации одной лентой |
+| 👤 **Аккаунт Invidious** | Подписки, история, плейлисты |
+| 🛡️ **Из Clipious** | SponsorBlock, проксирование видео, загрузки, фоновое аудио, картинка-в-картинке, Android TV |
+| 🔄 **Обновления** | Приложение само находит новый релиз, скачивает и предлагает установить |
 
 ## Установка
 
-APK — в [Releases](../../releases). Для большинства телефонов нужен файл `arm64-v8a`,
-для старых — `armeabi-v7a`, для эмуляторов и некоторых приставок — `x86_64`.
+1. Скачайте APK из [последнего релиза](https://github.com/dontbass/cloudtube/releases/latest):
 
-При первом запуске укажите адрес своего сервера Invidious (например, `https://invidious.example.com`).
-Если сервер закрыт паролем сайта (HTTP Basic Auth), добавьте его в настройках сервера:
-«Вы» → «Сервер и пароль сайта».
+   | Файл | Для чего |
+   |---|---|
+   | `…-arm64-v8a.apk` | почти все современные телефоны и приставки |
+   | `…-armeabi-v7a.apk` | старые 32-битные устройства |
+   | `…-x86_64.apk` | эмуляторы, некоторые ТВ-боксы |
 
-Приложение само проверяет новые релизы на GitHub и предлагает обновиться
-(«Вы» → «Проверить обновления»).
+2. При первом запуске укажите адрес своего сервера Invidious, например `https://invidious.example.com`.
+   Если сайт закрыт паролем (HTTP Basic Auth), добавьте его в «Вы» → «Сервер и пароль сайта».
+3. Новые версии приложение предложит само: «Вы» → «Проверить обновления».
 
-## Что умеет
+> Нужен свой сервер Invidious или доступ к чужому. Публичные серверы перечислены на
+> [docs.invidious.io/instances](https://docs.invidious.io/instances/).
 
-- Главная, Подписки, Shorts, «Вы» — нижнее меню как в мобильном YouTube; Android TV — интерфейс Clipious
-- Вкладки «Музыка», «Сейчас в эфире», «Новости», «Спорт», «Видеоигры», «Подкасты», «Фильмы»
-- Shorts: вертикальная лента, предзагрузка следующих роликов, меню «Не интересует» / «Не рекомендовать канал»
-- Комментарии с ответами, сортировка «популярные / новые»
-- Вход в аккаунт Invidious: подписки, история, плейлисты
-- SponsorBlock, проксирование видео через Invidious, загрузки, фоновое аудио, картинка-в-картинке (из Clipious)
+## Серверные дополнения
 
-## Серверные дополнения (необязательно)
+Со стандартным Invidious всё работает в совместимом режиме: «Главная» — популярное или тренды, разделы — тренды
+и поиск, Shorts — поиск `#shorts`.
 
-С обычным Invidious приложение работает в совместимом режиме: «Главная» — популярное или тренды,
-разделы — тренды и поиск, Shorts — поиск `#shorts`.
+Если сервер ваш, поставьте рядом с Invidious дополнения из папки [`server/`](server). Они дают:
 
-Папка [`server/`](server) — дополнения, которые ставятся рядом с Invidious и дают:
-
-- персональную «Главную» (похожее на просмотренное + свежее из подписок + тренды);
-- разделы «Навигатора» с подборками по популярности;
-- Shorts из вкладок «Shorts» каналов — только вертикальные ролики, без трансляций, бесконечная лента;
-- комментарии через yt-dlp, когда Invidious их не отдаёт;
+- персональную «Главную»: похожее на просмотренное, свежее из подписок и тренды;
+- разделы с подборками по популярности;
+- Shorts из вкладок «Shorts» каналов: только вертикальные, без трансляций, бесконечная лента;
+- комментарии через [yt-dlp](https://github.com/yt-dlp/yt-dlp), когда Invidious их не отдаёт;
 - аватарки каналов в ленте.
-
-Установка (Debian/Ubuntu, от root, Invidious уже работает):
 
 ```sh
 git clone https://github.com/dontbass/cloudtube && cd cloudtube/server
-INV_URL=http://127.0.0.1:3000 FEED_PORT=3200 REGION=RU HL=ru bash install.sh
+sudo INV_URL=http://127.0.0.1:3000 FEED_PORT=3200 REGION=RU HL=ru bash install.sh
 ```
 
-Скрипт ставит yt-dlp и сервис `cloudtube-feed`, затем подсказывает строку `include`, которую нужно
-добавить в `server { }` Invidious в nginx. Приложение находит дополнения само через `/ct-api/caps`.
+Скрипт ставит yt-dlp и сервис `cloudtube-feed` и подсказывает строку `include` для nginx.
+Приложение находит дополнения само через `GET /ct-api/caps`.
 
 ## Сборка
 
-Каждый push в `main` собирает APK в GitHub Actions (`.github/workflows/build.yml`) и публикует релиз.
+Каждый push в `main` собирает APK в GitHub Actions и публикует релиз `v1.1.N`.
 
 Подпись берётся из секретов репозитория: `CT_KEYSTORE_B64` (base64 от `.jks`), `CT_STORE_PASSWORD`,
-`CT_KEY_PASSWORD`, `CT_KEY_ALIAS`. Без них, например в форке, APK подписывается отладочным ключом.
-Если делаете свой форк, поменяйте `kCtUpdateRepo` в `lib/cloudtube/updater.dart` и `applicationId`
+`CT_KEY_PASSWORD`, `CT_KEY_ALIAS`. В форке без секретов APK подписывается отладочным ключом.
+Для своего форка поменяйте `kCtUpdateRepo` в `lib/cloudtube/updater.dart` и `applicationId`
 в `android/app/build.gradle`.
 
-Локально: Flutter 3.35.3,
+Локально, Flutter 3.35.3:
 
 ```sh
-flutter pub get && dart run build_runner build --delete-conflicting-outputs && flutter gen-l10n
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter gen-l10n
 flutter build apk --release --split-per-abi
 ```
+
+## Благодарности и лицензия
+
+- [Clipious](https://github.com/lamarios/clipious) от lamarios — основа приложения
+- [Invidious](https://github.com/iv-org/invidious), [yt-dlp](https://github.com/yt-dlp/yt-dlp),
+  [SponsorBlock](https://sponsor.ajay.app), [river_player](https://github.com/lamarios/river_player)
+
+Распространяется по [AGPL-3.0](LICENSE), как и Clipious.
+CloudTube не связан с YouTube и Google. «YouTube» — товарный знак Google LLC.

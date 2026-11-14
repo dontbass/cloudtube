@@ -1,2 +1,0 @@
-Add option to choose app language
-Add option to choose app theme

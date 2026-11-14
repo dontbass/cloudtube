@@ -1,1 +1,1 @@
-Client for Invidious, the privacy focused YouTube front end.
+Invidious client styled like mobile YouTube: Shorts, subscriptions, comments

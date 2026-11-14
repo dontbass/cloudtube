@@ -32,21 +32,36 @@ jobs:
           cache: true
 
       - name: Signing key
-        # Секреты репозитория: CT_KEYSTORE_B64 (base64 от .jks), CT_STORE_PASSWORD, CT_KEY_PASSWORD, CT_KEY_ALIAS.
+        # Секреты репозитория: либо четыре отдельных — CT_KEYSTORE_B64 (base64 от .jks), CT_STORE_PASSWORD,
+        # CT_KEY_PASSWORD, CT_KEY_ALIAS, — либо один CLOUDTUBE с тем же содержимым в виде текста «ИМЯ = значение».
         # Без них (например, в форке) APK подписывается отладочным ключом.
         env:
           KS: ${{ secrets.CT_KEYSTORE_B64 }}
           SP: ${{ secrets.CT_STORE_PASSWORD }}
           KP: ${{ secrets.CT_KEY_PASSWORD }}
           KA: ${{ secrets.CT_KEY_ALIAS }}
+          BUNDLE: ${{ secrets.CLOUDTUBE }}
         run: |
+          if [ -z "$KS" ] && [ -n "$BUNDLE" ]; then
+            printf '%s\n' "$BUNDLE" > /tmp/bundle.txt
+            val() { grep -E "^[[:space:]]*$1[[:space:]]*=" /tmp/bundle.txt | head -1 | sed -E 's/^[^=]*=[[:space:]]*//; s/[[:space:]]+$//'; }
+            SP=$(val CT_STORE_PASSWORD); KP=$(val CT_KEY_PASSWORD); KA=$(val CT_KEY_ALIAS)
+            KS=$(val CT_KEYSTORE_B64 | grep -E '^[A-Za-z0-9+/=]{100,}$' || true)
+            # строка ключа может идти отдельной строкой после «CT_KEYSTORE_B64 = (…)»
+            [ -n "$KS" ] || KS=$(tr -d '\r' < /tmp/bundle.txt | grep -E '^[A-Za-z0-9+/=]{100,}$' | head -1)
+            rm -f /tmp/bundle.txt
+          fi
           if [ -n "$KS" ]; then
-            echo "$KS" | base64 -d > /tmp/release.jks
-            printf 'storeFile=/tmp/release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=%s\n' "$SP" "$KP" "$KA" > /tmp/key.properties
+            echo "$KS" | tr -d ' \r\n' | base64 -d > /tmp/release.jks
+            [ -n "$SP" ] && [ -n "$KA" ] || { echo "::error::в секретах нет пароля или алиаса ключа"; exit 1; }
+            printf 'storeFile=/tmp/release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=%s\n' "$SP" "${KP:-$SP}" "$KA" > /tmp/key.properties
+            keytool -list -keystore /tmp/release.jks -storepass "$SP" -alias "$KA" >/dev/null \
+              || { echo "::error::ключ не открывается — проверьте пароль/алиас в секретах"; exit 1; }
+            echo "ключ подписи: $(keytool -list -v -keystore /tmp/release.jks -storepass "$SP" -alias "$KA" | grep -m1 'SHA256:')"
           elif [ "${{ github.repository }}" = "dontbass/cloudtube" ]; then
-            echo "::error::нет секрета CT_KEYSTORE_B64 — релиз основного репозитория без ключа подписи не собираем"; exit 1
+            echo "::error::нет секрета CT_KEYSTORE_B64 / CLOUDTUBE — релиз основного репозитория без ключа подписи не собираем"; exit 1
           else
-            echo "::warning::нет секрета CT_KEYSTORE_B64 — сборка подписана отладочным ключом"
+            echo "::warning::нет секрета подписи — сборка подписана отладочным ключом"
           fi
 
       - name: Dependencies

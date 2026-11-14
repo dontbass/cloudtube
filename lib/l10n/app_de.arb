@@ -1,0 +1,1410 @@
+{
+  "popular": "Beliebt",
+  "@popular": {
+    "description": "Popular videos title"
+  },
+  "trending": "Trends",
+  "@trending": {
+    "description": "Trending videos title"
+  },
+  "noVideoInPlayList": "Kein Video in der Wiedergabeliste",
+  "@noVideoInPlayList": {
+    "description": "When no videos in the playlist"
+  },
+  "removeFromPlayList": "Aus der Wiedergabeliste entfernen",
+  "@removeFromPlayList": {
+    "description": "Menu item description to show remove a video from a playlist"
+  },
+  "irreversibleAction": "Diese Aktion ist nicht rückgängig zu machen",
+  "@irreversibleAction": {
+    "description": "Tell the user that the action cannot be undone"
+  },
+  "addPlayList": "Wiedergabeliste hinzufügen",
+  "@addPlayList": {
+    "description": "Title for add playlist dialog"
+  },
+  "playListName": "Name der Wiedergabeliste",
+  "@playListName": {
+    "description": "Place holder for new playlist name text field"
+  },
+  "playlistVisibility": "Sichtbarkeit",
+  "@playlistVisibility": {
+    "description": "Dropdown label for playlist visibility"
+  },
+  "publicPlaylist": "Öffentlich",
+  "@publicPlaylist": {
+    "description": "Public playlist"
+  },
+  "privatePlaylist": "Privat",
+  "@privatePlaylist": {
+    "description": "Private playlist"
+  },
+  "add": "Hinzufügen",
+  "@add": {
+    "description": "Add button abel"
+  },
+  "unlistedPlaylist": "Ungelistet",
+  "@unlistedPlaylist": {
+    "description": "Unlisted playlist"
+  },
+  "info": "Infos",
+  "@info": {
+    "description": "Info label"
+  },
+  "videos": "Videos",
+  "@videos": {
+    "description": "Videos label"
+  },
+  "streams": "Streams",
+  "@streams": {
+    "description": "Streams label"
+  },
+  "subscribed": "Abonniert",
+  "@subscribed": {
+    "description": "When the user is subscribed to a channel"
+  },
+  "nSubscribers": "{count, select, no{Keine Abonnenten} other{{count} Abonnenten}}",
+  "@nSubscribers": {
+    "description": "number of subscribers",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "shareYoutubeLink": "YouTube-Link teilen",
+  "@shareYoutubeLink": {
+    "description": "asking user to share youtube link"
+  },
+  "shareInvidiousLink": "Invidious-Link teilen",
+  "@shareInvidiousLink": {
+    "description": "asking user to share invidious link"
+  },
+  "ok": "Okay",
+  "@ok": {
+    "description": "Ok"
+  },
+  "noChannels": "Keine Kanäle",
+  "@noChannels": {
+    "description": "when there are no channels to display"
+  },
+  "noPlaylists": "Keine Wiedergabelisten",
+  "@noPlaylists": {
+    "description": "when there are no playlists to display"
+  },
+  "comments": "Kommentare",
+  "@comments": {
+    "description": "Comments label"
+  },
+  "recommended": "Empfohlen",
+  "@recommended": {
+    "description": "Recommended label"
+  },
+  "couldntFetchVideos": "Videos konnten nicht abgerufen werden. Zum erneuten Versuch antippen.",
+  "@couldntFetchVideos": {
+    "description": "Can't load bunch of videos, asking  user to try again"
+  },
+  "wizardIntro": "Einen öffentlichen Server auswählen oder einen eigenen hinzufügen. (Kann später in den Einstellungen geändert werden)",
+  "@wizardIntro": {
+    "description": "Welcome message on frst time use"
+  },
+  "startUsingClipious": "CloudTube jetzt nutzen",
+  "@startUsingClipious": {
+    "description": "button label to start using the app"
+  },
+  "videoAddedToPlaylist": "Video zur Wiedergabeliste hinzugefügt",
+  "@videoAddedToPlaylist": {
+    "description": "Pop up message when a video was added to a playlist"
+  },
+  "deletePlayListQ": "Wiedergabeliste löschen?",
+  "@deletePlayListQ": {
+    "description": "Ask user to delete a playlist"
+  },
+  "nReplies": "{count, plural, =0{Keine Antworten} =1{1 Antwort} other{{count} Antworten}}",
+  "@nReplies": {
+    "description": "number of replies to a comment",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "playlists": "Wiedergabelisten",
+  "@playlists": {
+    "description": "User playlists"
+  },
+  "subscriptions": "Abos",
+  "@subscriptions": {
+    "description": "User subscriptions"
+  },
+  "latestVideos": "Neueste Videos",
+  "@latestVideos": {
+    "description": "Latest channel videos"
+  },
+  "couldntLoadVideo": "Das Video konnte nicht geladen werden",
+  "@couldntLoadVideo": {
+    "description": "Message to display when a video can't be loaded"
+  },
+  "cancel": "Abbrechen",
+  "@cancel": {
+    "description": "Cancel button label"
+  },
+  "subscribe": "Abonnieren",
+  "@subscribe": {
+    "description": "Label for user to subscribe to a channel"
+  },
+  "channels": "Kanäle",
+  "@channels": {
+    "description": "Channels label"
+  },
+  "errorAddingVideoToPlaylist": "Fehler beim Hinzufügen des Videos zur Wiedergabeliste",
+  "@errorAddingVideoToPlaylist": {
+    "description": "Error while adding video to playlist"
+  },
+  "selectPlaylist": "Wiedergabeliste auswählen",
+  "@selectPlaylist": {
+    "description": "Title when users wants to add a video to a playlist"
+  },
+  "createNewPlaylist": "Neue Wiedergabeliste erstellen",
+  "@createNewPlaylist": {
+    "description": "Button label to create a new playlist when the user wants to add a video to a playlist"
+  },
+  "streamIsLive": "Live",
+  "@streamIsLive": {
+    "description": "Label when a video is a live stream"
+  },
+  "settings": "Einstellungen",
+  "@settings": {
+    "description": "Settings title"
+  },
+  "newSorting": "Neu",
+  "@newSorting": {
+    "description": "Content sorting: new"
+  },
+  "showOnStart": "Auswählen, was beim Starten der App angezeigt werden soll",
+  "@showOnStart": {
+    "description": "Title of dialog asking which screen the users prefers to see"
+  },
+  "loadMore": "Mehr laden",
+  "@loadMore": {
+    "description": "CTA to load more"
+  },
+  "sponsorSkipped": "Sponsor übersprungen",
+  "@sponsorSkipped": {
+    "description": "When a sponsor segment is skipped thanks to sponsor block"
+  },
+  "selectBrowsingCountry": "Land zum Browsen auswählen",
+  "@selectBrowsingCountry": {
+    "description": "Select country for trending content"
+  },
+  "sponsorBlockDescription": "Von der Community eingereichte Sponsorensegmente überspringen",
+  "@sponsorBlockDescription": {
+    "description": "Sponsorblock setting description"
+  },
+  "about": "Über",
+  "@about": {
+    "description": "About"
+  },
+  "invalidInvidiousServer": "Ungültiger Invidious-Server",
+  "@invalidInvidiousServer": {
+    "description": "Error when the user tries to add a server that is not a proper or reachable invidious server"
+  },
+  "addServerHelpText": "Verwenden Sie die Taste +, um Ihre eigenen Server hinzuzufügen, oder tippen Sie auf einen öffentlichen Server und fügen Sie ihn hinzu.",
+  "@addServerHelpText": {
+    "description": "label for when the user hasn't chosen a server yet"
+  },
+  "name": "Name",
+  "@name": {
+    "description": "NAme label"
+  },
+  "package": "Paket",
+  "@package": {
+    "description": "package label"
+  },
+  "build": "Build",
+  "@build": {
+    "description": "build label"
+  },
+  "addServer": "Server hinzufügen",
+  "@addServer": {
+    "description": "Add server label"
+  },
+  "version": "Version",
+  "@version": {
+    "description": "version label"
+  },
+  "useThisServer": "Diesen Server verwenden",
+  "@useThisServer": {
+    "description": "Use this server label"
+  },
+  "logIn": "Anmelden",
+  "@logIn": {
+    "description": "CTA to log in to server"
+  },
+  "delete": "Löschen",
+  "@delete": {
+    "description": "Delete label"
+  },
+  "yourServers": "Ihre Server",
+  "@yourServers": {
+    "description": "Your servers label"
+  },
+  "loggedIn": "Angemeldet",
+  "@loggedIn": {
+    "description": "Label to tell the user that he is logged in to the server"
+  },
+  "notLoggedIn": "Nicht angemeldet",
+  "@notLoggedIn": {
+    "description": "Label when the user is not logged in to the server"
+  },
+  "publicServers": "Öffentliche Server",
+  "@publicServers": {
+    "description": "Public servers label"
+  },
+  "loadingPublicServer": "Öffentliche Server werden geladen",
+  "@loadingPublicServer": {
+    "description": "Message telling users the app is loading the list of public servers"
+  },
+  "tapToAddServer": "Tippen Sie auf, um einen Server zu Ihrer Liste hinzuzufügen",
+  "@tapToAddServer": {
+    "description": "public server description"
+  },
+  "publicServersError": "Die Liste der öffentlichen Server konnte nicht abgerufen werden. Zum erneuten Versuch antippen.",
+  "@publicServersError": {
+    "description": "Error message when trying to get public servers but it failed"
+  },
+  "appearance": "Aussehen",
+  "@appearance": {
+    "description": "Settings category title"
+  },
+  "useDynamicTheme": "Dynamische Farben",
+  "@useDynamicTheme": {
+    "description": ""
+  },
+  "useDynamicThemeDescription": "Material-You-Farben verwenden (nur auf Android 12+ verfügbar)",
+  "@useDynamicThemeDescription": {
+    "description": ""
+  },
+  "error": "Fehler",
+  "@error": {},
+  "nVideos": "{count, plural, =0{Keine Videos} =1{1 Video} other{{count} Videos}}",
+  "@nVideos": {
+    "description": "One or more videos",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "topSorting": "Top",
+  "@topSorting": {
+    "description": "Content sorting: top"
+  },
+  "browsing": "Durchsuchen",
+  "@browsing": {
+    "description": "video browsing preferences"
+  },
+  "country": "Land",
+  "@country": {
+    "description": "Country label"
+  },
+  "whenAppStartsShow": "Wenn die App startet, zeigen …",
+  "@whenAppStartsShow": {
+    "description": "Setting title for selecting the screen to show on start"
+  },
+  "servers": "Servers",
+  "@servers": {
+    "description": "Server management settings category"
+  },
+  "manageServers": "Server verwalten",
+  "@manageServers": {
+    "description": "Settings to manage servers"
+  },
+  "currentServer": "Derzeit wird {current} verwendet",
+  "@currentServer": {
+    "description": "Which server the user is currently using",
+    "placeholders": {
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "useSponsorBlock": "SponsorBlock verwenden",
+  "@useSponsorBlock": {
+    "description": "label for sponsorblock checkbox"
+  },
+  "useDash": "DASH verwenden",
+  "@useDash": {
+    "description": "Label on video options if a user wants to switch to dash urls instead of the regular quality selection"
+  },
+  "useDashDescription": "Das adaptive DASH-Streaming kann manchmal problematisch sein, YouTube kann seine Geschwindigkeit begrenzen.",
+  "@useDashDescription": {
+    "description": "Description for dash in the settings screen"
+  },
+  "videoPlayer": "Videospieler",
+  "@videoPlayer": {
+    "description": "Title for video player related options"
+  },
+  "videoListed": "Öffentlich",
+  "@videoListed": {
+    "description": "Status of a publicly available video"
+  },
+  "videoUnlisted": "Ungelistet",
+  "@videoUnlisted": {
+    "description": "Status of a video that is only accessible by link"
+  },
+  "videoIsFamilyFriendly": "Familienfreundlich",
+  "@videoIsFamilyFriendly": {
+    "description": "Displayed only when a video is family friendly"
+  },
+  "tokenLoginDescription": "Empfohlene Anmeldemethode",
+  "@tokenLoginDescription": {
+    "description": "Recommended way to log in"
+  },
+  "tokenLogin": "Mit Token anmelden",
+  "@tokenLogin": {
+    "description": "Textto login to a server using the recommended way"
+  },
+  "password": "Passwort",
+  "@password": {
+    "description": "Password label for login to a server"
+  },
+  "cookieLogin": "Mit Cookie anmelden",
+  "@cookieLogin": {
+    "description": "Text to login to a server using the cookie jar method"
+  },
+  "wrongUsernamePassword": "Falscher Benutzername oder falsches Passwort",
+  "@wrongUsernamePassword": {
+    "description": "Error message when authentication fails"
+  },
+  "cookieLoginDescription": "Diese Methode verwenden, wenn Probleme mit der Token-Authentifizierung auftreten",
+  "@cookieLoginDescription": {
+    "description": "Cookie log in description"
+  },
+  "logout": "Abmelden",
+  "@logout": {
+    "description": "CTA to logout of a server"
+  },
+  "username": "Benutzername",
+  "@username": {
+    "description": "Username label for login to a server"
+  },
+  "tapToManage": "Zum Verwalten tippen",
+  "@tapToManage": {
+    "description": "Text shown below a server in the 'Your servers' list"
+  },
+  "authentication": "Authentifizierung",
+  "@authentication": {
+    "description": "Label for server settings related to authentications"
+  },
+  "sponsorBlockCategoryUnpaidSelfPromo": "Unbezahlt / Eigenwerbung",
+  "@sponsorBlockCategoryUnpaidSelfPromo": {
+    "description": "Sponsor block 'Unpaid/Self promotion' Category"
+  },
+  "addRecommendedToQueue": "Von der automatischen Wiedergabe als nächstes empfohlen",
+  "@addRecommendedToQueue": {
+    "description": "Switch when playing a video to automatically add the recommended videos to the video queue"
+  },
+  "sponsorBlockSettingsQuickDescription": "Auswählen, welche Art von Segmenten übersprungen werden soll",
+  "@sponsorBlockSettingsQuickDescription": {
+    "description": "Small description of what the sponsor block settings do"
+  },
+  "sponsorBlockCategorySponsor": "Sponsoren",
+  "@sponsorBlockCategorySponsor": {
+    "description": "Sponsor block 'Sponsor' Category"
+  },
+  "videoQueue": "Videowarteschlange",
+  "@videoQueue": {
+    "description": "Label for button to display the video queue"
+  },
+  "addToQueueList": "Zur Warteschlange hinzufügen",
+  "@addToQueueList": {
+    "description": "Label on button to add a video to the queue list"
+  },
+  "sponsorBlockCategorySponsorDescription": "Bezahlte Werbung, bezahlte Verweise und direkte Anzeigen. Nicht für Eigenwerbung oder kostenlose Hinweise auf Ursachen / Schöpfer / Websites / Produkte, die sie mögen.",
+  "@sponsorBlockCategorySponsorDescription": {
+    "description": "Sponsor block 'Sponsor' Category description"
+  },
+  "sponsorBlockCategoryInteraction": "Interaktionserinnerung (Abonnieren)",
+  "@sponsorBlockCategoryInteraction": {
+    "description": "Sponsor block 'Interaction' Category"
+  },
+  "sponsorBlockCategoryIntro": "Unterbrechung / Intro-Animation",
+  "@sponsorBlockCategoryIntro": {
+    "description": "Sponsorblock 'Intro' Category"
+  },
+  "sponsorBlockCategoryOutro": "Abspann / Credits",
+  "@sponsorBlockCategoryOutro": {
+    "description": "Outro block 'Outro' Category"
+  },
+  "sponsorBlockCategoryOutroDescription": "Credits oder wenn die YouTube-Endkarten erscheinen. Nicht für Schlussfolgerungen mit Informationen.",
+  "@sponsorBlockCategoryOutroDescription": {
+    "description": "Outro block 'Outro' Category description"
+  },
+  "sponsorBlockCategoryPreview": "Vorschau / Zusammenfassung",
+  "@sponsorBlockCategoryPreview": {
+    "description": "Sponsorblock 'Preview' Category"
+  },
+  "sponsorBlockCategoryFiller": "Ablenkende Nebenthemen / Witze",
+  "@sponsorBlockCategoryFiller": {
+    "description": "Sponsorblock 'Filler' Category"
+  },
+  "sponsorBlockCategoryMusicOffTopic": "Musik: Nicht-musikalischer Bereich",
+  "@sponsorBlockCategoryMusicOffTopic": {
+    "description": "Sponsorblock 'MusicOffTopic' Category"
+  },
+  "sponsorBlockCategoryUnpaidSelfPromoDescription": "Ähnlich wie bei „Sponsor“, außer bei unbezahlter oder Eigenwerbung. Dazu gehören auch Abschnitte über Merchandise, Spenden oder Informationen darüber, mit wem sie zusammengearbeitet haben. ",
+  "@sponsorBlockCategoryUnpaidSelfPromoDescription": {
+    "description": "Sponsor block 'Unpaid/Self promotion' Category description"
+  },
+  "sponsorBlockCategoryInteractionDescription": "Wenn in der Mitte des Inhalts eine kurze Aufforderung steht, ihn zu mögen, zu abonnieren oder ihm zu folgen. Wenn er lang ist oder sich auf etwas Bestimmtes bezieht, sollte er stattdessen unter Eigenwerbung stehen.",
+  "@sponsorBlockCategoryInteractionDescription": {
+    "description": "Sponsor block 'Interaction' Category description"
+  },
+  "sponsorBlockCategoryIntroDescription": "Ein Intervall ohne tatsächlichen Inhalt. Es könnte eine Pause, ein statisches Bild oder eine sich wiederholende Animation sein. Dies sollte nicht für Übergänge mit Informationen verwendet werden.",
+  "@sponsorBlockCategoryIntroDescription": {
+    "description": "Sponsorblock 'Intro' Category description"
+  },
+  "sponsorBlockCategoryPreviewDescription": "Sammlung von Clips, die zeigen, was in diesem Video oder in anderen Videos einer Serie, in der alle Informationen später im Video wiederholt werden, behandelt wird.",
+  "@sponsorBlockCategoryPreviewDescription": {
+    "description": "Sponsorblock 'Preview' Category description"
+  },
+  "sponsorBlockCategoryFillerDescription": "Tangentiale Szenen, die nur zur Auflockerung oder für den Humor hinzugefügt werden und für das Verständnis des Hauptinhalts des Videos nicht erforderlich sind. Dies sollte keine Segmente beinhalten, die Kontext oder Hintergrunddetails liefern. Dies ist eine sehr aggressive Kategorie für den Fall, dass Sie nicht in der Stimmung für „Spaß“ sind.",
+  "@sponsorBlockCategoryFillerDescription": {
+    "description": "Sponsorblock 'Filler' Category description"
+  },
+  "search": "Suchen",
+  "@search": {
+    "description": "search title"
+  },
+  "subtitles": "Untertitel",
+  "@subtitles": {
+    "description": "Name of TV ui subtitles settings"
+  },
+  "playbackSpeed": "Abspielgeschwindigkeit",
+  "@playbackSpeed": {
+    "description": "Name of TV ui Playback speed"
+  },
+  "blackBackground": "Schwarzer Hintergrund",
+  "@blackBackground": {
+    "description": "Settings name for black background"
+  },
+  "blackBackgroundDescription": "Für den Dunkelmodus auf einem OLED-Bildschirm",
+  "@blackBackgroundDescription": {
+    "description": "Description for dark background setting"
+  },
+  "subtitleFontSize": "Untertitel Schriftgröße",
+  "@subtitleFontSize": {
+    "description": "Settings label for the size of the subtitles"
+  },
+  "skipSslVerification": "SSL-Zertifikatsprüfung überspringen",
+  "@skipSslVerification": {
+    "description": "Setting label to skip ssl certification verification"
+  },
+  "skipSslVerificationDescription": "Für die Verwendung eines selbst signierten SSL-Zertifikats oder bei SSL-bezogenen Problemen mit Ihrem Server.",
+  "@skipSslVerificationDescription": {
+    "description": "Setting description for the skip ssl certification verification"
+  },
+  "searchHistoryDescription": "Suchverlaufseinstellungen",
+  "@searchHistoryDescription": {
+    "description": "Description for search history settings"
+  },
+  "rememberSubtitleLanguageDescription": "Setze die Untertitelsprache automatisch auf die letzte ausgewählte Sprache, falls vorhanden",
+  "@rememberSubtitleLanguageDescription": {
+    "description": "Settings description for remembering subtitle language"
+  },
+  "useProxy": "Proxy-Videos",
+  "@useProxy": {
+    "description": "label for settings switch to proxy videos from server"
+  },
+  "appLogs": "Anwendungslogs",
+  "@appLogs": {
+    "description": "Title for settings that leads to application logs"
+  },
+  "appLogsDescription": "Erhalte Protokolle über das, was in der Anwendung geschieht. Das kann hilfreich sein, um Probleme zu melden",
+  "@appLogsDescription": {
+    "description": "Description of the app log settings"
+  },
+  "copyToClipBoard": "In Zwischenablage kopieren",
+  "@copyToClipBoard": {
+    "description": "Text to copy something to clipboard"
+  },
+  "logsCopied": "Protokolle wurden in die Zwischenablage kopiert",
+  "@logsCopied": {
+    "description": "Message to tell user that logs have been copied to the clipboard"
+  },
+  "searchSortRelevance": "Relevanz",
+  "@searchSortRelevance": {
+    "description": "Sort search by relevance"
+  },
+  "searchSortRating": "Bewertung",
+  "@searchSortRating": {
+    "description": "Sort search by rating"
+  },
+  "searchSortUploadDate": "Upload-Datum",
+  "@searchSortUploadDate": {
+    "description": "Sort search by upload date"
+  },
+  "shorts": "Shorts",
+  "@shorts": {
+    "description": "Youtube shorts"
+  },
+  "searchSortViewCount": "Aufrufe",
+  "@searchSortViewCount": {
+    "description": "Sort search by view count"
+  },
+  "returnYoutubeDislikeDescription": "Anzeige der geschätzten Videoabneigungen über die API von returnyoutubedislike.com",
+  "@returnYoutubeDislikeDescription": {
+    "description": "ReturnYoutubeDislike setting description"
+  },
+  "rememberSubtitleLanguage": "Sprache der Untertitel merken",
+  "@rememberSubtitleLanguage": {
+    "description": "Settings label for remembering subtitle language"
+  },
+  "subtitleFontSizeDescription": "Die Größe der Untertitel ändern, wenn sie auf dem Gerät zu klein oder zu groß sind",
+  "@subtitleFontSizeDescription": {
+    "description": "Settings description for subtitle size"
+  },
+  "audio": "Audio",
+  "@audio": {
+    "description": "Name TV ui audio settings"
+  },
+  "autoplayVideoOnLoad": "Video automatisch bei Laden abspielen",
+  "@autoplayVideoOnLoad": {
+    "description": "Label for settings to enable autoplay when a video loads"
+  },
+  "autoplayVideoOnLoadDescription": "Das Video automatisch abspielen, nachdem es geladen wurde",
+  "@autoplayVideoOnLoadDescription": {
+    "description": "Description for the autoplay video on load setting"
+  },
+  "searchHistory": "Suchverlauf",
+  "@searchHistory": {
+    "description": "Settings label for search history"
+  },
+  "enableSearchHistory": "Suchverlauf aktivieren",
+  "@enableSearchHistory": {
+    "description": "Settings label for enabling search history"
+  },
+  "searchHistoryLimit": "Suchverlaufslimit",
+  "@searchHistoryLimit": {
+    "description": "Settings label for search history limit"
+  },
+  "searchHistoryLimitDescription": "Einstellen, wie viele vorherige Suchanfragen in den Vorschlägen angezeigt werden",
+  "@searchHistoryLimitDescription": {
+    "description": "Settings label for search history limit description"
+  },
+  "clearSearchHistory": "Suchverlauf leeren",
+  "@clearSearchHistory": {
+    "description": "Settings label for clearing search history"
+  },
+  "themeBrightness": "Design",
+  "@themeBrightness": {
+    "description": "Ask the user to user dark / light / system theme"
+  },
+  "themeLight": "Hell",
+  "@themeLight": {
+    "description": "Light theme"
+  },
+  "themeDark": "Dunkel",
+  "@themeDark": {
+    "description": "Dark theme"
+  },
+  "followSystem": "System folgen",
+  "@followSystem": {
+    "description": "Follow system label"
+  },
+  "requiresRestart": "Erfordert Neustart der App",
+  "@requiresRestart": {
+    "description": "Requires app restart label"
+  },
+  "appLanguage": "Anwendungssprache",
+  "@appLanguage": {
+    "description": "Select app language"
+  },
+  "quality": "Qualität",
+  "@quality": {
+    "description": "Name of TV ui video settings"
+  },
+  "useProxyDescription": "Durch den Proxy von Videostreams vom Server können regionale Sperren oder die Blockierung von YouTube durch Internetdienstanbieter umgangen werden",
+  "@useProxyDescription": {
+    "description": "Description for the use proxy settings"
+  },
+  "sponsorBlockCategoryMusicOffTopicDescription": "Nur zur Verwendung in Musikvideos. Dies sollte nur für Abschnitte von Musikvideos verwendet werden, die nicht bereits durch eine andere Kategorie abgedeckt sind.",
+  "@sponsorBlockCategoryMusicOffTopicDescription": {
+    "description": "Only for use in music videos. This only should be used for sections of music videos that aren't already covered by another category."
+  },
+  "pressDownToShowSettings": "Nach unten drücken, um Einstellungen anzuzeigen",
+  "@pressDownToShowSettings": {
+    "description": "Instruction on how to show video settings when playing a video on TV"
+  },
+  "save": "Speichern",
+  "@save": {
+    "description": "Text for save action"
+  },
+  "videoFilterType": "Typ",
+  "@videoFilterType": {
+    "description": "Label for filter type"
+  },
+  "videoFilterOperation": "Operation",
+  "@videoFilterOperation": {
+    "description": "Label for filter operation"
+  },
+  "videoFilterValue": "Wert",
+  "@videoFilterValue": {
+    "description": "Label for filter value"
+  },
+  "videoFiltered": "Video wurde aus dem/den folgenden Grund/Gründen gefiltert:",
+  "@videoFiltered": {
+    "description": "Label shown on video list when it is filtered out"
+  },
+  "channel": "Kanal",
+  "@channel": {
+    "description": "A single channel"
+  },
+  "rememberPlaybackSpeed": "Wiedergabegeschwindigkeit merken",
+  "@rememberPlaybackSpeed": {
+    "description": "Setting label for remembering playback speed"
+  },
+  "optional": "optional",
+  "@optional": {
+    "description": "Optional label"
+  },
+  "videoFilterFilterLabel": "Verschleiern",
+  "@videoFilterFilterLabel": {
+    "description": "Label to filter videos"
+  },
+  "videoFilterOperationContains": "Enthält",
+  "@videoFilterOperationContains": {
+    "description": "Label for video filter operation Contains"
+  },
+  "videoFilterHideAllFromChannel": "Alle Videos des Kanals filtern",
+  "@videoFilterHideAllFromChannel": {
+    "description": "Label for video filter switch to allow to hide all videos from a channel"
+  },
+  "addToPlaylist": "Zur Wiedergabeliste hinzufügen",
+  "@addToPlaylist": {
+    "description": "Label to add a video to a playlist"
+  },
+  "playNextAddedToQueue": "Video wird als nächstes abgespielt",
+  "@playNextAddedToQueue": {
+    "description": "Pop up message to confirm that the video has been properly set to play next"
+  },
+  "videoFilterDescriptionString": "{hideOrFilter} Videos wo {type} {operation} ''{value}''.",
+  "@videoFilterDescriptionString": {
+    "description": "Human readable description of a video filter, in this case is it for string comparison, example: Hide videos where the name of the video does not contain the following string 'test' (Do not translate text between { })",
+    "placeholders": {
+      "hideOrFilter": {
+        "type": "String",
+        "example": "Hide"
+      },
+      "type": {
+        "type": "String",
+        "example": "video title"
+      },
+      "operation": {
+        "type": "String",
+        "example": "does not contain"
+      },
+      "value": {
+        "type": "String",
+        "example": "some filter text"
+      }
+    }
+  },
+  "videoFiltersSettingTileDescriptions": "Regeln zum Herausfiltern von Videos definieren",
+  "@videoFiltersSettingTileDescriptions": {
+    "description": "Description for the main settings page"
+  },
+  "addVideoFilter": "Filter erstellen",
+  "@addVideoFilter": {
+    "description": "Title when creating a new filter"
+  },
+  "videoFilters": "Videofilter",
+  "@videoFilters": {
+    "description": "Title for video filter settings"
+  },
+  "videoFilterTypeVideoTitle": "Videotitel",
+  "@videoFilterTypeVideoTitle": {
+    "description": "Label for video filter video title"
+  },
+  "videoFilterAllChannels": "Alle Kanäle",
+  "@videoFilterAllChannels": {
+    "description": "Title for the sections that applies to all channels"
+  },
+  "editVideoFilter": "Filter bearbeiten",
+  "@editVideoFilter": {
+    "description": "Title when editting a filter"
+  },
+  "videoFilterOperationHigherThan": "Höher als",
+  "@videoFilterOperationHigherThan": {
+    "description": "Label for video filter operation Higher than"
+  },
+  "videoFilterHideLabel": "Ausblenden",
+  "@videoFilterHideLabel": {
+    "description": "Label to hide videos"
+  },
+  "videoFilterHide": "Gefilterte Videos ausblenden",
+  "@videoFilterHide": {
+    "description": "Label for settings to hide filtered videos"
+  },
+  "videoFilterTypeChannelName": "Kanalname",
+  "@videoFilterTypeChannelName": {
+    "description": "Label for video filter channel name"
+  },
+  "videoFilterTypeVideoLength": "Videolänge (Sekunden)",
+  "@videoFilterTypeVideoLength": {
+    "description": "Label for video filter video length"
+  },
+  "videoFilterOperationNotContain": "Enthält nicht",
+  "@videoFilterOperationNotContain": {
+    "description": "Label for video filter operation Does not contain"
+  },
+  "videoFilterOperationLowerThan": "Weniger als",
+  "@videoFilterOperationLowerThan": {
+    "description": "Label for video filter operation Lower than"
+  },
+  "rememberPlaybackSpeedDescription": "Wiedergabegeschwindigkeit automatisch auf die zuletzt gewählte Geschwindigkeit einstellen",
+  "@rememberPlaybackSpeedDescription": {
+    "description": "Settings description for remembering playback speed"
+  },
+  "redirectInvidiousLink": "Invidious Redirect-Link teilen",
+  "@redirectInvidiousLink": {
+    "description": "asking user to share redirecting invidious link"
+  },
+  "videoFilterEditDescription": "Wähle einen Kanal, Filtertyp, Operation und einen Wert, um Videos aus Listen herauszufiltern. Zum Beispiel: \"Typ: Videoname, Operation: Enthält, Wert: test\" würde alle Videos mit dem Wort \"test\" in ihrem Namen herausfiltern.",
+  "@videoFilterEditDescription": {
+    "description": "Descriptive test for video filter set up"
+  },
+  "videoFilterTapToReveal": "Tippen zum Anzeigen",
+  "@videoFilterTapToReveal": {
+    "description": "Label to tell user to tap to show a filtered video"
+  },
+  "videoFilterNoFilters": "Keine Videofilter. Tippe auf '+', um Filter hinzuzufügen.",
+  "@videoFilterNoFilters": {
+    "description": "Label when there are no video filters"
+  },
+  "playNext": "Als nächstes spielen",
+  "@playNext": {
+    "description": "Label to play the video after the current one."
+  },
+  "videoFiltersExplanation": "Verstecke oder Obfuskiere Videos aus allen Feeds in dieser Anwendung basierend auf die unten definierten Filter. Dies erlaubt zum Beispiel das Verstecken von Sportergebnissen oder blendet Shorts bestimmter Kanäle aus.",
+  "@videoFiltersExplanation": {
+    "description": "Description on how filter work"
+  },
+  "videoFilterHideDescription": "Standardmäßig werden gefilterte Videos nicht ausgeblended, sondern unter Angabe des relenvanten Filters unkenntlich gemacht. Diese Einstellung entfernt die gefilterten Videos stattdessen komplett.",
+  "@videoFilterHideDescription": {
+    "description": ""
+  },
+  "lockFullScreenToLandscape": "Orientierung im Vollbild an Bildseitenverhältnis anpassen",
+  "@lockFullScreenToLandscape": {
+    "description": "Title to force full screen to landscape"
+  },
+  "lockFullScreenToLandscapeDescription": "Zeige Videos im Vollbild immer im nativen Seitenverhältnis an - Quer bei Horizontalen/\"klassischen\" Videos, Hochkant bei Vertikalen Videos",
+  "@lockFullScreenToLandscapeDescription": {
+    "description": "Setting description for forcing video to landscape when in full screen"
+  },
+  "fillFullscreen": "Video auf Bildschirmgröße maximieren",
+  "@fillFullscreen": {
+    "description": "Title to maximize video to fit screen"
+  },
+  "videoAddedToQueue": "Video zur Warteschlange hinzugefügt",
+  "@videoAddedToQueue": {
+    "description": "Pop up message when a video was added at the end of the video queue"
+  },
+  "fillFullscreenDescription": "Video anpassen, dass es den gesamten Bildschirm im Querformat ausfüllt",
+  "@fillFullscreenDescription": {
+    "description": "Setting description for filling video to screen in landscape"
+  },
+  "videoFilterWholeChannel": "Alle Videos des Kanals {hideOrFilter}",
+  "@videoFilterWholeChannel": {
+    "description": "Label for whole channel filtering",
+    "placeholders": {
+      "hideOrFilter": {
+        "type": "String",
+        "example": "Hide"
+      }
+    }
+  },
+  "videoAlreadyDownloaded": "Video bereits heruntergeladen",
+  "@videoAlreadyDownloaded": {
+    "description": "Message when a user tries to download a video he already has"
+  },
+  "downloadsPlayAll": "Alle wiedergeben",
+  "@downloadsPlayAll": {
+    "description": "Button to play all downloaded videos"
+  },
+  "videoDownloadAudioOnly": "Nur Audio",
+  "@videoDownloadAudioOnly": {
+    "description": "Label for toggle to download audio only "
+  },
+  "manageSubscriptions": "Abonnements verwalten",
+  "@manageSubscriptions": {
+    "description": "Title of manage subscriptions page"
+  },
+  "shareLinkWithTimestamp": "Zeitstempel hinzufügen",
+  "@shareLinkWithTimestamp": {
+    "description": "asking user to share link along with timestamp"
+  },
+  "downloads": "Downloads",
+  "@downloads": {
+    "description": "Downloads"
+  },
+  "download": "Herunterladen",
+  "@download": {
+    "description": "A single download or CTA for downloading a video"
+  },
+  "unSubscribeQuestion": "Deabonnieren?",
+  "@unSubscribeQuestion": {
+    "description": "Title for dialog if a user wants to unsubscribe in the subscribtion management screen"
+  },
+  "itemlistErrorGeneric": "Daten konnten nicht abgerufen werden",
+  "@itemlistErrorGeneric": {
+    "description": "Error showing when the data can't be fetch"
+  },
+  "askForDisableBatteryOptimizationTitle": "Deaktivierung der Batterieoptimierung erforderlich",
+  "@askForDisableBatteryOptimizationTitle": {
+    "description": "Title for the dialog asking the user to turn off disabling battery optimization when turning on notifications"
+  },
+  "navigationBarLabelNeverShow": "Bezeichnung nie anzeigen",
+  "@navigationBarLabelNeverShow": {
+    "description": "Never show label option for navigation bar"
+  },
+  "navigationBarLabelShowOnSelect": "Bezeichnung wird auf dem ausgewählten Element angezeigt",
+  "@navigationBarLabelShowOnSelect": {
+    "description": "Label only showing when selected option for navigation bar"
+  },
+  "from": "Von",
+  "@from": {
+    "description": "From word (as in 'From xx To xx')"
+  },
+  "playlistNotificationTitle": "Neue Videos in der Wiedergabeliste {playlist}",
+  "@playlistNotificationTitle": {
+    "description": "Title for the playlist notifications when there are new videos",
+    "placeholders": {
+      "playlist": {
+        "type": "String",
+        "example": "Lo-Fi girl"
+      }
+    }
+  },
+  "notificationFrequencySettingsTitle": "Häufigkeit der Prüfung auf neue Videos",
+  "@notificationFrequencySettingsTitle": {
+    "description": "Title for frequency settings"
+  },
+  "distractionFreeMode": "Ablenkungsfreier Modus",
+  "@distractionFreeMode": {
+    "description": "title for distraction free mode settings"
+  },
+  "channelNotificationTitle": "Neue Videos von {channel}",
+  "@channelNotificationTitle": {
+    "description": "Title for the channel notifications when there are new videos",
+    "placeholders": {
+      "channel": {
+        "type": "String",
+        "example": "MKBHD"
+      }
+    }
+  },
+  "navigationBarLabelAlwaysShowing": "Bezeichnung wird immer angezeigt",
+  "@navigationBarLabelAlwaysShowing": {
+    "description": "Label always showing option for navigation bar"
+  },
+  "videoFilterApplyDateToFilter": "Videos nach bestimmten Zeiten filtern",
+  "@videoFilterApplyDateToFilter": {
+    "description": "Label for switch to allow user to customize video filter and set days of week and time to them"
+  },
+  "to": "An",
+  "@to": {
+    "description": "To word as in 'From xx To xx')"
+  },
+  "subscriptionNotificationTitle": "Neue Videos von Ihren Abonnements",
+  "@subscriptionNotificationTitle": {
+    "description": "Title for the notification showing that there are new videos from the subscription feed"
+  },
+  "notifications": "Benachrichtigungen",
+  "@notifications": {
+    "description": "Notification settings title"
+  },
+  "library": "Bibliothek",
+  "@library": {
+    "description": "Name for user library"
+  },
+  "subscriptionNotification": "Abonnement-Benachrichtigungen",
+  "@subscriptionNotification": {
+    "description": "Title for subscriptions notifications"
+  },
+  "videoFilterStartTime": "Startzeit",
+  "@videoFilterStartTime": {
+    "description": "Title for filter start time"
+  },
+  "distractionFreeModeDescription": "Videokommentare und -empfehlungen deaktivieren",
+  "@distractionFreeModeDescription": {
+    "description": "Description for distraction free mode"
+  },
+  "videoFilterTimeOfDayFromTo": "Von {from} an {to}",
+  "@videoFilterTimeOfDayFromTo": {
+    "description": "Time of day range",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "3:00 AM"
+      },
+      "to": {
+        "type": "String",
+        "example": "5:00 PM"
+      }
+    }
+  },
+  "videoFilterDayOfWeek": "Tage auswählen, um Filter anzuwenden",
+  "@videoFilterDayOfWeek": {
+    "description": "Title for day selection for the filter"
+  },
+  "deletePlaylistNotificationTitle": "Wiedergabelisten-Benachrichtigung löschen?",
+  "@deletePlaylistNotificationTitle": {
+    "description": "Title for dialog to confirm whether to delete playlist notifications"
+  },
+  "history": "Verlauf",
+  "@history": {
+    "description": "User view history label"
+  },
+  "videoFilterEndTime": "Endzeit",
+  "@videoFilterEndTime": {
+    "description": "Title for filter end time"
+  },
+  "clearHistoryQuestion": "Verlauf löschen?",
+  "@clearHistoryQuestion": {},
+  "foregroundServiceUpdatingSubscriptions": "Abonnements werden überprüft...",
+  "@foregroundServiceUpdatingSubscriptions": {
+    "description": "Foreground service notification text when checking for new subscription videos"
+  },
+  "secondsShortForm": "Sek.",
+  "@secondsShortForm": {
+    "description": "Short form for the word seconds"
+  },
+  "deleteChannelNotificationTitle": "Kanal-Benachrichtigung löschen?",
+  "@deleteChannelNotificationTitle": {
+    "description": "Title for dialog to confirm whether to delete channel notifications"
+  },
+  "subtitlesBackground": "Hintergrund der Untertitel",
+  "@subtitlesBackground": {
+    "description": "Title for settings to set black background  for subtitles"
+  },
+  "videoFilterAppliedOn": "Angewandt an {selectedDays}",
+  "@videoFilterAppliedOn": {
+    "description": "Readable text on when the filter should apply",
+    "placeholders": {
+      "selectedDays": {
+        "type": "String",
+        "example": "Monday, Wednesday, Friday"
+      }
+    }
+  },
+  "foregroundServiceNotificationTitle": "Videoüberwachung",
+  "@foregroundServiceNotificationTitle": {
+    "description": "Title for the foreground service running notification when the user wants to receive notifications"
+  },
+  "otherNotifications": "Andere Benachrichtigungsquellen (Glockensymbole)",
+  "@otherNotifications": {
+    "description": "Title for settings section in the notification settings"
+  },
+  "layoutEditorAddVideoSource": "Videoquelle hinzufügen",
+  "@layoutEditorAddVideoSource": {
+    "description": "Label for button to allow user to add more video sources to the home screen"
+  },
+  "navigationBarStyle": "Stil der Navigationsleiste",
+  "@navigationBarStyle": {
+    "description": "Label for settings on customizing navigation bar style"
+  },
+  "foregroundServiceUpdatingChannels": "Kanäle werden überprüft...",
+  "@foregroundServiceUpdatingChannels": {
+    "description": "Foreground service notification text when checking for new channel videos"
+  },
+  "foregroundServiceUpdatingPlaylist": "Wiedergabelisten werden überprüft...",
+  "@foregroundServiceUpdatingPlaylist": {
+    "description": "Foreground service notification text when checking for new playlist videos"
+  },
+  "askToEnableBackgroundServiceTitle": "Benachrichtigungen ausgeschaltet",
+  "@askToEnableBackgroundServiceTitle": {
+    "description": "If the users tries to turn on notifications for a channel but hasn't enable notifications in the app we need to turn it on for them"
+  },
+  "itemListErrorInvalidScope": "Sie haben keine Berechtigung, dies zu sehen. Wenn Sie mit der Token-Methode angemeldet sind, versuchen Sie, sich ab- und wieder anzumelden.",
+  "@itemListErrorInvalidScope": {
+    "description": "Error when the user doesn't have the proper scope to its current token"
+  },
+  "askToEnableBackgroundServiceContent": "Um Benachrichtigungen zu erhalten, müssen die CloudTube-Benachrichtigungen aktiviert werden. OK drücken, um sie zu aktivieren.",
+  "@askToEnableBackgroundServiceContent": {
+    "description": "If the users tries to turn on notifications for a channel but hasn't enable notifications in the app we need to turn it on for them"
+  },
+  "askForDisableBatteryOptimizationContent": "Um Benachrichtigungen senden zu können, muss CloudTube einen Hintergrunddienst ausführen. Für einen reibungslosen Betrieb ist es erforderlich, dass CloudTube eine uneingeschränkte Akkunutzung erhält. Tippen Sie auf OK, um die Einstellungen für die Akkuoptimierung zu öffnen.",
+  "@askForDisableBatteryOptimizationContent": {
+    "description": "Content for the dialog asking the user to turn off disabling battery optimization when turning on notifications"
+  },
+  "deArrowWarning": "Die Aktivierung von DeArrow kann die Browsing-Geschwindigkeit der App erheblich verringern, da für jedes einzelne Video zusätzliche HTTP-Anfragen erforderlich sind",
+  "@deArrowWarning": {
+    "description": "Warning message when the user enables DeArrow"
+  },
+  "homeLayoutEditor": "Layout der Startseite bearbeiten",
+  "@homeLayoutEditor": {
+    "description": "Title of layout editor screen"
+  },
+  "deArrowReplaceThumbnails": "Miniaturansichten ersetzen",
+  "@deArrowReplaceThumbnails": {
+    "description": "Settings title for checkbox on whether the thumbnail should be replaced as well"
+  },
+  "customizeAppLayout": "App-Bereiche anpassen",
+  "@customizeAppLayout": {
+    "description": "Settings label for the settings to allow the user to set up the app sections themselves"
+  },
+  "noSubscriptions": "Keine Abonnements, Sie können Videos durchsuchen und jeden Kanal abonnieren, der Ihnen gefällt.",
+  "@noSubscriptions": {
+    "description": "Message when the user has no subs"
+  },
+  "clearHistoryQuestionExplanation": "Dadurch wird der Verlauf Ihres Kontos auf der von Ihnen verwendeten Invidious-Instanz gelöscht. Dies kann nicht rückgängig gemacht werden.",
+  "@clearHistoryQuestionExplanation": {
+    "description": "Message for dialog before clearing full viewing history"
+  },
+  "notificationsDescription": "Aktivieren und überprüfen Sie, worüber Sie benachrichtigt werden",
+  "@notificationsDescription": {
+    "description": "Setting description for notifications"
+  },
+  "enabled": "Aktiviert",
+  "@enabled": {
+    "description": "Text to show something is enabled"
+  },
+  "customizeAppLayoutExplanation": "Wählen Sie aus, welche Bereiche in der Hauptnavigationsleiste der App angezeigt werden sollen. Klicken Sie auf das Startsymbol, um auszuwählen, welcher Bildschirm beim Starten der App angezeigt wird. Sie können die Bereiche neu anordnen, indem Sie sie verschieben.",
+  "@customizeAppLayoutExplanation": {
+    "description": ""
+  },
+  "deArrowSettingDescription": "Clickbait-Titel und Miniaturbilder ersetzen",
+  "@deArrowSettingDescription": {
+    "description": "Description for dearrow"
+  },
+  "deArrowReplaceThumbnailsDescription": "Videominiaturen zusätzlich zu den Titeln ersetzen",
+  "@deArrowReplaceThumbnailsDescription": {
+    "description": "Description for DeArrow setting switch"
+  },
+  "playlistNotificationContent": "Es gibt {count, plural, =0{keine neuen Videos} =1{1 neues Video} other{{count} neue Videos}} in der Wiedergabeliste {playlist}",
+  "@playlistNotificationContent": {
+    "description": "Content for playlist notification when there are new videos",
+    "placeholders": {
+      "playlist": {
+        "type": "String",
+        "example": "Lo-Fi girl"
+      },
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "layoutEditorExplanation": "Sie können entscheiden, was auf Ihrem Startbildschirm angezeigt werden soll. Sie können bis zu 2 kleine Ansichten mit horizontalem Scrollen und eine große Quelle haben.",
+  "@layoutEditorExplanation": {
+    "description": "text to explain the home layout editor"
+  },
+  "deleteChannelNotificationContent": "Sie werden keine weiteren Benachrichtigungen von diesem Kanal erhalten.",
+  "@deleteChannelNotificationContent": {
+    "description": "Title for dialog to confirm whether to delete channel notifications"
+  },
+  "subscriptionNotificationDescription": "Lassen Sie sich über neue Videos in Ihrem Abonnement-Feed benachrichtigen, wenn Sie in Ihrer aktuellen Instanz angemeldet sind",
+  "@subscriptionNotificationDescription": {
+    "description": "Description for subscription notifications"
+  },
+  "noHistory": "Kein Verlauf, schauen Sie sich einige Videos an und es wird hier erscheinen",
+  "@noHistory": {
+    "description": "Message when the user visits the history tab but it's empty"
+  },
+  "videoFilterDayOfWeekDescription": "Sie können selektiv Wochentage und Uhrzeiten auswählen, für die die Filter gelten, um z.B. Spoiler von Sportereignissen zu vermeiden.",
+  "@videoFilterDayOfWeekDescription": {
+    "description": ""
+  },
+  "copySettingsAsJsonDescription": "Die Einstellungen als JSON kopieren, um die Fehlersuche zu erleichtern, wenn ein Problem mit der App auftritt und ein Fehler gemeldet werden soll",
+  "@copySettingsAsJsonDescription": {
+    "description": ""
+  },
+  "deletePlaylistNotificationContent": "Sie werden keine weiteren Benachrichtigungen von dieser Wiedergabeliste erhalten.",
+  "@deletePlaylistNotificationContent": {
+    "description": "Title for dialog to confirm whether to delete playlist notifications"
+  },
+  "channelNotificationContent": "Es gibt {count, plural, =0{keine neuen Videos} =1{1 neues Video} other{{count} neue Videos}} von {channel}",
+  "@channelNotificationContent": {
+    "description": "Content for channel notification when there are new videos",
+    "placeholders": {
+      "channel": {
+        "type": "String",
+        "example": "MKBHD"
+      },
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "subtitlesBackgroundDescription": "Fügt einen schwarzen Hintergrund für Untertitel hinzu, um sie lesbarer zu machen",
+  "@subtitlesBackgroundDescription": {
+    "description": "Description for settings to set black background  for subtitles"
+  },
+  "copySettingsAsJson": "Einstellungen als JSON in die Zwischenablage kopieren",
+  "@copySettingsAsJson": {
+    "description": "title for settings sections to allow users to copy their settings as json to make debugging easier"
+  },
+  "home": "Startseite",
+  "@home": {
+    "description": "Label for Home browsing tab"
+  },
+  "enableNotificationDescriptions": "Führt einen Dienst im Vordergrund aus, um die Änderungen, die Sie überwachen, zu überprüfen und Sie zu benachrichtigen",
+  "@enableNotificationDescriptions": {
+    "description": ""
+  },
+  "noDownloadedVideos": "Keine heruntergeladenen Videos, durchsuchen, langes Drücken auf ein Video in einer Liste oder Tippen auf die Download-Schaltfläche auf einem Video-Bildschirm zum Herunterladen",
+  "@noDownloadedVideos": {
+    "description": "Message showing when the user goes to the download screen but there are no offline videos."
+  },
+  "youCanSubscribeAgainLater": "Sie können diesen Kanal später erneut abonnieren",
+  "@youCanSubscribeAgainLater": {
+    "description": "Text for the unscubscribe confirmation dialog"
+  },
+  "videoFailedDownloadRetry": "Herunterladen fehlgeschlagen, zum erneuten Versuch tippen",
+  "@videoFailedDownloadRetry": {
+    "description": "Shown on download manager when a download fails and prompt the user to retry"
+  },
+  "notificationFrequencySliderLabel": "{hours, select,  24{1 Tag} other{{hours} Std.}}",
+  "@notificationFrequencySliderLabel": {
+    "description": "Short form for a number of hours going up to 1 day",
+    "hours": {
+      "type": "num",
+      "format": "compact"
+    }
+  },
+  "foregroundServiceNotificationContent": "Nach neuen Videos wird einmal {hours, select, 1{pro Stunde} 24{täglich} other{alle {hours} Stunden}} geprüft",
+  "@foregroundServiceNotificationContent": {
+    "description": "Content for the foreground service running notification when the user wants to receive notifications",
+    "hours": {
+      "type": "num",
+      "format": "compact"
+    }
+  },
+  "videoDownloadStarted": "Videodownload gestartet",
+  "@videoDownloadStarted": {
+    "description": "Message when a video starts being downloaded"
+  },
+  "notificationFrequencySettingsDescription": "Wie oft die App nach neuen Videos sucht",
+  "@notificationFrequencySettingsDescription": {
+    "description": "Description for frequency settings"
+  },
+  "subscriptionNotificationContent": "Es gibt {count, plural, =0{keine neuen Videos} =1{1 neues Video} other{{count} neue Videos}} in Ihrem Abonnement-Feed",
+  "@subscriptionNotificationContent": {
+    "description": "Content for subscription notification",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "serverIsNotReachable": "Server ist nicht erreichbar",
+  "@serverIsNotReachable": {
+    "description": "Title for dialog when adding a server that is not reachable"
+  },
+  "malformedStatsEndpoint": "/api/v1/stats ist nicht wie erwartet",
+  "@malformedStatsEndpoint": {
+    "description": "Title for dialog when adding a server that isn't validated as it should"
+  },
+  "searchSortBy": "Sortieren nach",
+  "@searchSortBy": {
+    "description": "Search sorting option"
+  },
+  "share": "Teilen",
+  "@share": {
+    "description": "asking user if to share"
+  },
+  "searchUploadDate": "Hochgeladen am",
+  "@searchUploadDate": {
+    "description": "Filter search result by upload date"
+  },
+  "searchUploadDateWeek": "Diese Woche",
+  "@searchUploadDateWeek": {},
+  "seeking": "Suche nach",
+  "@seeking": {
+    "description": "category for settings related to seeking in a video"
+  },
+  "skipStep": "Vorwärts-/Rückwärtsschritt springen",
+  "@skipStep": {
+    "description": "Title for the settings to set the skipping step"
+  },
+  "fullscreenOnLandscapeDescription": "Wechselt zum Vollbildmodus, wenn das Gerät in den Querformatmodus gedreht wird",
+  "@fullscreenOnLandscapeDescription": {
+    "description": "Setting to enable full screen on landscape orientation"
+  },
+  "searchUploadDateAny": "Beliebiges Datum",
+  "@searchUploadDateAny": {
+    "description": "Do not filter search result by upload date"
+  },
+  "searchUploadDateHour": "Letzte Stunde",
+  "@searchUploadDateHour": {
+    "description": "Search for uploaded in last hour"
+  },
+  "searchUploadDateToday": "Heute",
+  "@searchUploadDateToday": {
+    "description": "Search for uploaded this week"
+  },
+  "searchUploadDateMonth": "Diesen Monat",
+  "@searchUploadDateMonth": {
+    "description": "Search for uploaded this month"
+  },
+  "searchUploadDateYear": "Dieses Jahr",
+  "@searchUploadDateYear": {
+    "description": "Search for uploaded this year"
+  },
+  "searchDuration": "Dauer",
+  "@searchDuration": {
+    "description": "Filter search result by duration"
+  },
+  "searchDurationAny": "Beliebige Dauer",
+  "@searchDurationAny": {
+    "description": "Do not filter search result by duration"
+  },
+  "searchDurationShort": "Kurz (<4 Minuten)",
+  "@searchDurationShort": {
+    "description": "Search for short videos only"
+  },
+  "searchDurationLong": "Lang (>20 Minuten)",
+  "@searchDurationLong": {
+    "description": "Search for long videos only"
+  },
+  "searchDurationMedium": "Mittel (4-20 Minuten)",
+  "@searchDurationMedium": {
+    "description": "Search for medium videos only"
+  },
+  "skipStepDescription": "Zu überspringende Sekunden bei Vorwärts-/Rückwärtsaktionen",
+  "@skipStepDescription": {
+    "description": "Title for the settings to set the skipping step"
+  },
+  "exponentialSkip": "Exponentielles Vorwärts-/Rückwärtsspringen",
+  "@exponentialSkip": {
+    "description": "Title for the setting to enable the exponential skipping"
+  },
+  "exponentialSkipDescription": "Je mehr Du vorwärts springen, desto größer ist der Schritt.",
+  "@exponentialSkipDescription": {
+    "description": "Title for the setting to enable the exponential skipping"
+  },
+  "fullscreenOnLandscape": "Vollbild im Querformat",
+  "@fullscreenOnLandscape": {
+    "description": "Setting title to enable full screen on landscape orientation"
+  },
+  "channelSortByNewest": "Neueste",
+  "@channelSortByNewest": {},
+  "channelSortByOldest": "Älteste",
+  "@channelSortByOldest": {},
+  "channelSortByPopular": "Beliebt",
+  "@channelSortByPopular": {},
+  "nFilters": "{count, plural, =0{Keine Videos} =1{1 Filter} other{{count} Filter}}",
+  "@nFilters": {
+    "description": "One or more video filters",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "malformedStatsEndpointDescription": "Der Stats-Endpunkt des Servers hat nicht die erwartete Nutzlast übermittelt, der Schlüssel \"software.name\" sollte gleich \"invidious\" sein.\nAntwort vom Server:",
+  "@malformedStatsEndpointDescription": {
+    "description": "Description of the possible issue for an invalid stats endpoints"
+  },
+  "submitFeedback": "Feedback einreichen",
+  "@submitFeedback": {
+    "description": "Title for settings to submit feed back through the app"
+  },
+  "submitFeedbackDescription": "Sie haben einen Fehler gefunden oder haben einen Vorschlag? Verwenden Sie dieses Tool, um einen Screenshot der App zu machen, zu kommentieren und Feedback zu geben",
+  "@submitFeedbackDescription": {
+    "description": "Setting tile descriptions for feedback submission"
+  },
+  "feedbackScreenshotError": "Fehler beim Hochladen eines Screenshots auf Imgur",
+  "@feedbackScreenshotError": {
+    "description": "Title for dialog if something goes wrong while uploading feedback screenshot"
+  },
+  "feedbackDisclaimer": "Um Feedback einzureichen, benötigen Sie ein GitHub-Konto und Ihr Screenshot wird anonym an Imgur übermittelt.",
+  "@feedbackDisclaimer": {
+    "description": "Content of dialog shown before submitting feedback to make sure the user is ok whith where the data is going"
+  },
+  "returnYoutubeUrlValidation": "Die Url muss mit http:// oder https:// beginnen",
+  "@returnYoutubeUrlValidation": {
+    "description": "error message for invalid custom url for return to youtube"
+  },
+  "rydCustomInstance": "Benutzerdefinierte RYD-Instanz url",
+  "@rydCustomInstance": {
+    "description": "title for setting to set a custom ryd instance"
+  },
+  "rydCustomInstanceDescription": "Eine andere RYD-Instanz verwenden, leer lassen, um die Standardinstanz zu verwenden",
+  "@rydCustomInstanceDescription": {
+    "description": "description for custom ryd instancr setting"
+  },
+  "invidiousAccount": "Invidious-Konto",
+  "@invidiousAccount": {
+    "description": "Text when the user choose where to subscribe to a channel"
+  },
+  "onDeviceSubscriptions": "Auf dem Gerät",
+  "@onDeviceSubscriptions": {
+    "description": "Text when the user chooses where to subscribe to a channel"
+  },
+  "both": "Beide",
+  "@both": {},
+  "refresh": "Aktualisieren",
+  "@refresh": {},
+  "sleepTimer": "Einschlaf-Timer",
+  "@sleepTimer": {},
+  "stopTheVideo": "Video stoppen",
+  "@stopTheVideo": {},
+  "setTimer": "Timer festlegen",
+  "@setTimer": {},
+  "screenControls": "Bildschirmsteuerelemente",
+  "@screenControls": {},
+  "advancedConfiguration": "Erweiterte Konfiguration",
+  "@advancedConfiguration": {},
+  "addBasicAuth": "Basisauthentifizierung hinzufügen",
+  "@addBasicAuth": {},
+  "value": "Wert",
+  "@value": {},
+  "testAndAddServer": "Server testen und hinzufügen",
+  "@testAndAddServer": {},
+  "alsoTestServerConfig": "Außerdem die Serverkonfiguration testen, z.B. ob die Miniaturansichten richtig angezeigt werden",
+  "@alsoTestServerConfig": {},
+  "serverAlreadyExists": "Server ist bereits in den Einstellungen vorhanden",
+  "@serverAlreadyExists": {},
+  "openWikiLink": "Wiki für Hilfe öffnen",
+  "@openWikiLink": {},
+  "videoDeleted": "Video gelöscht",
+  "@videoDeleted": {},
+  "premieresIn": "Premiere in {formattedDuration}",
+  "@premieresIn": {},
+  "stopTheVideoExplanation": "Wenn aktiviert wird das Video geschlossen, wenn deaktiviert wird das Video einfach pausiert",
+  "@stopTheVideoExplanation": {},
+  "cancelSleepTimer": "Einschlaf-Timer abbrechen",
+  "@cancelSleepTimer": {},
+  "retry": "Versuchen Sie es erneut",
+  "@retry": {},
+  "addHeader": "Kopfzeile hinzufügen",
+  "@addHeader": {},
+  "customHeaders": "Benutzerdefinierte Kopfzeilen",
+  "@customHeaders": {},
+  "customHeadersExplanation": "Setzen Sie benutzerdefinierte Kopfzeilen, die zum invidious Server gesendet werden",
+  "@customHeadersExplanation": {},
+  "serverUnreachable": "Server ist unerreichbar oder ist kein valider invidious Server",
+  "@serverUnreachable": {},
+  "wrongThumbnailConfiguration": "Der Server ist erreichbar, aber nicht richtig konfiguriert. Miniaturansichten von Videos und Kanälen werden nicht richtig angezeigt. Deaktivieren Sie die Servertestkonfiguration, wenn Sie damit OK sind, reparieren Sie andernfalls den Server",
+  "@wrongThumbnailConfiguration": {},
+  "copyToDownloadFolder": "Kopiere zum Download-Ordner",
+  "@copyToDownloadFolder": {},
+  "fileCopiedToDownloadFolder": "Datei in den Download-Ordner kopiert",
+  "@fileCopiedToDownloadFolder": {},
+  "addBasicAuthExplanation": "Wenn ihr Server einfache HTTP Authentifizierung benötigt, fügen Sie die Details unten hinzu. Dies sind nicht ihre invidious Kontodaten",
+  "@addBasicAuthExplanation": {},
+  "screenControlsExplanation": "Beim Anschauen eines Videos im Vollbildmodus passt das vertikale Ziehen von links oder rechts wird die Helligkeit bzw. Lautstärke an",
+  "@screenControlsExplanation": {},
+  "noPublicServers": "Es sind keine öffentlichen Server verfügbar",
+  "@noPublicServers": {},
+  "forceTvUi": "TV-Oberfläche erzwingen",
+  "@forceTvUi": {}
+}

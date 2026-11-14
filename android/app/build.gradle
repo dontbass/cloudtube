@@ -1,0 +1,134 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+def ENV = System.getenv()
+
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+def keyFile = ENV['ANDROID_KEY_FILE']
+if (keyFile == null) {
+    keyFile = '/home/gz/dev/android/keys/key.properties'
+}
+
+def buildNumber = flutterVersionCode.toInteger()
+/*
+if (ENV['DRONE_BUILD_NUMBER'] != null) {
+    buildNumber = ENV['DRONE_BUILD_NUMBER'].toInteger()
+}
+
+def tag = ENV['DRONE_TAG']
+if(tag != null) {
+    flutterVersionName = tag
+}
+*/
+
+
+
+print flutterVersionName
+print ":"
+println buildNumber
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = file(keyFile)
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    compileSdkVersion 36
+
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+
+    compileOptions {
+        sourceCompatibility 21
+        targetCompatibility 21
+    }
+
+    kotlinOptions {
+        jvmTarget = "21"
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        applicationId "xyz.baristain.cloudtube"
+        minSdkVersion 24
+        targetSdkVersion 36
+        versionCode buildNumber
+        versionName flutterVersionName
+    }
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+    buildTypes {
+        release {
+            // без ключа (форк, локальная сборка) — подпись отладочным ключом
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    namespace 'com.github.lamarios.clipious'
+}
+
+flutter {
+    source '../..'
+}
+
+/*
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+*/
+
+ext.abiCodes = ["x86_64": 1, "armeabi-v7a": 2, "arm64-v8a": 3]
+import com.android.build.OutputFile
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        def abiVersionCode = project.ext.abiCodes.get(output.getFilter(OutputFile.ABI))
+        if (abiVersionCode != null) {
+            output.versionCodeOverride = variant.versionCode * 10 + abiVersionCode
+        }
+    }
+}
+// CloudTube: FileProvider для установки обновлений
+dependencies {
+    implementation "androidx.core:core:1.13.1"
+}

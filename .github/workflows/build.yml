@@ -1,0 +1,100 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.3'
+          channel: stable
+          cache: true
+
+      - name: Signing key
+        # Секреты репозитория: CT_KEYSTORE_B64 (base64 от .jks), CT_STORE_PASSWORD, CT_KEY_PASSWORD, CT_KEY_ALIAS.
+        # Без них (например, в форке) APK подписывается отладочным ключом.
+        env:
+          KS: ${{ secrets.CT_KEYSTORE_B64 }}
+          SP: ${{ secrets.CT_STORE_PASSWORD }}
+          KP: ${{ secrets.CT_KEY_PASSWORD }}
+          KA: ${{ secrets.CT_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > /tmp/release.jks
+            printf 'storeFile=/tmp/release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=%s\n' "$SP" "$KP" "$KA" > /tmp/key.properties
+          else
+            echo "::warning::нет секрета CT_KEYSTORE_B64 — сборка подписана отладочным ключом"
+          fi
+
+      - name: Dependencies
+        run: |
+          flutter config --no-analytics
+          flutter pub get
+
+      - name: Code generation (if models/routes changed)
+        continue-on-error: true
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Localizations
+        run: flutter gen-l10n
+
+      - name: Analyze (errors only)
+        run: dart analyze --no-fatal-warnings lib
+
+      - name: Splash
+        run: dart run flutter_native_splash:create
+
+      - name: Build APK
+        env:
+          ANDROID_KEY_FILE: /tmp/key.properties
+        run: |
+          N=${{ github.run_number }}
+          # versionCode = (100+N)*10 + ABI — больше, чем у ранних сборок 1.0.x
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 --build-name=1.1.$N --build-number=$((100 + N))
+          mkdir -p out
+          for f in build/app/outputs/flutter-apk/app-*-release.apk build/app/outputs/flutter-apk/app-release.apk; do
+            [ -f "$f" ] || continue
+            b=$(basename "$f" .apk); b=${b#app-}; b=${b%-release}; [ "$b" = "app" ] && b=universal
+            cp "$f" "out/CloudTube-1.1.$N-${b}.apk"
+          done
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudTube-1.1.${{ github.run_number }}
+          path: out/*.apk
+
+      - name: Release notes
+        run: |
+          { git log -1 --format=%B | grep -v -e '^Co-Authored-By' -e '^Claude-Session' | sed '/^$/N;/^\n$/D'
+            echo; echo "Для большинства телефонов — файл arm64-v8a."; } > notes.md
+          cat notes.md
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.1.${{ github.run_number }}
+          name: CloudTube 1.1.${{ github.run_number }}
+          body_path: notes.md
+          files: out/*.apk

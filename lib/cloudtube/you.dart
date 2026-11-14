@@ -1,0 +1,147 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:clipious/app/states/app.dart';
+import 'package:clipious/globals.dart';
+import 'package:clipious/home/models/db/home_layout.dart';
+import 'package:clipious/router.dart';
+import 'package:clipious/settings/models/db/server.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'updater.dart';
+
+/// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
+class CtYouPage extends StatelessWidget {
+  const CtYouPage({super.key});
+
+  static Future<void> login(BuildContext context) async {
+    final app = context.read<AppCubit>();
+    final user = TextEditingController();
+    final pass = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Вход в аккаунт'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Логин и пароль вашего аккаунта CloudTube (тот же, что на сайте).',
+              style: TextStyle(fontSize: 13)),
+          const SizedBox(height: 12),
+          TextField(
+              controller: user,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Логин')),
+          TextField(
+              controller: pass,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Пароль')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Войти')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      Server s = await db.getCurrentlySelectedServer();
+      final cookie = await service.loginWithCookies(s.url, user.text.trim(), pass.text,
+          headers: s.customHeaders);
+      s = s.copyWith(sidCookie: cookie);
+      await db.upsertServer(s);
+      if (s.inUse) await fileDb.useServer(s);
+      app.setServer(s);
+      messenger.showSnackBar(const SnackBar(content: Text('Вы вошли в аккаунт')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Не удалось войти: $e')));
+    }
+  }
+
+  static Future<void> logout(BuildContext context) async {
+    final app = context.read<AppCubit>();
+    Server s = await db.getCurrentlySelectedServer();
+    s = s.copyWith(sidCookie: null, authToken: null);
+    await db.upsertServer(s);
+    if (s.inUse) await fileDb.useServer(s);
+    app.setServer(s);
+  }
+
+  void _open(BuildContext context, String title, Widget body) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (c) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: body),
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final loggedIn = context.select((AppCubit a) => a.isLoggedIn);
+    final server = context.select((AppCubit a) => a.state.server);
+    Widget tile(IconData icon, String title, VoidCallback onTap, {String? subtitle}) => ListTile(
+          leading: Icon(icon, color: colors.onSurface),
+          title: Text(title),
+          subtitle: subtitle != null ? Text(subtitle) : null,
+          onTap: onTap,
+        );
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Row(children: [
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: const Color(0xFF7B5CD6),
+              child: Icon(loggedIn ? Icons.person : Icons.person_outline, color: Colors.white, size: 34),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(server?.url.replaceFirst('https://', '') ?? '',
+                    style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13)),
+              ]),
+            ),
+          ]),
+        ),
+        if (!loggedIn)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Войдите, чтобы видеть свои подписки, историю и плейлисты.',
+                  style: TextStyle(color: colors.onSurfaceVariant)),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () => login(context), child: const Text('Войти в аккаунт')),
+              const SizedBox(height: 8),
+            ]),
+          ),
+        const Divider(),
+        if (loggedIn) ...[
+          tile(Icons.history, 'История', () => _open(context, 'История', HomeDataSource.history.build(context, false))),
+          tile(Icons.playlist_play, 'Плейлисты',
+              () => _open(context, 'Плейлисты', HomeDataSource.playlist.build(context, false))),
+          tile(Icons.subscriptions_outlined, 'Управление подписками',
+              () => AutoRouter.of(context).push(const ManageSubscriptionsRoute())),
+        ],
+        tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute())),
+        const Divider(),
+        tile(Icons.settings_outlined, 'Настройки', () => AutoRouter.of(context).push(const SettingsRoute())),
+        FutureBuilder<String>(
+          future: CtUpdater.installedVersion(),
+          builder: (context, snap) => tile(Icons.system_update_outlined, 'Проверить обновления',
+              () => CtUpdater.check(context, manual: true),
+              subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
+        ),
+        if (server != null)
+          tile(Icons.dns_outlined, 'Сервер и пароль сайта',
+              () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server)),
+              subtitle: 'Логин/пароль сайта (Basic Auth), другие серверы'),
+        if (loggedIn) tile(Icons.logout, 'Выйти из аккаунта', () => logout(context)),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}

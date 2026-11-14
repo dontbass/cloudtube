@@ -46,11 +46,11 @@ class CtServer {
   static Future<List<Video>> fallbackSection(String id, int page) async {
     switch (id) {
       case 'music':
-        return page == 1 ? service.getTrending(type: 'music') : [];
+        return page == 1 ? await service.getTrending(type: 'music') : <Video>[];
       case 'gaming':
-        return page == 1 ? service.getTrending(type: 'gaming') : [];
+        return page == 1 ? await service.getTrending(type: 'gaming') : <Video>[];
       case 'movies':
-        return page == 1 ? service.getTrending(type: 'movies') : [];
+        return page == 1 ? await service.getTrending(type: 'movies') : <Video>[];
     }
     const queries = {
       'live': 'live',

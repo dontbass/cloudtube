@@ -275,7 +275,14 @@ class _CtDirect {
     var pg = _pagers[key];
     if (pg == null || DateTime.now().difference(pg.at) > const Duration(minutes: 20)) {
       pg = _Pager<yt.Video>();
-      final first = await _yt.search.search(query, filter: f);
+      yt.VideoSearchList first;
+      try {
+        first = await _yt.search.search(query, filter: f);
+      } catch (e) {
+        _log.info('search retry "$query": $e');
+        await Future.delayed(const Duration(milliseconds: 800));
+        first = await _yt.search.search(query, filter: f);
+      }
       pg.list = first;
       pg.pages.add(first.toList());
       _pagers[key] = pg;
@@ -330,8 +337,16 @@ class _CtDirect {
     'shorts': '#shorts',
   };
 
+  static const _homeQueries = ['популярное сегодня', 'новое видео', 'интересное', 'лучшее за неделю', 'обзор', 'влог'];
+
   Future<List<Map<String, dynamic>>> _trending(String type, {int page = 1}) async {
     final t = type.toLowerCase();
+    if (t == 'home' || t.isEmpty || t == 'default') {
+      // «Главная» без сервера: чередуем несколько запросов — лента разнообразнее и не кончается
+      final q = _homeQueries[(page - 1) % _homeQueries.length];
+      final sub = (page - 1) ~/ _homeQueries.length + 1;
+      return _videoSearchPage(q, yt.UploadDateFilter.lastWeek, sub);
+    }
     final query = _sections[t] ?? t;
     final f = t == 'live'
         ? yt.FeatureFilters.live

@@ -1,3 +1,6 @@
+import 'package:clipious/cloudtube/tv_link.dart';
+import 'package:clipious/cloudtube/connect.dart';
+import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/updater.dart';
 import 'package:clipious/cloudtube/tv_scale.dart';
 import 'package:clipious/settings/models/db/settings.dart';
@@ -347,6 +350,25 @@ class TVSettingsScreen extends StatelessWidget {
                       ctSetTvScale(ctTvScales[(i + 1) % ctTvScales.length]);
                     },
                   ),
+                ),
+                SettingsTile(
+                  title: 'Режим работы',
+                  description: ctDirectActive
+                      ? 'Без сервера — YouTube напрямую. Нажмите, чтобы подключить свой сервер с телефона'
+                      : 'Свой сервер. Нажмите, чтобы смотреть без сервера (YouTube напрямую)',
+                  leading: const Icon(Icons.swap_horiz),
+                  onSelected: (context) async {
+                    if (ctDirectActive) {
+                      await Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const CtTvLinkScreen()));
+                    } else {
+                      await ctConnectDirect(context.read<AppCubit>());
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Включён режим без сервера — YouTube напрямую')));
+                      }
+                    }
+                  },
                 ),
                 SettingsTile(
                   title: 'Проверить обновления',

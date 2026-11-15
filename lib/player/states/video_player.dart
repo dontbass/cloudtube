@@ -198,6 +198,12 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       _recover();
     } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
       _stallTimer?.cancel();
+      if (isTv) {
+        // подстраховка: на ТВ запускаем явно
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (!isClosed && videoController?.isPlaying() != true) videoController?.play();
+        });
+      }
       if (_recoverFor != state.video?.videoId) _recoverTries = 0;
     }
 
@@ -413,6 +419,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
                 handleLifecycle: false,
                 startAt: startAt,
                 autoPlay: true,
+                // ТВ: стандартная пауза «по видимости» срабатывала, пока экран плеера ещё открывался,
+                // и видео не стартовало само
+                playerVisibilityChangedBehavior: isTv ? (_) {} : null,
                 allowedScreenSleep: false,
                 fit: fillVideo ? BoxFit.cover : BoxFit.contain,
                 subtitlesConfiguration: BetterPlayerSubtitlesConfiguration(

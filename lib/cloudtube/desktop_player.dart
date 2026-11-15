@@ -152,7 +152,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     final v = _full ?? widget.video;
     return Scaffold(
       appBar: AppBar(
-        title: Text(v.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(v.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           if (_qualities.isNotEmpty)
             PopupMenuButton<_Quality>(

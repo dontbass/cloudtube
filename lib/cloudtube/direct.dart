@@ -174,7 +174,7 @@ class _CtDirect {
     } catch (_) {}
     try {
       final rel = await _yt.videos.getRelatedVideos(v);
-      j['recommendedVideos'] = (rel ?? const []).map(_brief).toList();
+      j['recommendedVideos'] = (rel ?? const <yt.Video>[]).map<Map<String, dynamic>>((e) => _brief(e)).toList();
     } catch (_) {
       j['recommendedVideos'] = [];
     }

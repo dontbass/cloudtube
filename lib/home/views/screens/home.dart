@@ -220,7 +220,11 @@ class _MainScreenState extends State<MainContentScreen> {
                         ? null
                         : AppBar(
                       titleSpacing: ctWide ? 4 : 12,
-                      leading: ctWide
+                      leading: ctWide &&
+                              context.read<SettingsCubit>().state.appLayout
+                                      .where((e) => e.isPermitted(context, context.read<AppCubit>().isLoggedIn))
+                                      .length >
+                                  2
                           ? IconButton(
                               tooltip: 'Меню',
                               icon: const Icon(Icons.menu),

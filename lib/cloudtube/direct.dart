@@ -15,8 +15,27 @@ const _host = 'youtube.direct';
 const kCtIosUserAgent = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
 
 /// Заголовки для воспроизведения ссылок YouTube в режиме без сервера.
-Map<String, String> ctDirectStreamHeaders(String url) =>
-    ctDirectActive && (url.contains('googlevideo.com') || url.contains('youtube.com')) ? {'User-Agent': kCtIosUserAgent} : {};
+/// Поток отдаётся только с User-Agent того клиента, для которого YouTube выдал ссылку
+/// (параметр c= в адресе: IOS, ANDROID, ANDROID_VR, WEB…), иначе 403.
+Map<String, String> ctDirectStreamHeaders(String url) {
+  if (!ctDirectActive || !(url.contains('googlevideo.com') || url.contains('youtube.com'))) return {};
+  final c = RegExp(r'[?&/]c[=/]([A-Z_0-9]+)').firstMatch(url)?.group(1) ?? 'IOS';
+  return {'User-Agent': ctUserAgentForClient(c)};
+}
+
+String ctUserAgentForClient(String c) {
+  switch (c) {
+    case 'ANDROID':
+    case 'ANDROID_MUSIC':
+      return 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip';
+    case 'ANDROID_VR':
+      return 'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12; eureka-user Build/SQ3A.220605.009.A1) gzip';
+    case 'IOS':
+      return kCtIosUserAgent;
+    default:
+      return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  }
+}
 
 /// Сейчас выбран режим «без сервера» (обновляется при смене сервера).
 bool ctDirectActive = false;
@@ -246,12 +265,15 @@ class _CtDirect {
   }
 
   Future<yt.StreamManifest> _manifest(String id) async {
-    // iOS даёт HLS со звуком; если не вышло — стандартный набор клиентов библиотеки
-    try {
-      final m = await _yt.videos.streams.getManifest(id, ytClients: [yt.YoutubeApiClient.ios]);
-      if (m.hls.isNotEmpty || m.muxed.isNotEmpty) return m;
-    } catch (e) {
-      _log.fine('ios client: $e');
+    // Нужен HLS (один поток со звуком, все качества): сначала iOS, затем Safari (WEB).
+    // Если YouTube ни одному не дал HLS — стандартный набор (отдельные видео/звук + 360p со звуком).
+    for (final c in [yt.YoutubeApiClient.ios, yt.YoutubeApiClient.safari]) {
+      try {
+        final m = await _yt.videos.streams.getManifest(id, ytClients: [c]).timeout(const Duration(seconds: 6));
+        if (m.hls.isNotEmpty) return m;
+      } catch (e) {
+        _log.fine('manifest ${c.payload['context']?['client']?['clientName']}: $e');
+      }
     }
     return _yt.videos.streams.getManifest(id);
   }

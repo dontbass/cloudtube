@@ -159,9 +159,6 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('demuxer-readahead-secs', '20');
       await np.setProperty('force-seekable', 'yes');
     }
-    if (np is NativePlayer) {
-      await np.setProperty('user-agent', ctDirectActive ? kCtIosUserAgent : 'Mozilla/5.0 CloudTube');
-    }
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);
       await np.setProperty('tls-verify', 'yes');
@@ -191,6 +188,11 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     } else {
       setState(() => _error = 'У видео нет потоков');
       return;
+    }
+    if (np is NativePlayer) {
+      // User-Agent того клиента YouTube, для которого выдана ссылка (иначе 403)
+      await np.setProperty(
+          'user-agent', ctDirectActive ? (ctDirectStreamHeaders(url)['User-Agent'] ?? kCtIosUserAgent) : 'Mozilla/5.0 CloudTube');
     }
     if (audio == null) {
       await _player.open(Media(url, httpHeaders: headers, start: at));

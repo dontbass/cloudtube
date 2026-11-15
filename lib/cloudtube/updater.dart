@@ -98,7 +98,7 @@ class CtUpdater {
                   Navigator.pop(ctx, false);
                 },
                 child: const Text('Позже')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Обновить')),
+            FilledButton(autofocus: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('Обновить')),
           ],
         ),
       );

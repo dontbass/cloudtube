@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/tv_scale.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/cloudtube/direct.dart';
@@ -119,6 +120,7 @@ Future<void> main() async {
   }
 
   isTv = await isDeviceTv();
+  if (isTv) ctLoadTvScale();
   runApp(BetterFeedback(
     child: MultiBlocProvider(providers: [
       BlocProvider(
@@ -252,6 +254,7 @@ class MyApp extends StatelessWidget {
                 const SliderThemeData(inactiveTrackColor: Colors.blue);
 
             return MaterialApp.router(
+              builder: isTv ? (context, child) => CtTvScale(child: child ?? const SizedBox()) : null,
               routerConfig: appRouter.config(
                   navigatorObservers: () => [MyRouteObserver()],
                   includePrefixMatches: true),

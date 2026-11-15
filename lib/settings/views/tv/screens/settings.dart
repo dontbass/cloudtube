@@ -1,3 +1,5 @@
+import 'package:clipious/cloudtube/updater.dart';
+import 'package:clipious/cloudtube/tv_scale.dart';
 import 'package:clipious/settings/models/db/settings.dart';
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
@@ -333,6 +335,23 @@ class TVSettingsScreen extends StatelessWidget {
                   title: locals.themeBrightness,
                   description: cubit.getThemeLabel(locals, state.themeMode),
                   onSelected: (context) => selectTheme(context),
+                ),
+                ValueListenableBuilder<double>(
+                  valueListenable: ctTvScale,
+                  builder: (context, scale, _) => SettingsTile(
+                    title: 'Масштаб интерфейса',
+                    description: '${(scale * 100).round()} % — нажмите, чтобы изменить',
+                    leading: const Icon(Icons.aspect_ratio),
+                    onSelected: (context) {
+                      final i = ctTvScales.indexWhere((v) => (v - scale).abs() < 0.01);
+                      ctSetTvScale(ctTvScales[(i + 1) % ctTvScales.length]);
+                    },
+                  ),
+                ),
+                SettingsTile(
+                  title: 'Проверить обновления',
+                  leading: const Icon(Icons.system_update),
+                  onSelected: (context) => CtUpdater.check(context, manual: true),
                 ),
                 ValueListenableBuilder<bool>(
                   valueListenable: ctSoftTheme,

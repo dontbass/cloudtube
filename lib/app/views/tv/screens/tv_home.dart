@@ -1,3 +1,4 @@
+import '../../../../cloudtube/updater.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -69,7 +70,8 @@ class TvHomeScreen extends StatelessWidget {
     ColorScheme colors = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
     var locals = AppLocalizations.of(context)!;
-    return Shortcuts(
+    return _CtTvStartup(
+      child: Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
       },
@@ -303,7 +305,7 @@ class TvHomeScreen extends StatelessWidget {
           }),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -323,4 +325,28 @@ class MenuItemText extends StatelessWidget {
         .fadeIn(delay: animationDuration ~/ 2, duration: animationDuration ~/ 2)
         .slideX(curve: Curves.easeInOutQuad);
   }
+}
+
+
+/// Проверка обновления приложения после запуска (как на телефоне).
+class _CtTvStartup extends StatefulWidget {
+  final Widget child;
+
+  const _CtTvStartup({required this.child});
+
+  @override
+  State<_CtTvStartup> createState() => _CtTvStartupState();
+}
+
+class _CtTvStartupState extends State<_CtTvStartup> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) CtUpdater.check(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

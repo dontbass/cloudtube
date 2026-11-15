@@ -1,3 +1,5 @@
+import 'package:clipious/cloudtube/platform.dart';
+import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
 import 'dart:collection';
 
@@ -119,6 +121,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
   }
 
   Future<void> onReady() async {
+    if (ctDesktop) return; // на ПК свой плеер (CtDesktopPlayer), аудиосессия и уведомления не нужны
     emit(state.copyWith(
         orientation: getOrientation(),
         forwardStep: settings.state.skipStep,
@@ -625,6 +628,10 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
   Future<void> playVideo(List<Video> v,
       {bool? audio, Duration? startAt}) async {
     List<Video> videos = v.where((element) => !element.filtered).toList();
+    if (ctDesktop) {
+      if (videos.isNotEmpty) CtDesktopPlayer.open(videos.first);
+      return;
+    }
     // TODO: find how to do this with auto router
     log.fine('Playing ${videos.length} videos');
 

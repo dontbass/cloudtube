@@ -1,3 +1,5 @@
+import 'package:clipious/cloudtube/platform.dart';
+import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -58,6 +60,7 @@ Future<void> main() async {
   HttpOverrides.global = MyHttpOverrides();
 
   WidgetsFlutterBinding.ensureInitialized();
+  if (ctDesktop) CtDesktopPlayer.ensureInitialized();
 
   packageInfo = await PackageInfo.fromPlatform();
 

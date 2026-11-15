@@ -71,18 +71,42 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   _Quality? _quality;
   String? _audioItag;
   StreamSubscription? _errSub;
+  Timer? _watch;
+  Duration _lastPos = Duration.zero;
+  int _stuck = 0;
   final _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _errSub = _player.stream.error.listen((e) => _log.warning('mpv: $e'));
+    // Сторож: mpv с отдельной звуковой дорожкой иногда «замирает» на старте, хотя данные уже
+    // загружены (то же лечится паузой/плей вручную). Если позиция стоит 2,5 с при запасе буфера —
+    // делаем это сами.
+    _watch = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      final st = _player.state;
+      if (!st.playing || st.completed) {
+        _stuck = 0;
+        return;
+      }
+      if (st.position == _lastPos && st.buffer - st.position > const Duration(seconds: 2)) {
+        if (++_stuck >= 5) {
+          _stuck = 0;
+          _log.info('mpv stalled at ${st.position}, kicking');
+          _player.pause().then((_) => _player.play());
+        }
+      } else {
+        _stuck = 0;
+      }
+      _lastPos = st.position;
+    });
     _load();
   }
 
   @override
   void dispose() {
     _errSub?.cancel();
+    _watch?.cancel();
     _player.dispose();
     _scroll.dispose();
     super.dispose();
@@ -130,9 +154,6 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('cache', 'yes');
       await np.setProperty('demuxer-readahead-secs', '20');
       await np.setProperty('force-seekable', 'yes');
-      // старт только когда буфер есть и у видео, и у звука — без «запустилось и замерло»
-      await np.setProperty('cache-pause-initial', 'yes');
-      await np.setProperty('cache-pause-wait', '1');
     }
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);

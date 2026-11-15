@@ -1,3 +1,6 @@
+import 'package:clipious/cloudtube/connect_screen.dart';
+import 'package:clipious/cloudtube/connect.dart';
+import 'package:clipious/cloudtube/direct.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:feedback/feedback.dart';
 import 'package:flutter/material.dart';
@@ -90,6 +93,23 @@ class SettingsScreen extends StatelessWidget {
               darkTheme: theme,
               sections: [
                 SettingsSection(tiles: [
+                  // CloudTube: режим работы — без сервера или свой сервер
+                  SettingsTile.navigation(
+                    leading: const Icon(Icons.swap_horiz),
+                    title: const Text('Режим работы'),
+                    description: Text(ctDirectActive
+                        ? 'Без сервера — YouTube напрямую. Нажмите, чтобы подключить свой сервер'
+                        : 'Свой сервер. Нажмите, чтобы смотреть без сервера'),
+                    onPressed: (context) async {
+                      if (ctDirectActive) {
+                        await Navigator.of(context)
+                            .push(MaterialPageRoute(builder: (_) => const CtConnectScreen()));
+                      } else {
+                        await ctConnectDirect(context.read<AppCubit>());
+                      }
+                      if (context.mounted) (context as Element).markNeedsBuild();
+                    },
+                  ),
                   SettingsTile.navigation(
                     leading: const Icon(Icons.home_outlined),
                     title: Text(locals.browsing),

@@ -289,6 +289,16 @@ class _MainScreenState extends State<MainContentScreen> {
                           },
                           icon: const Icon(Icons.search),
                         ),
+                        if (!ctPhone)
+                          IconButton(
+                            tooltip: 'Вы',
+                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => Scaffold(
+                                    appBar: AppBar(title: const Text('Вы')),
+                                    body: const Center(
+                                        child: SizedBox(width: 720, child: CtYouPage()))))),
+                            icon: const Icon(Icons.account_circle_outlined),
+                          ),
                         IconButton(
                           onPressed: () => openSettings(context),
                           icon: const Icon(Icons.settings),

@@ -100,7 +100,7 @@ jobs:
           Remove-Item -Recurse -Force "$env:APPDATA\com.example" -ErrorAction SilentlyContinue
           Get-ChildItem $env:APPDATA | Where-Object { Test-Path "$($_.FullName)\*\cloudtube.db" } | ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
           $exe = Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
-          $p = Start-Process $exe.FullName -PassThru
+          $p = Start-Process $exe.FullName -PassThru -RedirectStandardOutput direct.out.txt -RedirectStandardError direct.err.txt
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           function Shot($name) {
             $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -116,6 +116,8 @@ jobs:
           Start-Sleep -Seconds 10; Shot "HOME"
           Start-Sleep -Seconds 25; Shot "VIDEO"
           if ($p.HasExited) { Write-Host "DIRECT: приложение закрылось" } else { Write-Host "DIRECT: работает"; Stop-Process -Id $p.Id -Force }
+          Start-Sleep -Seconds 1
+          Get-Content direct.out.txt -ErrorAction SilentlyContinue | Select-String -Pattern "CtDirect|SEVERE|WARNING|Error" | Select-Object -Last 40
 
       - uses: actions/upload-artifact@v4
         if: always()

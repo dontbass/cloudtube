@@ -91,6 +91,7 @@ Future<void> main() async {
     final s = db.getServer(kCtDirectUrl) ?? const Server(url: kCtDirectUrl);
     await db.upsertServer(s.copyWith(inUse: true));
     await db.useServer(s.copyWith(inUse: true));
+    await db.saveSetting(SettingsValue('ct-onboarding-done', '1'));
     final vid = Platform.environment['CT_SMOKE_VIDEO'];
     if (vid != null && vid.isNotEmpty) {
       Future.delayed(const Duration(seconds: 12), () => CtDesktopPlayer.open(Video(videoId: vid)));

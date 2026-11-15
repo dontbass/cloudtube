@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:media_kit_video/media_kit_video.dart' as mk;
 
 import '../globals.dart';
 import '../router.dart';
@@ -61,7 +61,7 @@ class _Quality {
 
 class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   late final Player _player = Player(configuration: const PlayerConfiguration(title: 'CloudTube'));
-  late final VideoController _controller = VideoController(_player);
+  late final mk.VideoController _controller = mk.VideoController(_player);
   Video? _full;
   String? _error;
   List<_Quality> _qualities = [];
@@ -90,7 +90,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       _full = v;
       // качества видео: лучший поток на каждую высоту, до 4K
       final byHeight = <int, _Quality>{};
-      for (final f in v.adaptiveFormats) {
+      for (final f in v.adaptiveFormats ?? const []) {
         if (!f.type.startsWith('video/')) continue;
         final h = int.tryParse(RegExp(r'(\d+)p').firstMatch(f.qualityLabel ?? f.resolution ?? '')?.group(1) ?? '') ?? 0;
         if (h == 0) continue;
@@ -99,7 +99,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
         if (cur == null || prefer == 1) byHeight[h] = _Quality(f.qualityLabel ?? '${h}p', f.itag, h);
       }
       _qualities = byHeight.values.toList()..sort((a, b) => b.height - a.height);
-      final audio = v.adaptiveFormats.where((f) => f.type.startsWith('audio/')).toList()
+      final audio = (v.adaptiveFormats ?? const []).where((f) => f.type.startsWith('audio/')).toList()
         ..sort((a, b) => (int.tryParse(b.bitrate ?? '') ?? 0).compareTo(int.tryParse(a.bitrate ?? '') ?? 0));
       final m4a = audio.where((f) => f.type.contains('mp4')).toList();
       _audioItag = (m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null))?.itag;
@@ -128,8 +128,8 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     } else if (_quality != null && _quality!.videoItag.isNotEmpty && _audioItag != null) {
       url = _stream(server, v.videoId, _quality!.videoItag);
       if (np is NativePlayer) await np.setProperty('audio-files', _stream(server, v.videoId, _audioItag!));
-    } else if (v.formatStreams.isNotEmpty) {
-      url = _stream(server, v.videoId, v.formatStreams.last.itag);
+    } else if ((v.formatStreams ?? const []).isNotEmpty) {
+      url = _stream(server, v.videoId, v.formatStreams!.last.itag);
       if (np is NativePlayer) await np.setProperty('audio-files', '');
     } else {
       setState(() => _error = 'У видео нет потоков');
@@ -179,20 +179,20 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
                 aspectRatio: 16 / 9,
                 child: Container(
                   color: Colors.black,
-                  child: Video(
+                  child: mk.Video(
                     controller: _controller,
-                    controls: (state) => MaterialDesktopVideoControlsTheme(
-                      normal: MaterialDesktopVideoControlsThemeData(
+                    controls: (state) => mk.MaterialDesktopVideoControlsTheme(
+                      normal: mk.MaterialDesktopVideoControlsThemeData(
                         seekBarThumbColor: const Color(0xFFFF0033),
                         seekBarPositionColor: const Color(0xFFFF0033),
                         keyboardShortcuts: _shortcuts(state),
                       ),
-                      fullscreen: MaterialDesktopVideoControlsThemeData(
+                      fullscreen: mk.MaterialDesktopVideoControlsThemeData(
                         seekBarThumbColor: const Color(0xFFFF0033),
                         seekBarPositionColor: const Color(0xFFFF0033),
                         keyboardShortcuts: _shortcuts(state),
                       ),
-                      child: MaterialDesktopVideoControls(state),
+                      child: mk.MaterialDesktopVideoControls(state),
                     ),
                   ),
                 ),
@@ -212,7 +212,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
 
   /// Горячие клавиши как в YouTube: K/пробел — пауза, J/L — ±10 с, ←/→ — ±5 с, ↑/↓ — громкость,
   /// M — звук, F — полный экран (сам F обрабатывает media_kit), 0–9 — переход к 0–90 %.
-  Map<ShortcutActivator, VoidCallback> _shortcuts(VideoState vs) {
+  Map<ShortcutActivator, VoidCallback> _shortcuts(mk.VideoState vs) {
     void seekBy(int s) {
       final p = _player.state.position + Duration(seconds: s);
       _player.seek(p < Duration.zero ? Duration.zero : p);

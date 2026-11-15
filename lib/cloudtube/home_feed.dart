@@ -129,6 +129,19 @@ class CtPagedList<T> extends PaginatedList<T> {
   Future<List<T>> getItems() async {
     final list = await fetch(page);
     hasMore = list.isNotEmpty && page < 30;
+    // первая порция должна заполнить экран (иначе прокрутки нет и следующая страница не грузится)
+    var extra = 0;
+    while (page == 1 + extra && list.length < 24 && hasMore && extra < 3) {
+      extra++;
+      try {
+        final more = await fetch(page + extra);
+        if (more.isEmpty) break;
+        list.addAll(more);
+      } catch (_) {
+        break;
+      }
+    }
+    page += extra;
     return list;
   }
 

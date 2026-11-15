@@ -1,3 +1,4 @@
+import 'direct.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -382,7 +383,7 @@ class _CtShortItemState extends State<CtShortItem> {
         betterPlayerDataSource: BetterPlayerDataSource(
           BetterPlayerDataSourceType.network,
           url,
-          headers: server.headersForUrl(url),
+          headers: {...?server.headersForUrl(url), ...ctDirectStreamHeaders(url)},
           videoFormat: format,
           bufferingConfiguration: const BetterPlayerBufferingConfiguration(
             minBufferMs: 1500,

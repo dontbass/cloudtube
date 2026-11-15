@@ -1,3 +1,4 @@
+import 'direct.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/utils/models/paginated_list.dart';
 import 'package:clipious/videos/models/video.dart';
@@ -30,6 +31,10 @@ const ctSections = <CtSection>[
 PaginatedList<Video> ctSectionList(String id) {
   // «Главная»: на сервере с дополнениями /api/v1/popular — персональная лента;
   // на обычном Invidious «популярное» часто выключено — тогда тренды.
+  if (id.isEmpty && ctDirectActive) {
+    // без сервера: «Главная» — бесконечная подборка поиском
+    return CtPagedList<Video>((page) => service.search('ct:home', page: page).then((r) => r.videos));
+  }
   if (id.isEmpty) {
     return SingleEndpointList<Video>(() async {
       try {
@@ -39,10 +44,8 @@ PaginatedList<Video> ctSectionList(String id) {
       return service.getTrending();
     });
   }
-  return PageBasedPaginatedList<Video>(
-      maxResults: 24,
-      getItemsFunc: (page, maxResults) =>
-          CtServer.hasAddons().then((addons) => addons
+  return CtPagedList<Video>((page) =>
+          CtServer.hasAddons().then((addons) => addons || ctDirectActive
               ? service.search('ct:$id', page: page).then((r) => r.videos)
               : CtServer.fallbackSection(id, page)));
 }
@@ -106,5 +109,47 @@ class _CtHomeFeedState extends State<CtHomeFeed> {
         ),
       ],
     );
+  }
+}
+
+
+/// Постраничный список: следующая страница грузится, пока сервер отдаёт хоть что-то
+/// (у Clipious список обрывался, если страница короче 24 — у YouTube их по ~20).
+class CtPagedList<T> extends PaginatedList<T> {
+  final Future<List<T>> Function(int page) fetch;
+  int page = 1;
+  bool hasMore = true;
+
+  CtPagedList(this.fetch);
+
+  @override
+  bool getHasMore() => hasMore;
+
+  @override
+  Future<List<T>> getItems() async {
+    final list = await fetch(page);
+    hasMore = list.isNotEmpty && page < 30;
+    return list;
+  }
+
+  @override
+  Future<List<T>> getMoreItems() async {
+    page++;
+    try {
+      return await getItems();
+    } catch (e) {
+      page--;
+      rethrow;
+    }
+  }
+
+  @override
+  bool hasRefresh() => true;
+
+  @override
+  Future<List<T>> refresh() async {
+    page = 1;
+    hasMore = true;
+    return getItems();
   }
 }

@@ -97,7 +97,7 @@ class TvHomeScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     AnimatedContainer(
-                      width: homeState ? 250 : 118,
+                      width: homeState ? 320 : 118,
                       duration: animationDuration ~/ 2,
                       curve: Curves.easeInOutQuad,
                       decoration: BoxDecoration(
@@ -110,7 +110,9 @@ class TvHomeScreen extends StatelessWidget {
                               left: TvOverscan.horizontal,
                               bottom: TvOverscan.vertical,
                               right: homeState ? TvOverscan.horizontal : 8),
-                          child: Column(
+                          child: FocusScope(
+                              node: ctTvMenuScope,
+                              child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -227,9 +229,23 @@ class TvHomeScreen extends StatelessWidget {
                                     ),
                                   ),
                                 )
-                              ])),
+                              ]))),
                     ),
                     Expanded(
+                      // CloudTube: стрелка влево у левого края открывает боковое меню
+                      child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: (node, e) {
+                        if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                          final cur = FocusManager.instance.primaryFocus;
+                          if (cur != null && !cur.focusInDirection(TraversalDirection.left)) {
+                            ctOpenTvMenu();
+                          }
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
                       // terrible work around to be able to scroll to all the global keys
                       child: SingleChildScrollView(
                         child: Padding(
@@ -296,7 +312,7 @@ class TvHomeScreen extends StatelessWidget {
                             }).toList(),
                           ),
                         ),
-                      ),
+                      )),
                     ),
                   ],
                 ),
@@ -320,6 +336,9 @@ class MenuItemText extends StatelessWidget {
     return Text(
       text,
       style: style,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.fade,
     )
         .animate()
         .fadeIn(delay: animationDuration ~/ 2, duration: animationDuration ~/ 2)
@@ -349,4 +368,17 @@ class _CtTvStartupState extends State<_CtTvStartup> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+
+/// Область бокового меню ТВ (чтобы открыть его стрелкой влево с левого края контента).
+final ctTvMenuScope = FocusScopeNode(debugLabel: 'ct-tv-menu');
+
+void ctOpenTvMenu() {
+  if (ctTvMenuScope.focusedChild != null) {
+    ctTvMenuScope.focusedChild!.requestFocus();
+  } else {
+    ctTvMenuScope.requestFocus();
+    ctTvMenuScope.nextFocus();
+  }
 }

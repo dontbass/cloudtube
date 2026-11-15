@@ -198,12 +198,14 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       _recover();
     } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
       _stallTimer?.cancel();
-      if (isTv) {
-        // подстраховка: на ТВ запускаем явно
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (!isClosed && videoController?.isPlaying() != true) videoController?.play();
-        });
-      }
+      // подстраховка: видео должно стартовать само (плеер мог поставить паузу «по видимости»,
+      // пока экран плеера ещё открывался — на ТВ и медленных устройствах)
+      final startedFor = state.video?.videoId;
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (!isClosed && state.video?.videoId == startedFor && videoController?.isPlaying() != true) {
+          videoController?.play();
+        }
+      });
       if (_recoverFor != state.video?.videoId) _recoverTries = 0;
     }
 

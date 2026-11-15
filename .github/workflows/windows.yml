@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022   # VS 2022 — её понимает Flutter 3.35
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

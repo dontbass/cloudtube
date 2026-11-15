@@ -182,8 +182,13 @@ class _CtDirect {
   Future<Map<String, dynamic>> _video(String id) async {
     final hit = _videoCache[id];
     if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return hit.$2;
+    final sw = Stopwatch()..start();
+    // Всё параллельно: страница видео (описание и т.п.) + два «быстрых» клиента без загрузки страницы.
+    // iOS даёт HLS-мастер (все качества со звуком), ANDROID_VR — 360p со звуком и раздельные потоки
+    // (для них не нужен PO-токен). Замеры: каждый ~0,2–0,3 с против 1,3–1,5 с со страницей просмотра.
     final vFut = _yt.videos.get(id);
-    final mFut = _manifest(id);
+    final iosFut = _manifestFor(id, yt.YoutubeApiClient.ios);
+    final vrFut = _manifestFor(id, yt.YoutubeApiClient.androidVr);
     final v = await vFut;
     final j = _brief(v);
     j['likeCount'] = v.engagement.likeCount ?? 0;
@@ -191,9 +196,67 @@ class _CtDirect {
     j['descriptionHtml'] = const HtmlEscape().convert(v.description).replaceAll('\n', '<br>');
     j['allowRatings'] = true;
     j['isListed'] = true;
-    // канал и рекомендации — параллельно и с ограничением по времени, чтобы не задерживать запуск видео
-    final chFut = _yt.channels.get(v.channelId).timeout(const Duration(seconds: 4));
-    final relFut = _yt.videos.getRelatedVideos(v).timeout(const Duration(seconds: 5));
+    // канал и рекомендации — с коротким ограничением по времени, чтобы не задерживать запуск видео
+    final chFut = _yt.channels.get(v.channelId).timeout(const Duration(seconds: 3));
+    final relFut = _yt.videos.getRelatedVideos(v).timeout(const Duration(seconds: 4));
+
+    var ios = await iosFut;
+    var vr = await vrFut;
+    if (ios == null && vr == null) {
+      // оба быстрых клиента отказали — стандартный путь библиотеки (медленнее, со страницей просмотра)
+      try {
+        vr = await _yt.videos.streams.getManifest(id).timeout(const Duration(seconds: 12));
+      } catch (e) {
+        _log.warning('streams $id: $e');
+      }
+    }
+    final master = ios?.hlsManifestUrl ?? vr?.hlsManifestUrl;
+    if (master != null) j['hlsUrl'] = master;
+    final muxed = (vr?.muxed.isNotEmpty ?? false) ? vr!.muxed : (ios?.muxed ?? const <yt.MuxedStreamInfo>[]);
+    final adaptive = (vr?.videoOnly.isNotEmpty ?? false) ? vr! : ios;
+    j['formatStreams'] = muxed
+        .map((s) => {
+              'url': s.url.toString(),
+              'itag': '${s.tag}',
+              'type': '${s.codec.mimeType}; codecs="${s.videoCodec}, ${s.audioCodec}"',
+              'quality': s.qualityLabel,
+              'container': s.container.name,
+              'encoding': s.videoCodec,
+              'qualityLabel': s.qualityLabel,
+              'resolution': '${s.videoResolution.height}p',
+              'size': '${s.videoResolution.width}x${s.videoResolution.height}',
+            })
+        .toList();
+    j['adaptiveFormats'] = adaptive == null
+        ? []
+        : [
+            ...adaptive.videoOnly.map((s) => {
+                  'url': s.url.toString(),
+                  'itag': '${s.tag}',
+                  'type': '${s.codec.mimeType}; codecs="${s.videoCodec}"',
+                  'bitrate': '${s.bitrate.bitsPerSecond}',
+                  'clen': '${s.size.totalBytes}',
+                  'lmt': '0',
+                  'projectionType': 'RECTANGULAR',
+                  'container': s.container.name,
+                  'encoding': s.videoCodec,
+                  'qualityLabel': s.qualityLabel,
+                  'resolution': '${s.videoResolution.height}p',
+                  'size': '${s.videoResolution.width}x${s.videoResolution.height}',
+                }),
+            ...adaptive.audioOnly.map((s) => {
+                  'url': s.url.toString(),
+                  'itag': '${s.tag}',
+                  'type': '${s.codec.mimeType}; codecs="${s.audioCodec}"',
+                  'bitrate': '${s.bitrate.bitsPerSecond}',
+                  'clen': '${s.size.totalBytes}',
+                  'lmt': '0',
+                  'projectionType': 'RECTANGULAR',
+                  'container': s.container.name,
+                  'encoding': s.audioCodec,
+                }),
+          ];
+    final streamsMs = sw.elapsedMilliseconds;
     try {
       final ch = await chFut;
       j['authorThumbnails'] = [
@@ -207,75 +270,23 @@ class _CtDirect {
     } catch (_) {
       j['recommendedVideos'] = [];
     }
-    try {
-      final m = await mFut;
-      // HLS (от клиента iOS): одна ссылка на поток со звуком, ExoPlayer и mpv играют её сразу
-      final hls = m.hls.whereType<yt.HlsMuxedStreamInfo>().toList()
-        ..sort((a, b) => b.videoResolution.height.compareTo(a.videoResolution.height));
-      final pick = hls.where((s) => s.videoResolution.height <= 1080).firstOrNull ?? hls.firstOrNull;
-      if (pick != null) j['hlsUrl'] = pick.url.toString();
-      j['formatStreams'] = m.muxed
-          .map((s) => {
-                'url': s.url.toString(),
-                'itag': '${s.tag}',
-                'type': '${s.codec.mimeType}; codecs="${s.videoCodec}, ${s.audioCodec}"',
-                'quality': s.qualityLabel,
-                'container': s.container.name,
-                'encoding': s.videoCodec,
-                'qualityLabel': s.qualityLabel,
-                'resolution': '${s.videoResolution.height}p',
-                'size': '${s.videoResolution.width}x${s.videoResolution.height}',
-              })
-          .toList();
-      j['adaptiveFormats'] = [
-        ...m.videoOnly.map((s) => {
-              'url': s.url.toString(),
-              'itag': '${s.tag}',
-              'type': '${s.codec.mimeType}; codecs="${s.videoCodec}"',
-              'bitrate': '${s.bitrate.bitsPerSecond}',
-              'clen': '${s.size.totalBytes}',
-              'lmt': '0',
-              'projectionType': 'RECTANGULAR',
-              'container': s.container.name,
-              'encoding': s.videoCodec,
-              'qualityLabel': s.qualityLabel,
-              'resolution': '${s.videoResolution.height}p',
-              'size': '${s.videoResolution.width}x${s.videoResolution.height}',
-            }),
-        ...m.audioOnly.map((s) => {
-              'url': s.url.toString(),
-              'itag': '${s.tag}',
-              'type': '${s.codec.mimeType}; codecs="${s.audioCodec}"',
-              'bitrate': '${s.bitrate.bitsPerSecond}',
-              'clen': '${s.size.totalBytes}',
-              'lmt': '0',
-              'projectionType': 'RECTANGULAR',
-              'container': s.container.name,
-              'encoding': s.audioCodec,
-            }),
-      ];
-    } catch (e) {
-      _log.warning('streams $id: $e');
-      j['formatStreams'] = [];
-      j['adaptiveFormats'] = [];
-    }
+    _log.info('video $id: потоки ${streamsMs}мс, всего ${sw.elapsedMilliseconds}мс, '
+        'hls=${master != null} muxed=${muxed.length} adaptive=${(j['adaptiveFormats'] as List).length}');
     _videoCache[id] = (DateTime.now(), j);
     if (_videoCache.length > 80) _videoCache.remove(_videoCache.keys.first);
     return j;
   }
 
-  Future<yt.StreamManifest> _manifest(String id) async {
-    // Нужен HLS (один поток со звуком, все качества): сначала iOS, затем Safari (WEB).
-    // Если YouTube ни одному не дал HLS — стандартный набор (отдельные видео/звук + 360p со звуком).
-    for (final c in [yt.YoutubeApiClient.ios, yt.YoutubeApiClient.safari]) {
-      try {
-        final m = await _yt.videos.streams.getManifest(id, ytClients: [c]).timeout(const Duration(seconds: 6));
-        if (m.hls.isNotEmpty) return m;
-      } catch (e) {
-        _log.fine('manifest ${c.payload['context']?['client']?['clientName']}: $e');
-      }
+  /// Манифест одного клиента без загрузки страницы просмотра; null — если клиент не дал потоков.
+  Future<yt.StreamManifest?> _manifestFor(String id, yt.YoutubeApiClient c) async {
+    try {
+      return await _yt.videos.streams
+          .getManifest(id, ytClients: [c], requireWatchPage: false)
+          .timeout(const Duration(seconds: 8));
+    } catch (e) {
+      _log.info('manifest ${c.payload['context']?['client']?['clientName']} $id: $e');
+      return null;
     }
-    return _yt.videos.streams.getManifest(id);
   }
 
   // ---------- поиск ----------

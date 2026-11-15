@@ -339,7 +339,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
         bool isHls = newState.video!.hlsUrl != null;
 
-        var formatStream = isHls
+        var formatStream = isHls || newState.video!.formatStreams!.isEmpty
             ? null
             : newState.video!
                 .formatStreams![newState.video!.formatStreams!.length - 1];
@@ -710,7 +710,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   bool isUsingDash() {
-    return settings.state.useDash && !_forceProgressive;
+    // без сервера нет DASH-манифеста Invidious: HLS или обычный поток
+    return settings.state.useDash && !_forceProgressive && !ctDirectActive;
   }
 
   @override

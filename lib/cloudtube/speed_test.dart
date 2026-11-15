@@ -82,6 +82,12 @@ class _CtSpeedTestScreenState extends State<CtSpeedTestScreen> {
       }
     }
     ctDirectClearCache();
+    await _run('Данные видео без обработки', () async {
+      final r = await service.httpClient.get(Uri.parse('$kCtDirectUrl/api/v1/videos/$id'));
+      return r;
+    }, (r) => 'HTTP ${r.statusCode}, ${(r.bodyBytes.length / 1024).round()} КБ');
+    await _run('Обработка приложением (фильтры, DeArrow)', () => service.getVideo(id), (v) => '«${v.title}»');
+    ctDirectClearCache();
     await _run('Всё вместе (как при открытии видео)', () => service.getVideo(id), (v) => '«${v.title}»');
     await _run('Дизлайки (returnyoutubedislike)',
         () => c.get(Uri.parse('https://returnyoutubedislikeapi.com/votes?videoId=$id')), (r) => 'HTTP ${r.statusCode}');

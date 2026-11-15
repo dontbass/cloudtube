@@ -187,7 +187,7 @@ class CtYtFast {
     if (j['hlsUrl'] == null && (j['formatStreams'] as List).isEmpty) return null;
     final streamsMs = sw.elapsedMilliseconds;
 
-    // «next» ждём не дольше 0,7 с после готовности потоков — потом видео важнее
+    // «next» ждём не дольше 0,7 с после готовности потоков — видео важнее
     try {
       final n = await nextF.timeout(const Duration(milliseconds: 700));
       _applyNext(j, n);

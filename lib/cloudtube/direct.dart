@@ -203,7 +203,11 @@ class _CtDirect {
   Future<Map<String, dynamic>> _video(String id) {
     final hit = _videoCache[id];
     if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return Future.value(hit.$2);
-    return _inflight[id] ??= _video0(id).whenComplete(() => _inflight.remove(id));
+    // ВАЖНО: обработчик whenComplete не должен возвращать Future (remove() вернул бы этот же Future,
+    // и whenComplete ждал бы сам себя — вечное ожидание; так сломался запуск видео в 1.1.19)
+    return _inflight[id] ??= _video0(id).timeout(const Duration(seconds: 25)).whenComplete(() {
+      _inflight.remove(id);
+    });
   }
 
   Future<Map<String, dynamic>> _video0(String id) async {
@@ -222,7 +226,7 @@ class _CtDirect {
     // Запасной путь — Всё параллельно: страница видео (описание и т.п.) + два «быстрых» клиента без загрузки страницы.
     // iOS даёт HLS-мастер (все качества со звуком), ANDROID_VR — 360p со звуком и раздельные потоки
     // (для них не нужен PO-токен). Замеры: каждый ~0,2–0,3 с против 1,3–1,5 с со страницей просмотра.
-    final vFut = _yt.videos.get(id);
+    final vFut = _yt.videos.get(id).timeout(const Duration(seconds: 10));
     final iosFut = _manifestFor(id, yt.YoutubeApiClient.ios);
     final vrFut = _manifestFor(id, yt.YoutubeApiClient.androidVr);
     final anFut = _manifestFor(id, yt.YoutubeApiClient.androidSdkless);

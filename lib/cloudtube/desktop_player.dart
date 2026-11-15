@@ -63,7 +63,8 @@ class _Quality {
 }
 
 class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
-  late final Player _player = Player(configuration: const PlayerConfiguration(title: 'CloudTube'));
+  late final Player _player =
+      Player(configuration: const PlayerConfiguration(title: 'CloudTube', logLevel: MPVLogLevel.warn));
   late final mk.VideoController _controller = mk.VideoController(_player);
   Video? _full;
   String? _error;
@@ -72,6 +73,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   String? _audioItag;
   StreamSubscription? _errSub;
   Timer? _watch;
+  StreamSubscription? _logSub;
   Duration _lastPos = Duration.zero;
   int _stuck = 0;
   final _scroll = ScrollController();
@@ -80,6 +82,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   void initState() {
     super.initState();
     _errSub = _player.stream.error.listen((e) => _log.warning('mpv: $e'));
+    _logSub = _player.stream.log.listen((l) => _log.info('mpv ${l.level} ${l.prefix}: ${l.text}'));
     // Сторож: mpv с отдельной звуковой дорожкой иногда «замирает» на старте, хотя данные уже
     // загружены (то же лечится паузой/плей вручную). Если позиция стоит 2,5 с при запасе буфера —
     // делаем это сами.
@@ -107,6 +110,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   void dispose() {
     _errSub?.cancel();
     _watch?.cancel();
+    _logSub?.cancel();
     _player.dispose();
     _scroll.dispose();
     super.dispose();
@@ -163,28 +167,46 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('http-header-fields', headers.entries.map((e) => '${e.key}: ${e.value}').join(','));
     }
     String url;
+    String? audio;
     if (ctDirectActive && (v.hlsUrl ?? '').isNotEmpty) {
       // без сервера: HLS от YouTube — один поток со звуком, стартует быстро
       url = v.hlsUrl!;
-      if (np is NativePlayer) await np.setProperty('audio-files', '');
+      audio = null;
     } else if (ctDirectActive && _quality != null && _audioItag != null) {
       url = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _quality!.videoItag).url;
       final a = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _audioItag).url;
-      if (np is NativePlayer) await np.setProperty('audio-files', a);
+      audio = a;
     } else if (v.liveNow == true && (v.hlsUrl ?? '').isNotEmpty) {
       url = v.hlsUrl!;
-      if (np is NativePlayer) await np.setProperty('audio-files', '');
+      audio = null;
     } else if (_quality != null && _quality!.videoItag.isNotEmpty && _audioItag != null) {
       url = _stream(server, v.videoId, _quality!.videoItag);
-      if (np is NativePlayer) await np.setProperty('audio-files', _stream(server, v.videoId, _audioItag!));
+      audio = _stream(server, v.videoId, _audioItag!);
     } else if ((v.formatStreams ?? const []).isNotEmpty) {
       url = _stream(server, v.videoId, v.formatStreams!.last.itag);
-      if (np is NativePlayer) await np.setProperty('audio-files', '');
+      audio = null;
     } else {
       setState(() => _error = 'У видео нет потоков');
       return;
     }
-    await _player.open(Media(url, httpHeaders: headers, start: at));
+    if (audio == null) {
+      await _player.open(Media(url, httpHeaders: headers, start: at));
+      return;
+    }
+    // Отдельная звуковая дорожка: сначала открываем видео на паузе, потом добавляем звук
+    // командой mpv audio-add (через свойство audio-files звук на Windows не подхватывался).
+    await _player.open(Media(url, httpHeaders: headers, start: at), play: false);
+    for (var i = 0; i < 40 && _player.state.duration == Duration.zero; i++) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (np is NativePlayer) {
+      try {
+        await np.command(['audio-add', audio, 'select']);
+      } catch (e) {
+        _log.warning('audio-add: $e');
+      }
+    }
+    await _player.play();
   }
 
   String _stream(Server s, String id, String itag) => '${s.url}/latest_version?id=$id&itag=$itag&local=true';

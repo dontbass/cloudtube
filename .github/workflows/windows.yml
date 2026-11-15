@@ -8,6 +8,9 @@ on:
     paths-ignore: ['**/*.md']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: windows-${{ github.ref }}
   cancel-in-progress: true
@@ -47,6 +50,20 @@ jobs:
         with:
           name: CloudTube-windows-x64
           path: CloudTube-windows-x64.zip
+
+      # Пробная версия: отдельный пре-релиз windows-preview (перезаписывается).
+      # Пре-релизы не видны обновлению Android-приложения (оно смотрит только releases/latest).
+      - name: Preview release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-preview
+          name: CloudTube для Windows — пробная версия
+          prerelease: true
+          make_latest: false
+          body: |
+            Пробная сборка для Windows (x64). Распакуйте zip в любую папку и запустите CloudTube.exe.
+            Сборка ${{ github.sha }}. Обновляется при каждом изменении ветки windows.
+          files: CloudTube-windows-x64.zip
 
       # Проверка запуска: открываем приложение, ждём, делаем снимок экрана и сохраняем лог.
       - name: Smoke test

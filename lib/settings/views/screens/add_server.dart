@@ -124,13 +124,24 @@ class AddServerScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const Text('Url'),
                       TextField(
                         controller: cubit.urlController,
                         autocorrect: false,
                         enableSuggestions: false,
                         enableIMEPersonalizedLearning: false,
+                        keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(
+                            labelText: 'Адрес сервера',
+                            hintText: 'https://invidious.example.com',
+                            border: OutlineInputBorder()),
                       ),
+                      const Gap(16),
+                      // CloudTube: пароль сайта (Basic Auth) — прямо в форме, без всплывающего окна
+                      _CtSiteAuthFields(
+                          onChanged: (u, p) => u.isEmpty
+                              ? cubit.removeHeader('Authorization')
+                              : cubit.addHeader('Authorization',
+                                  'Basic ${encodeBase64('$u:$p')}')),
                       const Gap(10),
                       ListTile(
                         leading: AnimatedRotation(
@@ -169,11 +180,6 @@ class AddServerScreen extends StatelessWidget {
                                   ),
                                 );
                               }),
-                              ListTile(
-                                leading: const Icon(Icons.key),
-                                title: Text(locals.addBasicAuth),
-                                onTap: () => showBasicAuthDialog(context),
-                              ),
                               ListTile(
                                 leading: const Icon(Icons.add),
                                 title: Text(locals.addHeader),
@@ -231,6 +237,78 @@ class AddServerScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Логин и пароль сайта, если сервер закрыт паролем (Basic Auth).
+class _CtSiteAuthFields extends StatefulWidget {
+  final void Function(String user, String pass) onChanged;
+
+  const _CtSiteAuthFields({required this.onChanged});
+
+  @override
+  State<_CtSiteAuthFields> createState() => _CtSiteAuthFieldsState();
+}
+
+class _CtSiteAuthFieldsState extends State<_CtSiteAuthFields> {
+  bool _on = false;
+  bool _show = false;
+  final _u = TextEditingController(), _p = TextEditingController();
+
+  @override
+  void dispose() {
+    _u.dispose();
+    _p.dispose();
+    super.dispose();
+  }
+
+  void _emit() => widget.onChanged(_on ? _u.text.trim() : '', _p.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      decoration: BoxDecoration(color: colors.surfaceContainer, borderRadius: BorderRadius.circular(14)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Сайт закрыт паролем'),
+          subtitle: const Text('Если при открытии сервера в браузере спрашивается логин и пароль'),
+          value: _on,
+          onChanged: (v) {
+            setState(() => _on = v);
+            _emit();
+          },
+        ),
+        if (_on) ...[
+          TextField(
+            controller: _u,
+            autocorrect: false,
+            autofillHints: const [AutofillHints.username],
+            decoration: const InputDecoration(labelText: 'Логин сайта', border: OutlineInputBorder(), isDense: true),
+            onChanged: (_) => _emit(),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _p,
+            obscureText: !_show,
+            autocorrect: false,
+            autofillHints: const [AutofillHints.password],
+            decoration: InputDecoration(
+              labelText: 'Пароль сайта',
+              border: const OutlineInputBorder(),
+              isDense: true,
+              suffixIcon: IconButton(
+                  icon: Icon(_show ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _show = !_show)),
+            ),
+            onChanged: (_) => _emit(),
+          ),
+        ],
+      ]),
     );
   }
 }

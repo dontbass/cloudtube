@@ -104,6 +104,7 @@ dev_dependencies:
 flutter: 
   assets: 
     - assets/icon.svg
+    - assets/certs/cacert.pem
   uses-material-design: true
   generate: true
 flutter_launcher_icons: 

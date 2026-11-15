@@ -10,6 +10,7 @@ import '../globals.dart';
 import '../router.dart';
 import '../settings/models/db/server.dart';
 import '../videos/models/video.dart';
+import 'platform.dart';
 import 'watch.dart';
 
 final _log = Logger('CtDesktopPlayer');
@@ -118,6 +119,10 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     final server = await db.getCurrentlySelectedServer();
     final headers = server.headersForUrl(server.url) ?? {};
     final np = _player.platform;
+    if (np is NativePlayer && ctCaFile != null) {
+      await np.setProperty('tls-ca-file', ctCaFile!);
+      await np.setProperty('tls-verify', 'yes');
+    }
     if (np is NativePlayer && headers.isNotEmpty) {
       await np.setProperty('http-header-fields', headers.entries.map((e) => '${e.key}: ${e.value}').join(','));
     }

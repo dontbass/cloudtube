@@ -61,6 +61,7 @@ Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
   if (ctDesktop) CtDesktopPlayer.ensureInitialized();
+  await ctInitDesktopCerts();
 
   packageInfo = await PackageInfo.fromPlatform();
 

@@ -1,12 +1,13 @@
 import 'dart:io';
 
+import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/settings/models/db/settings.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
+    return super.createHttpClient(context ?? ctDesktopContext)
       ..userAgent =
           'CloudTube/${packageInfo?.version ?? '0.0.0'} (${packageInfo?.packageName ?? ''})'
       ..badCertificateCallback = (X509Certificate cert, String host, int port) {

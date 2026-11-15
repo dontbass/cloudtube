@@ -1,5 +1,4 @@
 import 'package:clipious/settings/models/db/settings.dart';
-import 'package:clipious/globals.dart';
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:clipious/app/states/app.dart';

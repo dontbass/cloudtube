@@ -1,3 +1,5 @@
+import 'package:clipious/videos/models/video.dart';
+import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/cloudtube/desktop_player.dart';
@@ -83,6 +85,17 @@ Future<void> main() async {
   }
 
   ctSoftTheme.value = db.getSettings(ctSoftThemeKey)?.value == 'true';
+
+  // автотест сборки (CI): режим без сервера и, при желании, сразу открыть видео
+  if (ctDesktop && Platform.environment['CT_SMOKE_DIRECT'] == '1') {
+    final s = db.getServer(kCtDirectUrl) ?? const Server(url: kCtDirectUrl);
+    await db.upsertServer(s.copyWith(inUse: true));
+    await db.useServer(s.copyWith(inUse: true));
+    final vid = Platform.environment['CT_SMOKE_VIDEO'];
+    if (vid != null && vid.isNotEmpty) {
+      Future.delayed(const Duration(seconds: 12), () => CtDesktopPlayer.open(Video(videoId: vid)));
+    }
+  }
 
   late final bool hasServer;
   try {

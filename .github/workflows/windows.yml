@@ -90,6 +90,33 @@ jobs:
           Write-Host ([Convert]::ToBase64String([IO.File]::ReadAllBytes("smoke.jpg")))
           Write-Host "SMOKE-JPEG-END"
 
+      # Режим без сервера: главная и воспроизведение видео прямо с YouTube
+      - name: Smoke test direct
+        shell: pwsh
+        env:
+          CT_SMOKE_DIRECT: '1'
+          CT_SMOKE_VIDEO: 'jNQXAC9IVRw'
+        run: |
+          Remove-Item -Recurse -Force "$env:APPDATA\com.example" -ErrorAction SilentlyContinue
+          Get-ChildItem $env:APPDATA | Where-Object { Test-Path "$($_.FullName)\*\cloudtube.db" } | ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
+          $exe = Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
+          $p = Start-Process $exe.FullName -PassThru
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $small = New-Object System.Drawing.Bitmap $bmp, 1280, ([int](1280 * $b.Height / $b.Width))
+            $small.Save("$name.jpg", [System.Drawing.Imaging.ImageFormat]::Jpeg)
+            Write-Host "$name-JPEG-BEGIN"
+            Write-Host ([Convert]::ToBase64String([IO.File]::ReadAllBytes("$name.jpg")))
+            Write-Host "$name-JPEG-END"
+          }
+          Start-Sleep -Seconds 10; Shot "HOME"
+          Start-Sleep -Seconds 25; Shot "VIDEO"
+          if ($p.HasExited) { Write-Host "DIRECT: приложение закрылось" } else { Write-Host "DIRECT: работает"; Stop-Process -Id $p.Id -Force }
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

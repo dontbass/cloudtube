@@ -11,6 +11,13 @@ final _log = Logger('CtDirect');
 const kCtDirectUrl = 'https://youtube.direct';
 const _host = 'youtube.direct';
 
+/// Потоки YouTube, полученные от клиента iOS, отдаются только с его User-Agent (иначе 403/зависание).
+const kCtIosUserAgent = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
+
+/// Заголовки для воспроизведения ссылок YouTube в режиме без сервера.
+Map<String, String> ctDirectStreamHeaders(String url) =>
+    ctDirectActive && (url.contains('googlevideo.com') || url.contains('youtube.com')) ? {'User-Agent': kCtIosUserAgent} : {};
+
 /// Сейчас выбран режим «без сервера» (обновляется при смене сервера).
 bool ctDirectActive = false;
 
@@ -165,15 +172,18 @@ class _CtDirect {
     j['descriptionHtml'] = const HtmlEscape().convert(v.description).replaceAll('\n', '<br>');
     j['allowRatings'] = true;
     j['isListed'] = true;
+    // канал и рекомендации — параллельно и с ограничением по времени, чтобы не задерживать запуск видео
+    final chFut = _yt.channels.get(v.channelId).timeout(const Duration(seconds: 4));
+    final relFut = _yt.videos.getRelatedVideos(v).timeout(const Duration(seconds: 5));
     try {
-      final ch = await _yt.channels.get(v.channelId);
+      final ch = await chFut;
       j['authorThumbnails'] = [
         {'url': ch.logoUrl, 'width': 176, 'height': 176},
       ];
       if (ch.subscribersCount != null) j['subCountText'] = _short(ch.subscribersCount!);
     } catch (_) {}
     try {
-      final rel = await _yt.videos.getRelatedVideos(v);
+      final rel = await relFut;
       j['recommendedVideos'] = (rel ?? const <yt.Video>[]).map<Map<String, dynamic>>((e) => _brief(e)).toList();
     } catch (_) {
       j['recommendedVideos'] = [];

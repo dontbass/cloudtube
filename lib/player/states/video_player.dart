@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/direct.dart';
 import 'dart:async';
 import 'package:clipious/videos/models/ided_video.dart';
 import 'package:easy_debounce/easy_throttle.dart';
@@ -382,7 +383,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         betterPlayerDataSource = BetterPlayerDataSource(
           BetterPlayerDataSourceType.network,
           videoUrl,
-          headers: !offline ? server.headersForUrl(videoUrl) : {},
+          headers: !offline ? {...?server.headersForUrl(videoUrl), ...ctDirectStreamHeaders(videoUrl)} : {},
           videoFormat: format,
           liveStream: newState.video!.liveNow,
           subtitles: newState.video!.captions

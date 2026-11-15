@@ -159,6 +159,9 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('demuxer-readahead-secs', '20');
       await np.setProperty('force-seekable', 'yes');
     }
+    if (np is NativePlayer) {
+      await np.setProperty('user-agent', ctDirectActive ? kCtIosUserAgent : 'Mozilla/5.0 CloudTube');
+    }
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);
       await np.setProperty('tls-verify', 'yes');

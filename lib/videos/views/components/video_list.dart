@@ -96,15 +96,29 @@ class VideoList<T extends IdedVideo> extends StatelessWidget {
                                 !small && state.itemList.hasRefresh()
                                     ? await cubit.refreshItems()
                                     : Future.delayed(Duration.zero),
-                            child: GridView.count(
-                              crossAxisCount: gridCount,
+                            child: LayoutBuilder(builder: (context, box) {
+                             // CloudTube: на широком экране — сетка как на сайте: отступы, промежутки,
+                             // высота карточки = превью 16:9 + подпись (без пустоты под текстом)
+                             final wideGrid = !small && gridCount > 1 && scrollDirection == Axis.vertical;
+                             const pad = 16.0, gap = 16.0;
+                             final itemW = (box.maxWidth - pad * 2 - gap * (gridCount - 1)) / gridCount;
+                             return GridView(
                               controller: cubit.scrollController,
                               scrollDirection: scrollDirection,
-                              crossAxisSpacing: small ? 8 : 5,
-                              mainAxisSpacing: small ? 8 : 5,
-                              childAspectRatio: small
-                                  ? smallVideoAspectRatio
-                                  : getGridAspectRatio(context),
+                              padding: wideGrid ? const EdgeInsets.fromLTRB(pad, 8, pad, pad) : null,
+                              gridDelegate: wideGrid
+                                  ? SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: gridCount,
+                                      crossAxisSpacing: gap,
+                                      mainAxisSpacing: 8,
+                                      mainAxisExtent: itemW * 9 / 16 + 96)
+                                  : SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: gridCount,
+                                      crossAxisSpacing: small ? 8 : 5,
+                                      mainAxisSpacing: small ? 8 : 5,
+                                      childAspectRatio: small
+                                          ? smallVideoAspectRatio
+                                          : getGridAspectRatio(context)),
                               children: [
                                 ...items.map((v) {
                                   Video? onlineVideo;
@@ -138,7 +152,8 @@ class VideoList<T extends IdedVideo> extends StatelessWidget {
                                           ),
                                       count: 5 * gridCount)
                               ],
-                            ),
+                            );
+                            }),
                           ),
                         )
             ],

@@ -58,6 +58,7 @@ Widget _ctNavTheme(BuildContext context, bool dark, Widget nav) {
 class _MainScreenState extends State<MainContentScreen> {
   // CloudTube: нижнее меню как в YouTube — 0 Главная, 1 Shorts, 2 Подписки, 3 Вы
   int _ct = 0;
+  bool _railExtended = false;
 
   openSettings(BuildContext context) {
     AutoRouter.of(context).push(const SettingsRoute());
@@ -176,6 +177,8 @@ class _MainScreenState extends State<MainContentScreen> {
                 final subsIdx =
                     allowedPages.indexOf(HomeDataSource.subscription);
                 final ctPhone = deviceType == DeviceType.phone;
+                // широкий экран (ПК, планшет в альбомной): шапка и меню как на сайте
+                final ctWide = !ctPhone && MediaQuery.of(context).size.width >= 900;
                 return Scaffold(
                     // so we rebuild the view if the server changes
                     backgroundColor:
@@ -216,8 +219,43 @@ class _MainScreenState extends State<MainContentScreen> {
                     appBar: ctPhone && _ct == 1
                         ? null
                         : AppBar(
-                      titleSpacing: 12,
-                      title: Row(
+                      titleSpacing: ctWide ? 4 : 12,
+                      leading: ctWide
+                          ? IconButton(
+                              tooltip: 'Меню',
+                              icon: const Icon(Icons.menu),
+                              onPressed: () => setState(() => _railExtended = !_railExtended))
+                          : null,
+                      title: ctWide
+                          ? Row(children: [
+                              const CtLogo(),
+                              const Spacer(),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 560),
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width * 0.38,
+                                  height: 42,
+                                  child: Material(
+                                    color: colorScheme.surfaceContainerHigh,
+                                    shape: const StadiumBorder(),
+                                    child: InkWell(
+                                      customBorder: const StadiumBorder(),
+                                      onTap: () => AutoRouter.of(context).push(SearchRoute()),
+                                      child: Row(children: [
+                                        const SizedBox(width: 16),
+                                        Icon(Icons.search, color: colorScheme.onSurfaceVariant),
+                                        const SizedBox(width: 10),
+                                        Text('Искать',
+                                            style: TextStyle(
+                                                fontSize: 15, color: colorScheme.onSurfaceVariant)),
+                                      ]),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                            ])
+                          : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ctPhone && _ct == 3
@@ -244,7 +282,7 @@ class _MainScreenState extends State<MainContentScreen> {
                             : const SizedBox.shrink(),
                         KeyedSubtree(key: CtTourKeys.theme, child: const CtThemeButton()),
                         const AppBarDownloadButton(),
-                        IconButton(
+                        if (!ctWide) IconButton(
                           key: CtTourKeys.search,
                           onPressed: () {
                             AutoRouter.of(context).push(SearchRoute());
@@ -276,8 +314,13 @@ class _MainScreenState extends State<MainContentScreen> {
                             allowedPages.length > 2)
                           OrientationBuilder(
                             builder: (context, orientation) => NavigationRail(
-                                extended:
-                                    getOrientation() == Orientation.landscape,
+                                extended: ctWide
+                                    ? _railExtended
+                                    : getOrientation() == Orientation.landscape,
+                                labelType: ctWide && !_railExtended
+                                    ? NavigationRailLabelType.all
+                                    : null,
+                                minWidth: ctWide ? 72 : null,
                                 onDestinationSelected:
                                     tabsRouter.setActiveIndex,
                                 destinations: allowedPages

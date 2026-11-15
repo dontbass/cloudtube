@@ -69,6 +69,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   _Quality? _quality;
   String? _audioItag;
   StreamSubscription? _errSub;
+  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -81,6 +82,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   void dispose() {
     _errSub?.cancel();
     _player.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -106,7 +108,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       _audioItag = (m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null))?.itag;
       _quality = _qualities.isEmpty
           ? null
-          : _qualities.firstWhere((q) => q.height <= 1080, orElse: () => _qualities.last);
+          : _qualities.firstWhere((q) => q.height <= 720, orElse: () => _qualities.last);
       setState(() {});
       await _play();
     } catch (e) {
@@ -119,6 +121,14 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     final server = await db.getCurrentlySelectedServer();
     final headers = server.headersForUrl(server.url) ?? {};
     final np = _player.platform;
+    if (np is NativePlayer) {
+      // быстрее старт: меньше анализа потока перед первым кадром
+      await np.setProperty('demuxer-lavf-analyzeduration', '0.5');
+      await np.setProperty('demuxer-lavf-probesize', '1000000');
+      await np.setProperty('cache', 'yes');
+      await np.setProperty('demuxer-readahead-secs', '20');
+      await np.setProperty('force-seekable', 'yes');
+    }
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);
       await np.setProperty('tls-verify', 'yes');
@@ -179,12 +189,14 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       body: _error != null
           ? Center(child: Text(_error!, style: TextStyle(color: colors.error)))
           : LayoutBuilder(builder: (context, c) {
-              final wide = c.maxWidth >= 1100;
-              final videoBox = AspectRatio(
-                aspectRatio: 16 / 9,
+              // плеер всегда целиком в окне: высота не больше ~78% окна, по бокам — чёрные поля
+              final videoH = (c.maxWidth * 9 / 16).clamp(200.0, c.maxHeight * 0.78);
+              final videoBox = SizedBox(
+                height: videoH,
                 child: Container(
                   color: Colors.black,
                   child: mk.Video(
+                    fill: Colors.black,
                     controller: _controller,
                     controls: (state) => mk.MaterialDesktopVideoControlsTheme(
                       normal: mk.MaterialDesktopVideoControlsThemeData(
@@ -205,11 +217,20 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
               final body = _full == null
                   ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
                   : CtWatchBody(video: _full!);
-              return Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: wide ? 1280 : double.infinity),
-                  child: ListView(children: [videoBox, body]),
-                ),
+              return Scrollbar(
+                controller: _scroll,
+                thumbVisibility: true,
+                interactive: true,
+                thickness: 10,
+                child: ListView(controller: _scroll, children: [
+                  videoBox,
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: body,
+                    ),
+                  ),
+                ]),
               );
             }),
     );

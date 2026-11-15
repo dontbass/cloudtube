@@ -287,6 +287,15 @@ class MyApp extends StatelessWidget {
                   navigationRailTheme: navigationRailTheme,
                   appBarTheme: appBarTheme,
                   checkboxTheme: ctCheckboxTheme(lightColorScheme),
+                  // ПК: заметная полоса прокрутки, которую легко поймать мышью
+                  scrollbarTheme: ctDesktop
+                      ? ScrollbarThemeData(
+                          thumbVisibility: const WidgetStatePropertyAll(true),
+                          thickness: const WidgetStatePropertyAll(10),
+                          radius: const Radius.circular(8),
+                          interactive: true,
+                          thumbColor: WidgetStatePropertyAll(lightColorScheme.onSurfaceVariant.withValues(alpha: 0.5)))
+                      : null,
                   switchTheme: ctSwitchTheme(lightColorScheme),
                   radioTheme: ctRadioTheme(lightColorScheme),
                   scaffoldBackgroundColor: lightColorScheme.surface,
@@ -302,6 +311,15 @@ class MyApp extends StatelessWidget {
                   navigationBarTheme: navigationBarTheme,
                   navigationRailTheme: navigationRailTheme,
                   checkboxTheme: ctCheckboxTheme(darkColorScheme),
+                  // ПК: заметная полоса прокрутки, которую легко поймать мышью
+                  scrollbarTheme: ctDesktop
+                      ? ScrollbarThemeData(
+                          thumbVisibility: const WidgetStatePropertyAll(true),
+                          thickness: const WidgetStatePropertyAll(10),
+                          radius: const Radius.circular(8),
+                          interactive: true,
+                          thumbColor: WidgetStatePropertyAll(darkColorScheme.onSurfaceVariant.withValues(alpha: 0.5)))
+                      : null,
                   switchTheme: ctSwitchTheme(darkColorScheme),
                   radioTheme: ctRadioTheme(darkColorScheme),
                   scaffoldBackgroundColor: darkColorScheme.surface,

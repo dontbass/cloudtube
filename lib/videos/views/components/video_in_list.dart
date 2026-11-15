@@ -151,8 +151,8 @@ class VideoListItem extends StatelessWidget {
                                 : ImageObject.getThumbnailUrlsByPreferredOrder(
                                     video!.videoThumbnails),
                             decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(small ? 6 : 0)),
+                                borderRadius: BorderRadius.circular(
+                                    small ? 6 : (getGridCount(context) > 1 ? 12 : 0))),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Column(

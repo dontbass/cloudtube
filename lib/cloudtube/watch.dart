@@ -21,7 +21,10 @@ import 'comments.dart';
 class CtWatchBody extends StatefulWidget {
   final Video video;
 
-  const CtWatchBody({super.key, required this.video});
+  /// false — рекомендации показываются отдельной колонкой (широкий экран ПК)
+  final bool showRecs;
+
+  const CtWatchBody({super.key, required this.video, this.showRecs = true});
 
   @override
   State<CtWatchBody> createState() => _CtWatchBodyState();
@@ -242,7 +245,7 @@ class _CtWatchBodyState extends State<CtWatchBody> {
           ),
         ),
         // рекомендации — во всю ширину
-        ...recs.map((e) => Padding(
+        if (widget.showRecs) ...recs.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: VideoListItem(video: e),
             )),

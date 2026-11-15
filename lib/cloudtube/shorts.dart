@@ -356,7 +356,7 @@ class _CtShortItemState extends State<CtShortItem> {
         url = '${v.dashUrl}${useProxy ? '?local=true' : ''}';
         if (url.startsWith('/')) url = server.url + url;
         format = BetterPlayerVideoFormat.dash;
-      } else if (streams.isNotEmpty) {
+      } else if (streams.isNotEmpty && v.hlsUrl == null) {
         url = streams.last.url;
         if (useProxy) url = url.replaceFirst(_cdn, '${server.url}/');
         if (url.startsWith('/')) url = server.url + url;

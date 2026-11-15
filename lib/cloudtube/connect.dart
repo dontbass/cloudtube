@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../app/states/app.dart';
 import '../globals.dart';
 import '../settings/models/db/server.dart';
+import 'direct.dart';
 
 class CtConnectError implements Exception {
   final String message;
@@ -60,6 +61,17 @@ Future<Server> ctConnectServer({
       throw CtConnectError('Не удалось войти в аккаунт: неверный логин или пароль');
     }
   }
+  await db.upsertServer(s);
+  await db.useServer(s);
+  await fileDb.useServer(s);
+  app.setServer(s);
+  return s;
+}
+
+/// Режим «без сервера»: приложение ходит в YouTube напрямую.
+Future<Server> ctConnectDirect(AppCubit app) async {
+  final existing = db.getServer(kCtDirectUrl);
+  final s = (existing ?? const Server(url: kCtDirectUrl)).copyWith(inUse: true);
   await db.upsertServer(s);
   await db.useServer(s);
   await fileDb.useServer(s);

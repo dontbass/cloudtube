@@ -11,7 +11,9 @@ import '../router.dart';
 import '../settings/models/db/server.dart';
 import '../videos/models/video.dart';
 import 'platform.dart';
+import 'direct.dart';
 import 'watch.dart';
+import '../videos/views/components/compact_video.dart';
 
 final _log = Logger('CtDesktopPlayer');
 
@@ -128,6 +130,9 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('cache', 'yes');
       await np.setProperty('demuxer-readahead-secs', '20');
       await np.setProperty('force-seekable', 'yes');
+      // старт только когда буфер есть и у видео, и у звука — без «запустилось и замерло»
+      await np.setProperty('cache-pause-initial', 'yes');
+      await np.setProperty('cache-pause-wait', '1');
     }
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);
@@ -137,7 +142,15 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty('http-header-fields', headers.entries.map((e) => '${e.key}: ${e.value}').join(','));
     }
     String url;
-    if (v.liveNow == true && (v.hlsUrl ?? '').isNotEmpty) {
+    if (ctDirectActive && (v.hlsUrl ?? '').isNotEmpty) {
+      // без сервера: HLS от YouTube — один поток со звуком, стартует быстро
+      url = v.hlsUrl!;
+      if (np is NativePlayer) await np.setProperty('audio-files', '');
+    } else if (ctDirectActive && _quality != null && _audioItag != null) {
+      url = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _quality!.videoItag).url;
+      final a = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _audioItag).url;
+      if (np is NativePlayer) await np.setProperty('audio-files', a);
+    } else if (v.liveNow == true && (v.hlsUrl ?? '').isNotEmpty) {
       url = v.hlsUrl!;
       if (np is NativePlayer) await np.setProperty('audio-files', '');
     } else if (_quality != null && _quality!.videoItag.isNotEmpty && _audioItag != null) {
@@ -169,7 +182,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       appBar: AppBar(
         title: Text(v.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
-          if (_qualities.isNotEmpty)
+          if (_qualities.isNotEmpty && !(ctDirectActive && (_full?.hlsUrl ?? '').isNotEmpty))
             PopupMenuButton<_Quality>(
               tooltip: 'Качество',
               icon: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -189,15 +202,17 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       body: _error != null
           ? Center(child: Text(_error!, style: TextStyle(color: colors.error)))
           : LayoutBuilder(builder: (context, c) {
-              // плеер всегда целиком в окне: высота не больше ~78% окна, по бокам — чёрные поля
-              final videoH = (c.maxWidth * 9 / 16).clamp(200.0, c.maxHeight * 0.78);
-              final videoBox = SizedBox(
-                height: videoH,
-                child: Container(
-                  color: Colors.black,
+              final wide = c.maxWidth >= 1000;
+              final leftW = wide ? c.maxWidth - 420 : c.maxWidth;
+              final pad = wide ? 16.0 : 0.0;
+              final vh = ((leftW - pad * 2) * 9 / 16).clamp(180.0, c.maxHeight * (wide ? 0.72 : 0.6));
+              final video = ClipRRect(
+                borderRadius: BorderRadius.circular(wide ? 12 : 0),
+                child: SizedBox(
+                  height: vh,
                   child: mk.Video(
-                    fill: Colors.black,
                     controller: _controller,
+                    fill: Colors.black,
                     controls: (state) => mk.MaterialDesktopVideoControlsTheme(
                       normal: mk.MaterialDesktopVideoControlsThemeData(
                         seekBarThumbColor: const Color(0xFFFF0033),
@@ -214,24 +229,29 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
                   ),
                 ),
               );
-              final body = _full == null
-                  ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
-                  : CtWatchBody(video: _full!);
-              return Scrollbar(
-                controller: _scroll,
-                thumbVisibility: true,
-                interactive: true,
-                thickness: 10,
-                child: ListView(controller: _scroll, children: [
-                  videoBox,
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1100),
-                      child: body,
+              final info = _full == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : CtWatchBody(video: _full!, showRecs: !wide);
+              final left = Column(children: [
+                Padding(padding: EdgeInsets.fromLTRB(pad, pad, pad, 0), child: video),
+                Expanded(child: info),
+              ]);
+              if (!wide) return left;
+              final recs = (_full?.recommendedVideos ?? const <Video>[]).where((e) => !e.filterHide).toList();
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: left),
+                SizedBox(
+                  width: 420,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(0, 16, 16, 16),
+                    itemCount: recs.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: CompactVideo(video: recs[i], onTap: () => CtDesktopPlayer.open(recs[i])),
                     ),
                   ),
-                ]),
-              );
+                ),
+              ]);
             }),
     );
   }

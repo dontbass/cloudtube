@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/connect.dart';
 import 'package:clipious/cloudtube/deploy.dart';
 import 'package:clipious/cloudtube/connect_screen.dart';
 import 'package:clipious/cloudtube/theme.dart';
@@ -74,12 +75,18 @@ class WelcomeWizardScreen extends StatelessWidget {
               Text('Видео без рекламы и слежки — через ваш сервер Invidious.',
                   textAlign: TextAlign.center, style: textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
               const SizedBox(height: 28),
+              choice(Icons.play_circle_outline, 'Смотреть сразу',
+                  'YouTube напрямую — ничего настраивать не нужно. Подписки и история хранятся на устройстве',
+                  () async {
+                await ctConnectDirect(context.read<AppCubit>());
+                if (context.mounted) _toMain(context);
+              }, primary: true),
               choice(Icons.dns_outlined, 'У меня есть сервер', 'Введите адрес, пароль сайта и аккаунт — и всё готово',
                   () async {
                 final ok = await Navigator.of(context)
                     .push<bool>(MaterialPageRoute(builder: (_) => const CtConnectScreen()));
                 if (ok == true && context.mounted) _toMain(context);
-              }, primary: true),
+              }),
               choice(Icons.rocket_launch_outlined, 'Развернуть свой сервер',
                   'Нужен VPS и домен — приложение само всё установит за 10–15 минут', () async {
                 final ok = await Navigator.of(context)

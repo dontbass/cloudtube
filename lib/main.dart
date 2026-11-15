@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
@@ -85,7 +86,7 @@ Future<void> main() async {
 
   late final bool hasServer;
   try {
-    await db.getCurrentlySelectedServer();
+    ctDirectActive = ctIsDirectUrl((await db.getCurrentlySelectedServer()).url);
     hasServer = true;
   } catch (err) {
     hasServer = false;

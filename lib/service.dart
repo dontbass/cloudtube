@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/direct.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -78,7 +79,7 @@ class Service {
   final log = Logger('Service');
   final Client httpClient;
 
-  Service() : httpClient = http.Client();
+  Service() : httpClient = CtHttpClient(http.Client());
 
   String urlFormatForLog(Uri? uri) {
     return kDebugMode ? uri.toString() : '${uri?.replace(host: 'xxxxxxxxxx')}';
@@ -114,6 +115,7 @@ class Service {
   }
 
   bool useProxy() {
+    if (ctDirectActive) return false; // без сервера проксировать некому
     return db.getSettings(useProxySettingName)?.value == 'true';
   }
 

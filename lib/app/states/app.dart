@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/direct.dart';
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
@@ -120,6 +121,7 @@ class AppCubit extends Cubit<AppState> {
   }
 
   setServer(Server s) {
+    ctDirectActive = ctIsDirectUrl(s.url);
     emit(state.copyWith(server: s, firstIndex: 0));
   }
 

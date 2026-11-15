@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/connect.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,9 +50,26 @@ class TvWelcomeWizardScreen extends StatelessWidget {
                       style: textTheme.titleLarge,
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.only(top: 12),
                       child: TvButton(
                         autofocus: true,
+                        onPressed: (context) async {
+                          await ctConnectDirect(context.read<AppCubit>());
+                          if (context.mounted) AutoRouter.of(context).replace(const TvHomeRoute());
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.play_circle_outline),
+                            const SizedBox(width: 12),
+                            Text('Смотреть сразу — без сервера', style: textTheme.titleLarge),
+                          ]),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: TvButton(
                         onPressed: (context) => Navigator.of(context).push(MaterialPageRoute(
                             builder: (_) => CtTvLinkScreen(
                                 onDone: (c) => AutoRouter.of(context).replace(const TvHomeRoute())))),

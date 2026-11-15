@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'updater.dart';
+import 'direct.dart';
+import 'connect.dart';
+import 'connect_screen.dart';
 import 'deploy.dart';
 import 'onboarding.dart';
 
@@ -81,6 +84,7 @@ class CtYouPage extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final loggedIn = context.select((AppCubit a) => a.isLoggedIn);
     final server = context.select((AppCubit a) => a.state.server);
+    final direct = ctIsDirectUrl(server?.url);
     Widget tile(IconData icon, String title, VoidCallback onTap, {String? subtitle}) => ListTile(
           leading: Icon(icon, color: colors.onSurface),
           title: Text(title),
@@ -100,16 +104,16 @@ class CtYouPage extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли',
+                Text(direct ? 'Без сервера' : (loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли'),
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(server?.url.replaceFirst('https://', '') ?? '',
+                Text(direct ? 'YouTube напрямую' : (server?.url.replaceFirst('https://', '') ?? ''),
                     style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13)),
               ]),
             ),
           ]),
         ),
-        if (!loggedIn)
+        if (!loggedIn && !direct)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -137,7 +141,15 @@ class CtYouPage extends StatelessWidget {
               () => CtUpdater.check(context, manual: true),
               subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
         ),
-        if (server != null)
+        if (server != null && ctIsDirectUrl(server.url))
+          tile(Icons.dns_outlined, 'Подключить свой сервер',
+              () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen())),
+              subtitle: 'Сейчас: без сервера, YouTube напрямую'),
+        if (server != null && !ctIsDirectUrl(server.url))
+          tile(Icons.play_circle_outline, 'Смотреть без сервера',
+              () => ctConnectDirect(context.read<AppCubit>()),
+              subtitle: 'YouTube напрямую; вернуться к серверу можно в настройках серверов'),
+        if (server != null && !ctIsDirectUrl(server.url))
           tile(Icons.dns_outlined, 'Сервер и пароль сайта',
               () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server)),
               subtitle: 'Логин/пароль сайта (Basic Auth), другие серверы'),

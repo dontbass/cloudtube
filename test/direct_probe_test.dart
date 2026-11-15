@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clipious/cloudtube/direct.dart';
+import 'package:clipious/cloudtube/yt_account.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -70,6 +71,16 @@ void main() {
     await _t('videos/$_vid (кэш)', () => api('/api/v1/videos/$_vid'));
     await _t('videos/$_vid2', () => api('/api/v1/videos/$_vid2'));
 
+    stdout.writeln('==== Вход в аккаунт YouTube (код устройства) ====');
+    await _t('client_id YouTube TV', () async => (await CtYtAccount.clientCreds()).$1.substring(0, 12));
+    await _t('device code', () async {
+      final c = await CtYtAccount.startLogin();
+      return 'user_code=${c.userCode.length} симв. url=${c.verificationUrl} interval=${c.interval}';
+    });
+    await _t('auth без входа → 401', () async {
+      final r = await client.get(Uri.parse('$kCtDirectUrl/api/v1/auth/feed'));
+      return 'HTTP ${r.statusCode}';
+    });
     stdout.writeln('==== HLS-мастер: можно ли проиграть ====');
     await _t('hls master → variant → segment', () async {
       final r = await client.get(Uri.parse('$kCtDirectUrl/api/v1/videos/$_vid2'));

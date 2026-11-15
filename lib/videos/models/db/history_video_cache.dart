@@ -1,3 +1,5 @@
+import 'package:clipious/cloudtube/direct.dart';
+import 'package:clipious/cloudtube/yt_account.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -33,6 +35,13 @@ class HistoryVideoCache {
 
   static Future<HistoryVideoCache> fromVideoIdToVideo(String e) async {
     var cachedVideo = db.getHistoryVideoByVideoId(e);
+    final brief = ctDirectActive ? ctDirectBriefs[e] : null;
+    if (cachedVideo == null && brief != null) {
+      // без сервера: сведения уже пришли с лентой истории YouTube — не запрашиваем видео целиком
+      cachedVideo = HistoryVideoCache(e, '${brief['title'] ?? ''}', brief['author'] as String?,
+          'https://i.ytimg.com/vi/$e/hqdefault.jpg');
+      await db.upsertHistoryVideo(cachedVideo);
+    }
     if (cachedVideo == null) {
       var vid = await service.getVideo(e);
       cachedVideo = HistoryVideoCache(vid.videoId, vid.title ?? '', vid.author,

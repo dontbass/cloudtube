@@ -13,6 +13,7 @@ import 'connect.dart';
 import 'connect_screen.dart';
 import 'deploy.dart';
 import 'onboarding.dart';
+import 'yt_login.dart';
 
 /// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
 class CtYouPage extends StatelessWidget {
@@ -104,7 +105,7 @@ class CtYouPage extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(direct ? 'Без сервера' : (loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли'),
+                Text(direct ? (loggedIn ? 'Аккаунт YouTube' : 'Без сервера') : (loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли'),
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(direct ? 'YouTube напрямую' : (server?.url.replaceFirst('https://', '') ?? ''),
@@ -113,6 +114,21 @@ class CtYouPage extends StatelessWidget {
             ),
           ]),
         ),
+        if (!loggedIn && direct)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Войдите в аккаунт YouTube — будут ваши рекомендации, подписки и история. '
+                  'Вход кодом с телефона или компьютера, как на телевизоре.',
+                  style: TextStyle(color: colors.onSurfaceVariant)),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                  icon: const Icon(Icons.login),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtYtLoginScreen())),
+                  label: const Text('Войти в аккаунт YouTube')),
+              const SizedBox(height: 8),
+            ]),
+          ),
         if (!loggedIn && !direct)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),

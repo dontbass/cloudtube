@@ -1,4 +1,5 @@
 import 'package:clipious/cloudtube/direct.dart';
+import 'package:clipious/cloudtube/yt_account.dart';
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
@@ -122,6 +123,7 @@ class AppCubit extends Cubit<AppState> {
 
   setServer(Server s) {
     ctDirectActive = ctIsDirectUrl(s.url);
+    ctYtRefreshToken = ctDirectActive && (s.authToken?.isNotEmpty ?? false) ? s.authToken : null;
     emit(state.copyWith(server: s, firstIndex: 0));
   }
 

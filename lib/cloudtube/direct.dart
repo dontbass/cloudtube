@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
+import 'yt_account.dart';
+
 final _log = Logger('CtDirect');
 
 /// Адрес «сервера» для режима без сервера: приложение ходит в YouTube напрямую.
@@ -56,8 +58,13 @@ class CtHttpClient extends http.BaseClient {
     int code = 200;
     Object? body;
     try {
-      body = await _CtDirect.instance.handle(request.method, request.url);
+      final auth = request.headers['Authorization'] ?? request.headers['authorization'];
+      body = await _CtDirect.instance.handle(request.method, request.url,
+          refresh: ctYtRefreshToken ?? (auth != null && auth.startsWith('Bearer ') ? auth.substring(7) : null));
       if (body == null) code = 404;
+    } on CtYtAuthError catch (e) {
+      code = 401;
+      body = {'error': e.message};
     } on _Http catch (e) {
       code = e.code;
       body = {'error': e.message};
@@ -97,11 +104,15 @@ class _CtDirect {
   final _videoCache = <String, (DateTime, Map<String, dynamic>)>{};
   final _comments = <String, yt.Comment>{};
 
-  Future<Object?> handle(String method, Uri u) async {
+  String? _refresh;
+
+  Future<Object?> handle(String method, Uri u, {String? refresh}) async {
     final p = u.pathSegments;
     final q = u.queryParameters;
-    if (method != 'GET') throw _Http(405, 'Без сервера это действие недоступно');
+    _refresh = (refresh?.isNotEmpty ?? false) ? refresh : null;
     if (p.length < 3 || p[0] != 'api' || p[1] != 'v1') return null;
+    if (p[2] == 'auth') return _auth(method, p, q);
+    if (method != 'GET') throw _Http(405, 'Без сервера это действие недоступно');
     switch (p[2]) {
       case 'stats':
         return {
@@ -142,8 +153,6 @@ class _CtDirect {
       case 'playlists':
         if (p.length >= 4) return _playlist(p[3], int.tryParse(q['page'] ?? '1') ?? 1);
         return null;
-      case 'auth':
-        throw _Http(403, 'Без сервера аккаунт недоступен — подписки и история хранятся на устройстве');
     }
     return null;
   }
@@ -385,6 +394,16 @@ class _CtDirect {
   Future<List<Map<String, dynamic>>> _trending(String type, {int page = 1}) async {
     final t = type.toLowerCase();
     if (t == 'home' || t.isEmpty || t == 'default') {
+      // вошли в аккаунт YouTube — настоящие рекомендации, как на ТВ
+      if (_refresh != null) {
+        try {
+          final r = await _tvPage('default', page);
+          if (r.isNotEmpty || page > 1) return r;
+        } catch (e) {
+          _log.warning('рекомендации аккаунта: $e');
+          if (e is CtYtAuthError) rethrow;
+        }
+      }
       // «Главная» без сервера: чередуем несколько запросов — лента разнообразнее и не кончается
       final q = _homeQueries[(page - 1) % _homeQueries.length];
       final sub = (page - 1) ~/ _homeQueries.length + 1;
@@ -398,6 +417,68 @@ class _CtDirect {
             : yt.UploadDateFilter.lastWeek;
     final r = await _videoSearchPage(query, f, page);
     return t == 'shorts' ? r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 90).toList() : r;
+  }
+
+  // ---------- аккаунт YouTube (вход кодом, как на ТВ) ----------
+  final _tvPagers = <String, ({List<List<Map<String, dynamic>>> pages, String? next, DateTime at})>{};
+  List<Map<String, dynamic>>? _subsCache;
+  DateTime _subsAt = DateTime(2000);
+
+  Future<List<Map<String, dynamic>>> _tvPage(String browseId, int page) async {
+    final refresh = _refresh!;
+    final key = '$browseId|${refresh.hashCode}';
+    var pg = _tvPagers[key];
+    if (pg == null || page == 1 && DateTime.now().difference(pg.at) > const Duration(minutes: 3)) {
+      final first = await CtYtAccount.browse(refresh, browseId: browseId);
+      if (browseId == 'FEsubscriptions' && first.channels.isNotEmpty) {
+        _subsCache = first.channels;
+        _subsAt = DateTime.now();
+      }
+      pg = (pages: [first.videos], next: first.continuation, at: DateTime.now());
+      _tvPagers[key] = pg;
+    }
+    while (pg!.pages.length < page && pg.next != null) {
+      final more = await CtYtAccount.browse(refresh, continuation: pg.next);
+      final fresh = more.videos.where((v) => !pg!.pages.any((l) => l.any((x) => x['videoId'] == v['videoId']))).toList();
+      pg = (pages: [...pg.pages, fresh], next: fresh.isEmpty ? null : more.continuation, at: pg.at);
+      _tvPagers[key] = pg;
+    }
+    return page <= pg.pages.length ? pg.pages[page - 1] : [];
+  }
+
+  Future<Object?> _auth(String method, List<String> p, Map<String, String> q) async {
+    if (_refresh == null) throw _Http(401, 'Войдите в аккаунт YouTube (вкладка «Вы»)');
+    final page = int.tryParse(q['page'] ?? '1') ?? 1;
+    final what = p.length > 3 ? p[3] : '';
+    switch (what) {
+      case 'feed':
+        return {'notifications': [], 'videos': await _tvPage('FEsubscriptions', page)};
+      case 'subscriptions':
+        if (p.length >= 5) {
+          if (method == 'POST' || method == 'DELETE') {
+            await CtYtAccount.subscribe(_refresh!, p[4], method == 'POST');
+            _subsCache = null;
+            _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
+            return {};
+          }
+          return null;
+        }
+        if (_subsCache == null || DateTime.now().difference(_subsAt) > const Duration(minutes: 10)) {
+          _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
+          await _tvPage('FEsubscriptions', 1);
+        }
+        return _subsCache ?? [];
+      case 'history':
+        if (method != 'GET') return {};
+        return (await _tvPage('FEhistory', page)).map((v) => v['videoId']).toList();
+      case 'playlists':
+        if (method == 'GET' && p.length == 4) return [];
+        throw _Http(405, 'Плейлисты аккаунта YouTube пока недоступны');
+      case 'notifications':
+      case 'preferences':
+        return method == 'GET' ? (what == 'notifications' ? [] : {}) : {};
+    }
+    return null;
   }
 
   // ---------- каналы ----------

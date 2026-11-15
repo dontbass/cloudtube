@@ -18,6 +18,8 @@ import '../../../../home/models/db/home_layout.dart';
 import '../../../../router.dart';
 import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
+import '../../../../cloudtube/direct.dart';
+import '../../../../cloudtube/yt_login.dart';
 import '../../../../videos/views/components/popular.dart';
 import '../../../states/app.dart';
 
@@ -202,8 +204,8 @@ class TvHomeScreen extends StatelessWidget {
                                 TvButton(
                                   onFocusChanged:
                                       homeCubit.menuItemFocusChanged,
-                                  onPressed: (context) => Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (_) => const CtTvLinkScreen())),
+                                  onPressed: (context) => Navigator.of(context).push(MaterialPageRoute(
+                                      builder: (_) => ctDirectActive ? const CtYtLoginScreen() : const CtTvLinkScreen())),
                                   unfocusedColor: colors.secondaryContainer
                                       .withValues(alpha: 0.0),
                                   child: Padding(
@@ -215,7 +217,7 @@ class TvHomeScreen extends StatelessWidget {
                                           child: Icon(Icons.qr_code_2),
                                         ),
                                         if (homeState)
-                                          const MenuItemText('Вход с телефона')
+                                          MenuItemText(ctDirectActive ? 'Вход в YouTube' : 'Вход с телефона')
                                       ],
                                     ),
                                   ),

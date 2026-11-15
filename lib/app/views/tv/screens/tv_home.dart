@@ -112,6 +112,17 @@ class TvHomeScreen extends StatelessWidget {
                               right: homeState ? TvOverscan.horizontal : 8),
                           child: FocusScope(
                               node: ctTvMenuScope,
+                              // стрелка вправо из меню — обратно к роликам, туда, откуда пришли
+                              onKeyEvent: (node, e) {
+                                if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowRight) {
+                                  final back = ctTvLastContent;
+                                  if (back != null && back.context != null && back.canRequestFocus) {
+                                    back.requestFocus();
+                                    return KeyEventResult.handled;
+                                  }
+                                }
+                                return KeyEventResult.ignored;
+                              },
                               child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +250,11 @@ class TvHomeScreen extends StatelessWidget {
                       onKeyEvent: (node, e) {
                         if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowLeft) {
                           final cur = FocusManager.instance.primaryFocus;
-                          if (cur != null && !cur.focusInDirection(TraversalDirection.left)) {
+                          if (cur == null) return KeyEventResult.ignored;
+                          // элемент у левого края контента — открываем меню (иначе обычный переход влево)
+                          if (cur.rect.left - node.rect.left < 80 ||
+                              !cur.focusInDirection(TraversalDirection.left)) {
+                            ctTvLastContent = cur;
                             ctOpenTvMenu();
                           }
                           return KeyEventResult.handled;
@@ -373,6 +388,9 @@ class _CtTvStartupState extends State<_CtTvStartup> {
 
 /// Область бокового меню ТВ (чтобы открыть его стрелкой влево с левого края контента).
 final ctTvMenuScope = FocusScopeNode(debugLabel: 'ct-tv-menu');
+
+/// Ролик, с которого ушли в меню (чтобы стрелкой вправо вернуться к нему).
+FocusNode? ctTvLastContent;
 
 void ctOpenTvMenu() {
   if (ctTvMenuScope.focusedChild != null) {

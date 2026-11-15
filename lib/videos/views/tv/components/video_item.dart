@@ -38,7 +38,8 @@ class TvVideoItem extends StatelessWidget {
         onSelect!(context, e);
       } else {
         if (!(video.isUpcoming ?? false)) {
-          AutoRouter.of(context).push(TvVideoRoute(videoId: e.videoId));
+          // как в YouTube на ТВ: выбор ролика сразу запускает просмотр
+          AutoRouter.of(context).push(TvPlayerRoute(videos: [e]));
         }
       }
       return KeyEventResult.handled;

@@ -67,6 +67,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   @override
   close() async {
     _stallTimer?.cancel();
+    _autoplayTimer?.cancel();
     disposeControllers();
     super.close();
   }
@@ -275,6 +276,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   @override
   togglePlaying() {
     if (videoController != null) {
+      _userPaused = videoController?.isPlaying() ?? false;
       (videoController?.isPlaying() ?? false)
           ? videoController?.pause()
           : videoController?.play();
@@ -450,6 +452,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         videoController!.setBetterPlayerGlobalKey(newState.key);
         // isPipSupported = await videoController?.isPictureInPictureSupported() ?? false;
         _armStallWatch();
+        _armAutoplay();
       } else {
         try {
           // подвисшая подготовка прошлого потока не должна блокировать следующее видео
@@ -465,6 +468,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         }
         seek(startAt ?? Duration.zero);
         _armStallWatch();
+        _armAutoplay();
       }
 
       emit(newState);
@@ -488,12 +492,43 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   void pause() {
+    _userPaused = true;
     videoController?.pause();
   }
 
   @override
   void play() {
+    _userPaused = false;
     videoController?.play();
+  }
+
+  /// Пользователь сам поставил паузу — сторож автозапуска не вмешивается.
+  bool _userPaused = false;
+  Timer? _autoplayTimer;
+
+  /// Сторож автозапуска: первые 20 с после открытия видео, если плеер готов, но стоит,
+  /// а пользователь паузу не нажимал — запускаем. Лечит «открылось, но не играет»
+  /// (ТВ-приставки, медленные устройства, пауза «по видимости» во время открытия экрана).
+  void _armAutoplay() {
+    _autoplayTimer?.cancel();
+    _userPaused = false;
+    final id = state.video?.videoId;
+    var ticks = 0;
+    _autoplayTimer = Timer.periodic(const Duration(milliseconds: 500), (t) {
+      ticks++;
+      final c = videoController;
+      if (isClosed || ticks > 40 || _userPaused || state.video?.videoId != id || c == null) {
+        t.cancel();
+        return;
+      }
+      final v = c.videoPlayerController?.value;
+      if (v == null || !v.initialized) return;
+      if (c.isPlaying() == true) {
+        if (ticks > 6) t.cancel(); // играет устойчиво — дальше не следим
+        return;
+      }
+      c.play();
+    });
   }
 
   @override

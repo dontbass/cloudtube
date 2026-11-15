@@ -437,14 +437,16 @@ class SettingsTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(
         left: 16.0,
-        top: 32,
+        top: 20,
+        bottom: 4,
       ),
       child: Text(
         title,
-        style: textTheme.titleMedium,
+        style: textTheme.labelLarge?.copyWith(color: colors.onSurfaceVariant),
       ),
     );
   }
@@ -569,6 +571,8 @@ class SettingsTile extends StatelessWidget {
           final FocusNode focusNode = Focus.of(ctx);
           final bool hasFocus = focusNode.hasFocus;
           return ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
             enabled: enabled ?? true,
             leading: leading,
             trailing: trailing,
@@ -583,7 +587,8 @@ class SettingsTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: textTheme.headlineSmall!.copyWith(
+                  style: textTheme.titleMedium!.copyWith(
+                      fontWeight: FontWeight.w600,
                       color: enabled ?? true
                           ? colors.primary
                           : colors.primary.withValues(alpha: 0.5)),
@@ -591,8 +596,8 @@ class SettingsTile extends StatelessWidget {
                 description != null
                     ? Text(
                         description ?? '',
-                        style: textTheme.bodyLarge!
-                            .copyWith(color: colors.secondary),
+                        style: textTheme.bodySmall!
+                            .copyWith(color: colors.onSurfaceVariant),
                       )
                     : const SizedBox.shrink()
               ],

@@ -396,6 +396,13 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
                   selectedByDefault: s.label == lastSubtitle))
               .toList(),
           resolutions: resolutions.isNotEmpty ? resolutions : null,
+          // старт по первым ~0,6 с данных (по умолчанию ExoPlayer ждёт 2,5 с буфера — это и есть пауза перед стартом)
+          bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+            minBufferMs: 8000,
+            maxBufferMs: 40000,
+            bufferForPlaybackMs: 600,
+            bufferForPlaybackAfterRebufferMs: 2000,
+          ),
         );
       }
 

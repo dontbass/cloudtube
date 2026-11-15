@@ -1,4 +1,7 @@
 import 'server_caps.dart';
+import 'direct.dart';
+import 'yt_account.dart';
+import 'yt_comments.dart';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -214,6 +217,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
   String _img(String u) {
     if (u.startsWith('//')) u = 'https:$u';
+    if (ctDirectActive) return u; // без сервера картинки берём прямо у Google
     final m = RegExp(r'^https?://(yt3\.ggpht\.com|yt3\.googleusercontent\.com)(/.*)$').firstMatch(u);
     if (m != null && server != null) return '${server!.url}/ggpht${m.group(2)}';
     if (u.startsWith('/') && server != null) return server!.url + u;
@@ -277,6 +281,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           sortChip('new', 'Сначала новые'),
         ]),
       ),
+      if (ctDirectActive && ctYtRefreshToken != null) _composer(colors),
       Divider(height: 1, color: colors.outlineVariant),
     ]);
 
@@ -302,6 +307,57 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       padding: EdgeInsets.zero,
       children: [header, body, if (continuation != null) const SizedBox(height: 60)],
     );
+  }
+
+  final _input = TextEditingController();
+  bool _sending = false;
+
+  Widget _composer(ColorScheme colors) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _input,
+              minLines: 1,
+              maxLines: 4,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: 'Оставьте комментарий…',
+                isDense: true,
+                filled: true,
+                fillColor: colors.surfaceContainerHigh,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Отправить',
+            onPressed: _sending ? null : _send,
+            icon: _sending
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.send, color: colors.primary),
+          ),
+        ]),
+      );
+
+  Future<void> _send() async {
+    final text = _input.text.trim();
+    if (text.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _sending = true);
+    try {
+      final j = await CtYtComments.post(widget.videoId, text);
+      _input.clear();
+      FocusScope.of(context).unfocus();
+      final c = CtComment.fromJson(j) ?? CtComment('Вы', '', text, 'только что', 0, 0, false, false, false);
+      if (mounted) setState(() => items.insert(0, c));
+      messenger.showSnackBar(const SnackBar(content: Text('Комментарий опубликован')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   final Map<CtComment, List<CtComment>?> _replies = {};

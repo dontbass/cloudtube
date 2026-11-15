@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import 'yt_account.dart';
+import 'yt_comments.dart';
 
 final _log = Logger('CtDirect');
 
@@ -102,7 +103,6 @@ class _CtDirect {
   final _yt = yt.YoutubeExplode();
   final _pagers = <String, _Pager>{};
   final _videoCache = <String, (DateTime, Map<String, dynamic>)>{};
-  final _comments = <String, yt.Comment>{};
 
   String? _refresh;
 
@@ -148,7 +148,12 @@ class _CtDirect {
         }
         return null;
       case 'comments':
-        if (p.length >= 4) return _commentsFor(p[3], q['continuation']);
+        if (p.length >= 4) {
+          // свой разбор InnerTube: в youtube_explode комментарии сломаны
+          final cont = q['continuation'];
+          if (cont != null && cont.startsWith('y:')) return CtYtComments.more(p[3], cont.substring(2));
+          return CtYtComments.load(p[3], q['sort_by'] == 'new' ? 'new' : 'top');
+        }
         return null;
       case 'playlists':
         if (p.length >= 4) return _playlist(p[3], int.tryParse(q['page'] ?? '1') ?? 1);
@@ -198,6 +203,7 @@ class _CtDirect {
     final vFut = _yt.videos.get(id);
     final iosFut = _manifestFor(id, yt.YoutubeApiClient.ios);
     final vrFut = _manifestFor(id, yt.YoutubeApiClient.androidVr);
+    final anFut = _manifestFor(id, yt.YoutubeApiClient.androidSdkless);
     final v = await vFut;
     final j = _brief(v);
     j['likeCount'] = v.engagement.likeCount ?? 0;
@@ -211,6 +217,11 @@ class _CtDirect {
 
     var ios = await iosFut;
     var vr = await vrFut;
+    // запасной клиент ANDROID — если VR не дал потока со звуком (бывает у Shorts)
+    if (vr == null || vr.muxed.isEmpty) {
+      final an = await anFut;
+      if (an != null && an.muxed.isNotEmpty) vr = an;
+    }
     if (ios == null && vr == null) {
       // оба быстрых клиента отказали — стандартный путь библиотеки (медленнее, со страницей просмотра)
       try {
@@ -266,15 +277,33 @@ class _CtDirect {
                 }),
           ];
     final streamsMs = sw.elapsedMilliseconds;
+    // канал и рекомендации ждём не дольше ~0,8 с после готовности потоков — видео важнее;
+    // если не успели, допишем их в кэш позже (при следующем открытии будут)
+    final budget = Future.delayed(const Duration(milliseconds: 800));
+    unawaited(Future.wait([chFut, relFut].map((f) => f.then((_) => null, onError: (_) => null))).then((_) async {
+      final hit = _videoCache[id]?.$2;
+      if (hit == null) return;
+      try {
+        final ch = await chFut;
+        hit['authorThumbnails'] ??= [
+          {'url': ch.logoUrl, 'width': 176, 'height': 176},
+        ];
+      } catch (_) {}
+      try {
+        if ((hit['recommendedVideos'] as List?)?.isEmpty ?? true) {
+          hit['recommendedVideos'] = ((await relFut) ?? const <yt.Video>[]).map<Map<String, dynamic>>((e) => _brief(e)).toList();
+        }
+      } catch (_) {}
+    }));
     try {
-      final ch = await chFut;
+      final ch = await Future.any([chFut, budget.then((_) => throw 'late')]);
       j['authorThumbnails'] = [
         {'url': ch.logoUrl, 'width': 176, 'height': 176},
       ];
       if (ch.subscribersCount != null) j['subCountText'] = _short(ch.subscribersCount!);
     } catch (_) {}
     try {
-      final rel = await relFut;
+      final rel = await Future.any([relFut, budget.then((_) => throw 'late')]);
       j['recommendedVideos'] = (rel ?? const <yt.Video>[]).map<Map<String, dynamic>>((e) => _brief(e)).toList();
     } catch (_) {
       j['recommendedVideos'] = [];
@@ -540,62 +569,7 @@ class _CtDirect {
   }
 
   // ---------- комментарии ----------
-  Future<Map<String, dynamic>> _commentsFor(String id, String? cont) async {
-    List<yt.Comment> items;
-    dynamic list;
-    String key;
-    if (cont != null && cont.startsWith('r:')) {
-      // ответы на комментарий
-      final c = _comments[cont.substring(2)];
-      if (c == null) return {'comments': [], 'continuation': null};
-      list = await _yt.videos.commentsClient.getReplies(c);
-      items = list == null ? [] : (list as List<yt.Comment>).toList();
-      key = 'cr|${cont.substring(2)}';
-      _pagers[key] = _Pager<yt.Comment>()..list = list;
-    } else if (cont != null && cont.startsWith('n:')) {
-      key = cont.substring(2);
-      final pg = _pagers[key];
-      if (pg == null || pg.list == null) return {'comments': [], 'continuation': null};
-      list = await (pg.list as yt.CommentsList).nextPage();
-      pg.list = list;
-      items = list == null ? [] : (list as List<yt.Comment>).toList();
-    } else {
-      final v = await _yt.videos.get(id);
-      list = await _yt.videos.commentsClient.getComments(v);
-      items = list == null ? [] : (list as List<yt.Comment>).toList();
-      key = 'cm|$id|${DateTime.now().millisecondsSinceEpoch}';
-      _pagers[key] = _Pager<yt.Comment>()..list = list;
-    }
-    final out = <Map<String, dynamic>>[];
-    for (final c in items) {
-      final cid = '${id}_${_comments.length}';
-      _comments[cid] = c;
-      out.add({
-        'author': c.author,
-        'authorId': c.channelId.value,
-        'authorUrl': '/channel/${c.channelId.value}',
-        'authorThumbnails': <Map>[],
-        'content': c.text,
-        'contentHtml': const HtmlEscape().convert(c.text),
-        'published': 0,
-        'publishedText': c.publishedTime,
-        'likeCount': c.likeCount,
-        'commentId': cid,
-        'isEdited': false,
-        'creatorHeart': c.isHearted ? {} : null,
-        if (c.replyCount > 0) 'replies': {'replyCount': c.replyCount, 'continuation': 'r:$cid'},
-      });
-    }
-    if (_comments.length > 3000) _comments.clear();
-    final total = list is yt.CommentsList ? list.totalLength : out.length;
-    final hasMore = list is yt.CommentsList && out.isNotEmpty && !key.startsWith('cr|');
-    return {
-      'videoId': id,
-      'commentCount': total,
-      'comments': out,
-      'continuation': hasMore ? 'n:$key' : null,
-    };
-  }
+
 
   // ---------- плейлисты ----------
   Future<Map<String, dynamic>> _playlist(String id, int page) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app/states/app.dart';
 import '../globals.dart';
@@ -64,7 +65,15 @@ class _CtYtLoginScreenState extends State<CtYtLoginScreen> {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final code = _code;
-    final url = code?.verificationUrl ?? 'https://www.youtube.com/activate';
+    final url = code?.verificationUrl ?? 'https://www.google.com/device';
+    // ссылка сразу с кодом: страница Google подставит его сама (если нет — код уже в буфере обмена)
+    final link = code == null ? url : '$url?user_code=${Uri.encodeQueryComponent(code.userCode)}';
+    Future<void> open() async {
+      if (code == null) return;
+      await Clipboard.setData(ClipboardData(text: code.userCode));
+      await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+    }
+
     Widget body;
     if (_error != null) {
       body = Column(mainAxisSize: MainAxisSize.min, children: [
@@ -82,12 +91,29 @@ class _CtYtLoginScreenState extends State<CtYtLoginScreen> {
       ]);
     } else {
       final steps = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('1. На телефоне или компьютере откройте', style: text.titleMedium),
+        if (!isTv) ...[
+          FilledButton.icon(
+            autofocus: true,
+            onPressed: open,
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Открыть страницу входа Google'),
+          ),
+          const SizedBox(height: 6),
+          Text('Код скопируется автоматически — если страница его не подставит, вставьте его.',
+              style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          Text('Или вручную: откройте', style: text.titleMedium),
+        ] else
+          Text('1. Наведите камеру телефона на QR-код или откройте', style: text.titleMedium),
         const SizedBox(height: 4),
-        SelectableText(url.replaceFirst('https://', ''),
-            style: text.titleLarge?.copyWith(color: colors.primary, fontWeight: FontWeight.w700)),
+        InkWell(
+          onTap: isTv ? null : open,
+          child: Text(url.replaceFirst('https://', ''),
+              style: text.titleLarge?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w700, decoration: isTv ? null : TextDecoration.underline)),
+        ),
         const SizedBox(height: 16),
-        Text('2. Войдите в Google и введите код', style: text.titleMedium),
+        Text(isTv ? '2. Войдите в Google и введите код' : 'и введите код', style: text.titleMedium),
         const SizedBox(height: 8),
         Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
@@ -106,7 +132,7 @@ class _CtYtLoginScreenState extends State<CtYtLoginScreen> {
                 icon: const Icon(Icons.copy)),
         ]),
         const SizedBox(height: 16),
-        Text('3. Разрешите доступ — приложение само продолжит.', style: text.titleMedium),
+        Text(isTv ? '3. Разрешите доступ — приложение само продолжит.' : 'Затем разрешите доступ и вернитесь сюда — приложение продолжит само.', style: text.titleMedium),
         const SizedBox(height: 12),
         Row(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -120,7 +146,7 @@ class _CtYtLoginScreenState extends State<CtYtLoginScreen> {
       final qr = Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-        child: QrImageView(data: url, size: 180, backgroundColor: Colors.white),
+        child: QrImageView(data: link, size: 180, backgroundColor: Colors.white),
       );
       body = LayoutBuilder(builder: (context, c) {
         final wide = c.maxWidth > 640;

@@ -329,6 +329,7 @@ class _CtShortItemState extends State<CtShortItem> {
 
   bool _played = false;
   bool _noDash = false;
+  bool _noHls = false; // HLS не завёлся — обычный поток со звуком
 
   Future<void> _start() async {
     if (_starting || _ctl != null) return;
@@ -348,21 +349,22 @@ class _CtShortItemState extends State<CtShortItem> {
       if (!mounted || !(widget.active || widget.preload)) return;
       _full = v;
       final streams = v.formatStreams ?? [];
-      if (streams.isEmpty && v.hlsUrl == null && (v.dashUrl ?? '').isEmpty) throw 'нет потоков';
+      final hlsUrl = _noHls && streams.isNotEmpty ? null : v.hlsUrl;
+      if (streams.isEmpty && hlsUrl == null && (v.dashUrl ?? '').isEmpty) throw 'нет потоков';
       final useProxy = service.useProxy();
       String url;
       BetterPlayerVideoFormat format = BetterPlayerVideoFormat.other;
       // DASH, как в обычном плеере: progressive-поток itag 18 через прокси Invidious стартует медленно
-      if (!_noDash && (v.dashUrl ?? '').isNotEmpty && v.hlsUrl == null) {
+      if (!_noDash && (v.dashUrl ?? '').isNotEmpty && hlsUrl == null) {
         url = '${v.dashUrl}${useProxy ? '?local=true' : ''}';
         if (url.startsWith('/')) url = server.url + url;
         format = BetterPlayerVideoFormat.dash;
-      } else if (streams.isNotEmpty && v.hlsUrl == null) {
+      } else if (streams.isNotEmpty && hlsUrl == null) {
         url = streams.last.url;
         if (useProxy) url = url.replaceFirst(_cdn, '${server.url}/');
         if (url.startsWith('/')) url = server.url + url;
       } else {
-        url = '${v.hlsUrl!}${useProxy ? '?local=true' : ''}';
+        url = '$hlsUrl${useProxy ? '?local=true' : ''}';
         format = BetterPlayerVideoFormat.hls;
       }
       if (!mounted) return;
@@ -410,6 +412,15 @@ class _CtShortItemState extends State<CtShortItem> {
             }
           }
         } else if (e.betterPlayerEventType == BetterPlayerEventType.exception) {
+          _log.warning('short ${widget.video.videoId} ${format.name}: ${e.parameters}');
+          if (format == BetterPlayerVideoFormat.hls && !_noHls && streams.isNotEmpty) {
+            _noHls = true; // HLS не завёлся — пробуем обычный поток
+            final c = _ctl;
+            _ctl = null;
+            c?.dispose(forceDispose: true);
+            _start();
+            return;
+          }
           if (format == BetterPlayerVideoFormat.dash && !_noDash) {
             _noDash = true;            // DASH не завёлся — пробуем обычный поток
             final c = _ctl;
@@ -608,6 +619,7 @@ class _CtShortItemState extends State<CtShortItem> {
                       setState(() {
                         _failed = false;
                         _noDash = false;
+                        _noHls = false;
                         _full = null;
                       });
                       _start();

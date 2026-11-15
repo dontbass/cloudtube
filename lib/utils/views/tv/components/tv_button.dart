@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/utils.dart';
@@ -48,6 +49,7 @@ class TvButton extends StatelessWidget {
                             ? colors.primaryContainer
                             : colors.primary)
                     : unfocusedColor ?? colors.secondaryContainer,
+                border: ctFocusBorder(colors, hasFocus),
                 borderRadius: BorderRadius.circular(borderRadius ?? 2000),
               ),
               child: builder != null ? builder!(ctx, hasFocus) : child,

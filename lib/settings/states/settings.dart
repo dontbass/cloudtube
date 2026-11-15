@@ -455,7 +455,7 @@ class SettingsCubit extends Cubit<SettingsState> {
       body +=
           '\n[Android] Version: ${androidInfo.release}.${androidInfo.incremental} (${androidInfo.codename})';
       body +=
-          '\n[Clipious] Version: ${state.packageInfo.version} Build: ${state.packageInfo.buildNumber}';
+          '\n[CloudTube] Version: ${state.packageInfo.version} Build: ${state.packageInfo.buildNumber}';
 
       body += '\n\n\n**Feedback:**\n${feedback.text}\n\n\n';
 

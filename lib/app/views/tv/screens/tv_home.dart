@@ -16,6 +16,7 @@ import 'package:clipious/videos/views/components/trending.dart';
 import '../../../../home/models/db/home_layout.dart';
 import '../../../../router.dart';
 import '../../../../utils/views/components/app_icon.dart';
+import '../../../../cloudtube/tv_link.dart';
 import '../../../../videos/views/components/popular.dart';
 import '../../../states/app.dart';
 
@@ -126,7 +127,7 @@ class TvHomeScreen extends StatelessWidget {
                                                 padding: const EdgeInsets.only(
                                                     left: 16.0),
                                                 child: MenuItemText(
-                                                  'Clipious',
+                                                  'CloudTube',
                                                   style: textTheme.titleLarge!
                                                       .copyWith(
                                                           color:
@@ -183,6 +184,27 @@ class TvHomeScreen extends StatelessWidget {
                                           ),
                                         )
                                         .toList()),
+                                TvButton(
+                                  onFocusChanged:
+                                      homeCubit.menuItemFocusChanged,
+                                  onPressed: (context) => Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => const CtTvLinkScreen())),
+                                  unfocusedColor: colors.secondaryContainer
+                                      .withValues(alpha: 0.0),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Row(
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.only(right: 8.0),
+                                          child: Icon(Icons.qr_code_2),
+                                        ),
+                                        if (homeState)
+                                          const MenuItemText('Вход с телефона')
+                                      ],
+                                    ),
+                                  ),
+                                ),
                                 TvButton(
                                   onFocusChanged:
                                       homeCubit.menuItemFocusChanged,

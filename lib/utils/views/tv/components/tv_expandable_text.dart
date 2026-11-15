@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/globals.dart';
@@ -33,6 +34,7 @@ class TvExpandableText extends StatelessWidget {
             return AnimatedContainer(
               duration: animationDuration,
               decoration: BoxDecoration(
+                border: ctFocusBorder(colors, hasFocus),
                 color: hasFocus
                     ? colors.primaryContainer
                     : colors.surface.withValues(alpha: 0),

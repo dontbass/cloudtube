@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/globals.dart';
@@ -70,8 +71,11 @@ class TvTextField extends StatelessWidget {
           child: AnimatedContainer(
             duration: animationDuration ~/ 2,
             decoration: BoxDecoration(
-                color: hasFocus ? colors.secondaryContainer : colors.surface,
-                borderRadius: hasFocus ? BorderRadius.circular(10) : null),
+                color: hasFocus
+                    ? ctAccent(colors).withValues(alpha: 0.12)
+                    : colors.surfaceContainerHigh,
+                border: ctFocusBorder(colors, hasFocus),
+                borderRadius: BorderRadius.circular(10)),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(

@@ -17,6 +17,8 @@ dependencies:
   carousel_slider: 5.1.1
   copy_with_extension: 9.1.0
   device_info_plus: 11.5.0
+  qr_flutter: ^4.1.0
+  dartssh2: ^2.11.0
   dio: 5.9.0
   downloadsfolder: 1.2.0
   duration: 4.0.3

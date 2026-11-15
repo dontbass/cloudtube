@@ -3,6 +3,9 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/cloudtube/updater.dart';
+import 'package:clipious/cloudtube/theme_button.dart';
+import 'package:clipious/cloudtube/onboarding.dart';
+import 'package:clipious/main.dart' show isTv;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
 import 'package:clipious/app/states/app.dart';
@@ -77,6 +80,10 @@ class _MainScreenState extends State<MainContentScreen> {
     // CloudTube: проверка обновления приложения через несколько секунд после запуска
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) CtUpdater.check(context);
+    });
+    // CloudTube: гид и тур при первом запуске (телефоны и планшеты)
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted && !isTv) CtOnboarding.maybeStart(context);
     });
 
     // Only after at least the action method is set, the notification events are delivered
@@ -174,7 +181,7 @@ class _MainScreenState extends State<MainContentScreen> {
                     backgroundColor:
                         _ct == 1 ? Colors.black : colorScheme.surface,
                     bottomNavigationBar: ctPhone
-                        ? _ctNavTheme(context, _ct == 1, NavigationBar(
+                        ? _ctNavTheme(context, _ct == 1, KeyedSubtree(key: CtTourKeys.navBar, child: NavigationBar(
                             labelBehavior: NavigationDestinationLabelBehavior
                                 .alwaysShow,
                             selectedIndex: _ct,
@@ -204,7 +211,7 @@ class _MainScreenState extends State<MainContentScreen> {
                                   selectedIcon: Icon(Icons.account_circle),
                                   label: 'Вы'),
                             ],
-                          ))
+                          )))
                         : null,
                     appBar: ctPhone && _ct == 1
                         ? null
@@ -235,8 +242,10 @@ class _MainScreenState extends State<MainContentScreen> {
                                     openSubscriptionManagement(context),
                                 icon: const Icon(Icons.checklist))
                             : const SizedBox.shrink(),
+                        KeyedSubtree(key: CtTourKeys.theme, child: const CtThemeButton()),
                         const AppBarDownloadButton(),
                         IconButton(
+                          key: CtTourKeys.search,
                           onPressed: () {
                             AutoRouter.of(context).push(SearchRoute());
                           },

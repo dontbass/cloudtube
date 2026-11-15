@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/tv_link.dart';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -254,6 +255,12 @@ class TvManageSingleServerScreen extends StatelessWidget {
                       value: server.inUse),
                 ),
                 SettingsTitle(title: locals.authentication),
+                SettingsTile(
+                  title: 'Войти с телефона (QR-код)',
+                  leading: const Icon(Icons.qr_code_2),
+                  onSelected: (context) => Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const CtTvLinkScreen())),
+                ),
                 SettingsTile(
                   title: locals.cookieLogin,
                   enabled: !isLoggedIn,

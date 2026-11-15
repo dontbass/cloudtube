@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'updater.dart';
+import 'deploy.dart';
+import 'onboarding.dart';
 
 /// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
 class CtYouPage extends StatelessWidget {
@@ -139,6 +141,10 @@ class CtYouPage extends StatelessWidget {
           tile(Icons.dns_outlined, 'Сервер и пароль сайта',
               () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server)),
               subtitle: 'Логин/пароль сайта (Basic Auth), другие серверы'),
+        tile(Icons.rocket_launch_outlined, 'Развернуть свой сервер',
+            () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtDeployScreen())),
+            subtitle: 'Invidious на вашем VPS за 10–15 минут'),
+        tile(Icons.tour_outlined, 'Обучающий тур', () => CtOnboarding.start(context)),
         if (loggedIn) tile(Icons.logout, 'Выйти из аккаунта', () => logout(context)),
         const SizedBox(height: 24),
       ],

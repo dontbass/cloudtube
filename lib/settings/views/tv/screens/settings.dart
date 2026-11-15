@@ -1,3 +1,6 @@
+import 'package:clipious/settings/models/db/settings.dart';
+import 'package:clipious/globals.dart';
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:clipious/app/states/app.dart';
 import 'package:clipious/extensions.dart';
@@ -332,6 +335,23 @@ class TVSettingsScreen extends StatelessWidget {
                   description: cubit.getThemeLabel(locals, state.themeMode),
                   onSelected: (context) => selectTheme(context),
                 ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: ctSoftTheme,
+                  builder: (context, soft, _) {
+                    final cur = CtTheme.of(Theme.of(context).brightness == Brightness.dark, soft);
+                    return SettingsTile(
+                      title: 'Тема CloudTube',
+                      description: '${cur.label} — нажмите, чтобы переключить: ${cur.next.label}',
+                      leading: Icon(cur.icon),
+                      onSelected: (context) async {
+                        final next = cur.next;
+                        ctSoftTheme.value = next.isSoft;
+                        await db.saveSetting(SettingsValue(ctSoftThemeKey, '${next.isSoft}'));
+                        await cubit.setThemeMode(next.isDark ? ThemeMode.dark : ThemeMode.light);
+                      },
+                    );
+                  },
+                ),
                 SettingsTile(
                   title: locals.blackBackground,
                   description: locals.blackBackgroundDescription,
@@ -512,8 +532,12 @@ class SettingsTile extends StatelessWidget {
             enabled: enabled ?? true,
             leading: leading,
             trailing: trailing,
-            selectedTileColor: colors.secondaryContainer.withValues(alpha: 0.5),
+            selectedTileColor: ctAccent(colors).withValues(alpha: 0.12),
             selected: hasFocus,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                    color: hasFocus ? ctAccent(colors) : Colors.transparent, width: 3)),
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

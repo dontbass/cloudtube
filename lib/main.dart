@@ -77,6 +77,8 @@ Future<void> main() async {
     }
   }
 
+  ctSoftTheme.value = db.getSettings(ctSoftThemeKey)?.value == 'true';
+
   late final bool hasServer;
   try {
     await db.getCurrentlySelectedServer();
@@ -146,7 +148,9 @@ class MyApp extends StatelessWidget {
           var navigationBarBehavior = context
               .select((SettingsCubit s) => s.state.navigationBarLabelBehavior);
 
-          return DynamicColorBuilder(
+          return ValueListenableBuilder<bool>(
+              valueListenable: ctSoftTheme,
+              builder: (context, soft, _) => DynamicColorBuilder(
               builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
             ColorScheme lightColorScheme;
 
@@ -172,8 +176,8 @@ class MyApp extends StatelessWidget {
             } else {
               // Otherwise, use fallback schemes.
               // CloudTube: фиксированная палитра как у сайта
-              lightColorScheme = ctLightScheme;
-              darkColorScheme = ctDarkScheme;
+              lightColorScheme = soft ? ctSoftScheme : ctLightScheme;
+              darkColorScheme = soft ? ctDimScheme : ctDarkScheme;
             }
 
             if (useBlackBackground) {
@@ -276,6 +280,10 @@ class MyApp extends StatelessWidget {
                   navigationBarTheme: navigationBarTheme,
                   navigationRailTheme: navigationRailTheme,
                   appBarTheme: appBarTheme,
+                  checkboxTheme: ctCheckboxTheme(lightColorScheme),
+                  switchTheme: ctSwitchTheme(lightColorScheme),
+                  radioTheme: ctRadioTheme(lightColorScheme),
+                  scaffoldBackgroundColor: lightColorScheme.surface,
                   sliderTheme: sliderTheme.copyWith(
                       inactiveTrackColor: lightColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -287,13 +295,17 @@ class MyApp extends StatelessWidget {
                   appBarTheme: appBarTheme,
                   navigationBarTheme: navigationBarTheme,
                   navigationRailTheme: navigationRailTheme,
+                  checkboxTheme: ctCheckboxTheme(darkColorScheme),
+                  switchTheme: ctSwitchTheme(darkColorScheme),
+                  radioTheme: ctRadioTheme(darkColorScheme),
+                  scaffoldBackgroundColor: darkColorScheme.surface,
                   sliderTheme: sliderTheme.copyWith(
                       inactiveTrackColor: darkColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
                       circularTrackColor: darkColorScheme.secondaryContainer
                           .withValues(alpha: 0.8))),
             );
-          });
+          }));
         });
   }
 }

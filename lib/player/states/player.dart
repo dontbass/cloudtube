@@ -142,7 +142,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         config: const AudioServiceConfig(
           androidNotificationChannelId:
               'com.github.lamarios.clipious.channel.audio',
-          androidNotificationChannelName: 'Video playback',
+          androidNotificationChannelName: 'CloudTube',
           androidNotificationOngoing: true,
         ),
       );

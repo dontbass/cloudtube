@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:clipious/router.dart';
 import 'package:clipious/utils.dart';
@@ -77,6 +78,7 @@ class TvVideoItem extends StatelessWidget {
                       child: AnimatedContainer(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
+                            border: ctFocusBorder(colors, hasFocus),
                             color: colors.primaryContainer
                                 .withValues(alpha: hasFocus ? 1 : 0),
                           ),

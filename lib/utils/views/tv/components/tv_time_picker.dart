@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -158,6 +159,7 @@ class TimeChanger extends StatelessWidget {
         return AnimatedContainer(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
+            border: ctFocusBorder(colors, hasFocus),
             color: hasFocus
                 ? colors.secondaryContainer
                 : colors.secondaryContainer.withValues(alpha: 0),

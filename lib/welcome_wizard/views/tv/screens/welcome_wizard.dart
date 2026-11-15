@@ -8,6 +8,7 @@ import 'package:clipious/settings/views/tv/components/manage_server_inner.dart';
 import 'package:clipious/utils/views/tv/components/tv_button.dart';
 import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
 import 'package:clipious/welcome_wizard/states/welcome_wizard.dart';
+import 'package:clipious/cloudtube/tv_link.dart';
 
 import '../../../../settings/models/db/server.dart';
 import '../../../../settings/states/server_list_settings.dart';
@@ -46,6 +47,23 @@ class TvWelcomeWizardScreen extends StatelessWidget {
                     Text(
                       locals.wizardIntro,
                       style: textTheme.titleLarge,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: TvButton(
+                        autofocus: true,
+                        onPressed: (context) => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => CtTvLinkScreen(
+                                onDone: (c) => AutoRouter.of(context).replace(const TvHomeRoute())))),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.qr_code_2),
+                            const SizedBox(width: 12),
+                            Text('Настроить с телефона — QR-код', style: textTheme.titleLarge),
+                          ]),
+                        ),
+                      ),
                     ),
                     const Expanded(child: TvManageServersInner()),
                     TvButton(

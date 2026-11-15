@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/deploy.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -58,6 +59,19 @@ class WelcomeWizardScreen extends StatelessWidget {
                         ),
                         const Expanded(
                             child: ManagerServersView(fromWizard: true)),
+                        TextButton.icon(
+                          icon: const Icon(Icons.rocket_launch_outlined),
+                          label: const Text('Нет сервера? Развернуть свой на VPS'),
+                          onPressed: () async {
+                            final ok = await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(builder: (_) => const CtDeployScreen()));
+                            if (ok == true && context.mounted) {
+                              AutoRouter.of(context)
+                                  .replace(const MainRoute())
+                                  .then((value) => cubit.getSelectedServer());
+                            }
+                          },
+                        ),
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: FilledButton.tonal(

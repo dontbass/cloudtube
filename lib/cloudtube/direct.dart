@@ -7,6 +7,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import 'yt_account.dart';
 import 'yt_comments.dart';
+import 'yt_fast.dart';
 
 final _log = Logger('CtDirect');
 
@@ -196,8 +197,19 @@ class _CtDirect {
   Future<Map<String, dynamic>> _video(String id) async {
     final hit = _videoCache[id];
     if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return hit.$2;
+    // быстрый путь: сразу «player» без страницы просмотра (как NewPipe/LibreTube)
+    try {
+      final f = await CtYtFast.video(id);
+      if (f != null) {
+        _videoCache[id] = (DateTime.now(), f);
+        if (_videoCache.length > 80) _videoCache.remove(_videoCache.keys.first);
+        return f;
+      }
+    } catch (e) {
+      _log.info('fast $id: $e');
+    }
     final sw = Stopwatch()..start();
-    // Всё параллельно: страница видео (описание и т.п.) + два «быстрых» клиента без загрузки страницы.
+    // Запасной путь — Всё параллельно: страница видео (описание и т.п.) + два «быстрых» клиента без загрузки страницы.
     // iOS даёт HLS-мастер (все качества со звуком), ANDROID_VR — 360p со звуком и раздельные потоки
     // (для них не нужен PO-токен). Замеры: каждый ~0,2–0,3 с против 1,3–1,5 с со страницей просмотра.
     final vFut = _yt.videos.get(id);
@@ -437,6 +449,14 @@ class _CtDirect {
       final q = _homeQueries[(page - 1) % _homeQueries.length];
       final sub = (page - 1) ~/ _homeQueries.length + 1;
       return _videoSearchPage(q, yt.UploadDateFilter.lastWeek, sub);
+    }
+    if (t == 'shorts') {
+      // Shorts: чередуем запросы, чтобы лента не кончалась; длительность в выдаче часто пустая (0) — пропускаем
+      const qs = ['#shorts', 'shorts смешные', 'shorts животные', 'shorts музыка', 'shorts спорт', 'shorts лайфхак'];
+      final q = qs[(page - 1) % qs.length];
+      final sub = (page - 1) ~/ qs.length + 1;
+      final r = await _videoSearchPage(q, yt.DurationFilters.short, sub);
+      return r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 180 && v['liveNow'] != true).toList();
     }
     final query = _sections[t] ?? t;
     final f = t == 'live'

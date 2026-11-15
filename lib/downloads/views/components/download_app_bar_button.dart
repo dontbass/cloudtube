@@ -20,6 +20,7 @@ class AppBarDownloadButton extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             IconButton(
+              tooltip: 'Загрузки',
               onPressed: () => openDownloadManager(context),
               icon: Icon(
                 Icons.download,

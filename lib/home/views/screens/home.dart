@@ -270,6 +270,7 @@ class _MainScreenState extends State<MainContentScreen> {
                           if (selectedPage == HomeDataSource.home)
                             IconButton(
                                 iconSize: 15,
+                                tooltip: 'Настроить главную',
                                 onPressed: () => openLayoutEditor(context),
                                 icon: Icon(
                                   Icons.edit,
@@ -280,6 +281,7 @@ class _MainScreenState extends State<MainContentScreen> {
                       actions: [
                         selectedPage == HomeDataSource.subscription
                             ? IconButton(
+                                tooltip: 'Управление подписками',
                                 onPressed: () =>
                                     openSubscriptionManagement(context),
                                 icon: const Icon(Icons.checklist))
@@ -288,6 +290,7 @@ class _MainScreenState extends State<MainContentScreen> {
                         const AppBarDownloadButton(),
                         if (!ctWide) IconButton(
                           key: CtTourKeys.search,
+                          tooltip: 'Поиск',
                           onPressed: () {
                             AutoRouter.of(context).push(SearchRoute());
                           },
@@ -304,6 +307,7 @@ class _MainScreenState extends State<MainContentScreen> {
                             icon: const Icon(Icons.account_circle_outlined),
                           ),
                         IconButton(
+                          tooltip: 'Настройки',
                           onPressed: () => openSettings(context),
                           icon: const Icon(Icons.settings),
                         ),
@@ -320,6 +324,8 @@ class _MainScreenState extends State<MainContentScreen> {
                                     Brightness.light),
                             child: SafeArea(
                                 bottom: false, child: CtShortsPage()))
+                        : ctPhone && _ct == 2 && subsIdx < 0
+                        ? const CtSubsHint()
                         : ctPhone && _ct == 3
                         ? const CtYouPage()
                         : Row(

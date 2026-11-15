@@ -51,7 +51,18 @@ class CtYtComments {
 
   /// Первая страница: sort = top | new.
   static Future<Map<String, dynamic>> load(String videoId, String sort) async {
-    final logged = ctYtRefreshToken != null;
+    if (ctYtRefreshToken != null) {
+      try {
+        final r = await _load(videoId, sort, true);
+        if ((r['comments'] as List).isNotEmpty) return r;
+      } catch (e) {
+        _log.info('comments с аккаунтом: $e — читаю без него');
+      }
+    }
+    return _load(videoId, sort, false);
+  }
+
+  static Future<Map<String, dynamic>> _load(String videoId, String sort, bool logged) async {
     final watch = await _next({'videoId': videoId}, auth: logged);
     String? token;
     _walk(watch, (k, v) {
@@ -85,7 +96,12 @@ class CtYtComments {
   static Future<Map<String, dynamic>> more(String videoId, String key) async {
     final token = _tokens[key];
     if (token == null) return {'videoId': videoId, 'comments': [], 'continuation': null};
-    final page = await _next({'continuation': token}, auth: ctYtRefreshToken != null);
+    Map<String, dynamic> page;
+    try {
+      page = await _next({'continuation': token}, auth: ctYtRefreshToken != null);
+    } catch (_) {
+      page = await _next({'continuation': token});
+    }
     return _parse(videoId, page).toJson(videoId);
   }
 
@@ -97,7 +113,7 @@ class CtYtComments {
     if (refresh == null) throw 'Войдите в аккаунт YouTube';
     var params = _createParams[videoId];
     if (params == null) {
-      await load(videoId, 'top');
+      await _load(videoId, 'top', true);
       params = _createParams[videoId];
     }
     if (params == null) throw 'YouTube не разрешил комментировать это видео';

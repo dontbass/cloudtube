@@ -92,6 +92,11 @@ class CtYouPage extends StatelessWidget {
           subtitle: subtitle != null ? Text(subtitle) : null,
           onTap: onTap,
         );
+    Widget section(String t) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
+          child: Text(t,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.primary, letterSpacing: .3)),
+        );
     return ListView(
       children: [
         Padding(
@@ -140,27 +145,25 @@ class CtYouPage extends StatelessWidget {
               const SizedBox(height: 8),
             ]),
           ),
-        const Divider(),
+        section('Моё'),
         if (loggedIn) ...[
-          tile(Icons.history, 'История', () => _open(context, 'История', HomeDataSource.history.build(context, false))),
-          tile(Icons.playlist_play, 'Плейлисты',
-              () => _open(context, 'Плейлисты', HomeDataSource.playlist.build(context, false))),
+          tile(Icons.history, 'История', () => _open(context, 'История', HomeDataSource.history.build(context, false)),
+              subtitle: 'Что вы смотрели'),
+          if (!direct)
+            tile(Icons.playlist_play, 'Плейлисты',
+                () => _open(context, 'Плейлисты', HomeDataSource.playlist.build(context, false)),
+                subtitle: 'Ваши подборки видео'),
           tile(Icons.subscriptions_outlined, 'Управление подписками',
-              () => AutoRouter.of(context).push(const ManageSubscriptionsRoute())),
+              () => AutoRouter.of(context).push(const ManageSubscriptionsRoute()),
+              subtitle: 'Список каналов, отписаться'),
         ],
-        tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute())),
-        const Divider(),
-        tile(Icons.settings_outlined, 'Настройки', () => AutoRouter.of(context).push(const SettingsRoute())),
-        FutureBuilder<String>(
-          future: CtUpdater.installedVersion(),
-          builder: (context, snap) => tile(Icons.system_update_outlined, 'Проверить обновления',
-              () => CtUpdater.check(context, manual: true),
-              subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
-        ),
+        tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute()),
+            subtitle: 'Видео, сохранённые для просмотра без интернета'),
+        section('Как смотреть'),
         if (server != null && ctIsDirectUrl(server.url))
           tile(Icons.dns_outlined, 'Подключить свой сервер',
               () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen())),
-              subtitle: 'Сейчас: без сервера, YouTube напрямую'),
+              subtitle: 'Сейчас: YouTube напрямую. Свой сервер Invidious — без рекламы для всей семьи'),
         if (server != null && !ctIsDirectUrl(server.url))
           tile(Icons.play_circle_outline, 'Смотреть без сервера',
               () => ctConnectDirect(context.read<AppCubit>()),
@@ -172,10 +175,61 @@ class CtYouPage extends StatelessWidget {
         tile(Icons.rocket_launch_outlined, 'Развернуть свой сервер',
             () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtDeployScreen())),
             subtitle: 'Invidious на вашем VPS за 10–15 минут'),
-        tile(Icons.tour_outlined, 'Обучающий тур', () => CtOnboarding.start(context)),
-        if (loggedIn) tile(Icons.logout, 'Выйти из аккаунта', () => logout(context)),
+        section('Приложение'),
+        tile(Icons.settings_outlined, 'Настройки', () => AutoRouter.of(context).push(const SettingsRoute()),
+            subtitle: 'Тема, качество видео, плеер, язык'),
+        FutureBuilder<String>(
+          future: CtUpdater.installedVersion(),
+          builder: (context, snap) => tile(Icons.system_update_outlined, 'Проверить обновления',
+              () => CtUpdater.check(context, manual: true),
+              subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
+        ),
+        tile(Icons.tour_outlined, 'Обучающий тур', () => CtOnboarding.start(context),
+            subtitle: 'Короткая экскурсия по кнопкам и вкладкам'),
+        if (loggedIn)
+          tile(Icons.logout, direct ? 'Выйти из аккаунта YouTube' : 'Выйти из аккаунта', () => logout(context)),
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+
+/// Вкладка «Подписки», пока не вошли: объясняем, что нужно сделать.
+class CtSubsHint extends StatelessWidget {
+  const CtSubsHint({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final server = context.select((AppCubit a) => a.state.server);
+    final direct = ctIsDirectUrl(server?.url);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.subscriptions_outlined, size: 64, color: colors.primary),
+          const SizedBox(height: 16),
+          const Text('Здесь будут новые видео ваших каналов',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Text(
+              direct
+                  ? 'Войдите в аккаунт YouTube — подписки, рекомендации и история подтянутся сами. '
+                      'Пароль вводится только на сайте Google.'
+                  : 'Войдите в аккаунт вашего сервера, чтобы видеть подписки.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.onSurfaceVariant)),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            icon: const Icon(Icons.login),
+            label: Text(direct ? 'Войти в аккаунт YouTube' : 'Войти в аккаунт'),
+            onPressed: () => direct
+                ? Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtYtLoginScreen()))
+                : CtYouPage.login(context),
+          ),
+        ]),
+      ),
     );
   }
 }

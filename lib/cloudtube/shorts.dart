@@ -106,7 +106,7 @@ class _CtShortsPageState extends State<CtShortsPage> {
       final batch = <Video>[];
       // сервер отдаёт подборку по кругу — берём страницы, пока не наберём новых
       for (var i = 0; i < 8 && !_end && batch.length < 12; i++) {
-        final addons = await CtServer.hasAddons();
+        final addons = ctDirectActive || await CtServer.hasAddons(); // без сервера — подборка Shorts из YouTube
         final vids = addons
             ? (await service.search('ct:shorts', page: _page)).videos
             : await CtServer.fallbackShorts(_page);
@@ -115,7 +115,8 @@ class _CtShortsPageState extends State<CtShortsPage> {
         final add = vids
             .where((v) => !_blocked.contains(v.authorId) && _ids.add(v.videoId))
             .toList();
-        if (vids.isEmpty && addons) _end = true;
+        if (vids.isEmpty && addons && !ctDirectActive) _end = true;
+        if (ctDirectActive && _page > 60) _end = true;
         batch.addAll(add);
       }
       if (batch.isEmpty && !_end && _videos.isNotEmpty) {

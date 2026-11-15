@@ -1,6 +1,5 @@
 import 'package:clipious/cloudtube/deploy.dart';
 import 'package:clipious/cloudtube/connect_screen.dart';
-import 'package:clipious/cloudtube/logo.dart';
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -67,9 +66,11 @@ class WelcomeWizardScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(padding: const EdgeInsets.fromLTRB(20, 24, 20, 20), shrinkWrap: true, children: [
               const Center(child: SizedBox(width: 110, height: 110, child: AppIcon())),
-              const SizedBox(height: 8),
-              const Center(child: CtLogo()),
               const SizedBox(height: 10),
+              Text('CloudTube',
+                  textAlign: TextAlign.center,
+                  style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
               Text('Видео без рекламы и слежки — через ваш сервер Invidious.',
                   textAlign: TextAlign.center, style: textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
               const SizedBox(height: 28),

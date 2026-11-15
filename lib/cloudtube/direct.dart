@@ -44,6 +44,9 @@ String ctUserAgentForClient(String c) {
 /// Сейчас выбран режим «без сервера» (обновляется при смене сервера).
 bool ctDirectActive = false;
 
+/// Сбросить кэш видео (для проверки скорости).
+void ctDirectClearCache() => _CtDirect.instance._videoCache.clear();
+
 bool ctIsDirectUrl(String? url) => url != null && Uri.tryParse(url)?.host == _host;
 
 /// HTTP-клиент приложения. Запросы к обычным серверам уходят как есть, а запросы к youtube.direct
@@ -194,9 +197,16 @@ class _CtDirect {
   }
 
   // ---------- видео ----------
-  Future<Map<String, dynamic>> _video(String id) async {
+  final _inflight = <String, Future<Map<String, dynamic>>>{};
+
+  /// Страница видео и плеер запрашивают одно и то же одновременно — делаем один запрос на двоих.
+  Future<Map<String, dynamic>> _video(String id) {
     final hit = _videoCache[id];
-    if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return hit.$2;
+    if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return Future.value(hit.$2);
+    return _inflight[id] ??= _video0(id).whenComplete(() => _inflight.remove(id));
+  }
+
+  Future<Map<String, dynamic>> _video0(String id) async {
     // быстрый путь: сразу «player» без страницы просмотра (как NewPipe/LibreTube)
     try {
       final f = await CtYtFast.video(id);

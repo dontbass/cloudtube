@@ -14,6 +14,7 @@ import 'connect_screen.dart';
 import 'deploy.dart';
 import 'onboarding.dart';
 import 'yt_login.dart';
+import 'speed_test.dart';
 
 /// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
 class CtYouPage extends StatelessWidget {
@@ -184,6 +185,9 @@ class CtYouPage extends StatelessWidget {
               () => CtUpdater.check(context, manual: true),
               subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
         ),
+        tile(Icons.speed, 'Проверка скорости YouTube',
+            () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtSpeedTestScreen())),
+            subtitle: 'Где задержка при запуске видео: сеть, YouTube, внешние сервисы'),
         tile(Icons.tour_outlined, 'Обучающий тур', () => CtOnboarding.start(context),
             subtitle: 'Короткая экскурсия по кнопкам и вкладкам'),
         if (loggedIn)

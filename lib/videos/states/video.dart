@@ -29,22 +29,19 @@ class VideoCubit extends Cubit<VideoState> {
   Future<void> onReady() async {
     try {
       Video video = await service.getVideo(state.videoId);
-      var dislikes = state.dislikes;
-
-      try {
-        if (settings.state.useReturnYoutubeDislike) {
-          Dislike dislike = await service.getDislikes(state.videoId);
-          dislikes = dislike.dislikes;
-        }
-      } catch (e) {
-        log.info("Failed to get dislikes for video ${state.videoId}");
-      }
-
+      // CloudTube: страницу показываем сразу, дизлайки (внешний сервис, бывает медленным) — потом
       emit(state.copyWith(
           loadingVideo: false,
           video: video,
-          dislikes: dislikes,
+          dislikes: state.dislikes,
           isLoggedIn: await service.isLoggedIn()));
+      if (settings.state.useReturnYoutubeDislike) {
+        service.getDislikes(state.videoId).timeout(const Duration(seconds: 5)).then((d) {
+          if (!isClosed) emit(state.copyWith(dislikes: d.dislikes));
+        }).catchError((_) {
+          log.info("Failed to get dislikes for video ${state.videoId}");
+        });
+      }
 
       getDownloadStatus();
     } catch (err) {

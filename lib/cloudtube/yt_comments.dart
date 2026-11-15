@@ -108,40 +108,105 @@ class CtYtComments {
   static bool canPost(String videoId) => ctYtRefreshToken != null;
 
   /// Отправить комментарий от имени аккаунта. Возвращает комментарий в формате списка.
+  /// 1) официальный YouTube Data API (commentThreads.insert) с токеном входа;
+  /// 2) запасной путь — InnerTube create_comment (клиенты WEB/ANDROID/TV).
   static Future<Map<String, dynamic>?> post(String videoId, String text) async {
     final refresh = ctYtRefreshToken;
     if (refresh == null) throw 'Войдите в аккаунт YouTube';
-    var params = _createParams[videoId];
-    if (params == null) {
-      await _load(videoId, 'top', true);
-      params = _createParams[videoId];
-    }
-    if (params == null) throw 'YouTube не разрешил комментировать это видео';
-    final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/comment/create_comment?prettyPrint=false'),
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': _ua,
-          'X-Youtube-Client-Name': '1',
-          'X-Youtube-Client-Version': _webVersion,
-          'Origin': 'https://www.youtube.com',
-          'Authorization': 'Bearer ${await CtYtAccount.accessToken(refresh)}',
-        },
-        body: jsonEncode({..._ctx(), 'commentText': text, 'createCommentParams': params}));
-    final body = utf8.decode(r.bodyBytes);
-    if (r.statusCode != 200) {
-      _log.warning('create_comment ${r.statusCode}: ${body.length > 400 ? body.substring(0, 400) : body}');
+    final token = await CtYtAccount.accessToken(refresh);
+    final errors = <String>[];
+
+    // 1. Data API v3
+    try {
+      final r = await client.post(Uri.parse('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet'),
+          headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'snippet': {
+              'videoId': videoId,
+              'topLevelComment': {
+                'snippet': {'textOriginal': text}
+              }
+            }
+          }));
+      final body = utf8.decode(r.bodyBytes);
+      if (r.statusCode == 200) {
+        final j = jsonDecode(body) as Map;
+        final sn = ((j['snippet'] as Map?)?['topLevelComment'] as Map?)?['snippet'] as Map? ?? const {};
+        return {
+          'author': '${sn['authorDisplayName'] ?? 'Вы'}',
+          'authorId': '${(sn['authorChannelId'] as Map?)?['value'] ?? ''}',
+          'authorThumbnails': sn['authorProfileImageUrl'] == null
+              ? []
+              : [
+                  {'url': sn['authorProfileImageUrl'], 'width': 88, 'height': 88}
+                ],
+          'content': '${sn['textOriginal'] ?? text}',
+          'publishedText': 'только что',
+          'likeCount': 0,
+        };
+      }
       String msg = '${r.statusCode}';
       try {
-        msg = (jsonDecode(body)['error']?['message'] ?? msg).toString();
+        final e = (jsonDecode(body) as Map)['error'] as Map;
+        msg = '${r.statusCode} ${e['message'] ?? ''} ${((e['errors'] as List?)?.firstOrNull as Map?)?['reason'] ?? ''}';
       } catch (_) {}
-      throw 'YouTube не принял комментарий: $msg';
+      errors.add('API: $msg');
+      _log.warning('commentThreads.insert: $body');
+    } catch (e) {
+      errors.add('API: $e');
     }
-    final j = jsonDecode(body);
-    if (j is Map && '${j['actionResult']?['status'] ?? 'STATUS_SUCCEEDED'}' != 'STATUS_SUCCEEDED') {
-      throw 'YouTube не принял комментарий';
+
+    // 2. InnerTube
+    String? params = _createParams[videoId];
+    if (params == null) {
+      for (final auth in [true, false]) {
+        try {
+          await _load(videoId, 'top', auth);
+          params = _createParams[videoId];
+          if (params != null) break;
+        } catch (e) {
+          errors.add('next${auth ? '+вход' : ''}: $e');
+        }
+      }
     }
-    final parsed = _parse(videoId, j as Map<String, dynamic>);
-    return parsed.items.isNotEmpty ? parsed.items.first : null;
+    if (params != null) {
+      final clients = <Map<String, dynamic>>[
+        {'clientName': 'WEB', 'clientVersion': _webVersion, 'hl': 'ru', 'gl': 'RU'},
+        {'clientName': 'ANDROID', 'clientVersion': '20.10.38', 'androidSdkVersion': 30, 'hl': 'ru', 'gl': 'RU'},
+        {'clientName': 'TVHTML5', 'clientVersion': CtYtAccount.tvClientVersion, 'hl': 'ru', 'gl': 'RU'},
+      ];
+      for (final cl in clients) {
+        final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/comment/create_comment?prettyPrint=false'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+              'Origin': 'https://www.youtube.com',
+              'User-Agent': cl['clientName'] == 'TVHTML5' ? CtYtAccount.tvUserAgent : _ua,
+            },
+            body: jsonEncode({
+              'context': {'client': cl},
+              'commentText': text,
+              'createCommentParams': params,
+            }));
+        final body = utf8.decode(r.bodyBytes);
+        if (r.statusCode == 200) {
+          final j = jsonDecode(body);
+          if (j is Map && '${j['actionResult']?['status'] ?? 'STATUS_SUCCEEDED'}' == 'STATUS_SUCCEEDED') {
+            final parsed = _parse(videoId, j as Map<String, dynamic>);
+            return parsed.items.isNotEmpty
+                ? parsed.items.first
+                : {'author': 'Вы', 'content': text, 'publishedText': 'только что', 'likeCount': 0};
+          }
+        }
+        String msg = '${r.statusCode}';
+        try {
+          msg = '${r.statusCode} ${(jsonDecode(body)['error']?['message'] ?? '')}';
+        } catch (_) {}
+        errors.add('${cl['clientName']}: $msg');
+      }
+    }
+    _log.warning('comment failed: ${errors.join('; ')}');
+    throw 'YouTube не принял комментарий:\n${errors.join('\n')}';
   }
 
   // ---------- разбор ----------

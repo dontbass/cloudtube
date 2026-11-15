@@ -311,10 +311,12 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
   final _input = TextEditingController();
   bool _sending = false;
+  String? _err; // ошибку показываем прямо в шторке — снэкбар оказывается под ней
 
   Widget _composer(ColorScheme colors) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
-        child: Row(children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+         Row(children: [
           Expanded(
             child: TextField(
               controller: _input,
@@ -338,6 +340,12 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : Icon(Icons.send, color: colors.primary),
           ),
+         ]),
+          if (_err != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, right: 8),
+              child: SelectableText(_err!, style: TextStyle(color: colors.error, fontSize: 12)),
+            ),
         ]),
       );
 
@@ -345,7 +353,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final text = _input.text.trim();
     if (text.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _err = null;
+    });
     try {
       final j = await CtYtComments.post(widget.videoId, text);
       _input.clear();
@@ -354,7 +365,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       if (mounted) setState(() => items.insert(0, c));
       messenger.showSnackBar(const SnackBar(content: Text('Комментарий опубликован')));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) setState(() => _err = '$e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }

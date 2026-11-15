@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
 
@@ -18,6 +19,7 @@ var log = Logger('background-task');
 const taskName = "Clipious background refresh task";
 
 Future<void> configureBackgroundService(SettingsCubit settings) async {
+  if (!Platform.isAndroid) return; // фоновые задачи — только Android
   if (settings.state.backgroundNotifications) {
     await Workmanager()
         .initialize(callbackDispatcher, isInDebugMode: kDebugMode);

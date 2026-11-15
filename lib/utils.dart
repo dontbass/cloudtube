@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:clipious/settings/models/db/settings.dart';
@@ -208,6 +209,7 @@ DeviceType getDeviceType() {
 
 Future<bool> isDeviceTv() async {
   final forceTv = db.getSettings(forceTvUiSettingName);
+  if (!Platform.isAndroid) return forceTv?.value == 'true';
   DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
   AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
   return forceTv?.value == 'true' ||

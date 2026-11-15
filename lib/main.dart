@@ -88,13 +88,15 @@ Future<void> main() async {
   }
   appRouter = AppRouter(hasServer: hasServer);
 
-  initializeNotifications();
-
-  try {
-    log.fine("Forcing refresh rate");
-    await FlutterDisplayMode.setHighRefreshRate();
-  } catch (err) {
-    log.severe("failed to set high refresh mode", err);
+  // CloudTube: уведомления и частота экрана — только Android
+  if (Platform.isAndroid) {
+    initializeNotifications();
+    try {
+      log.fine("Forcing refresh rate");
+      await FlutterDisplayMode.setHighRefreshRate();
+    } catch (err) {
+      log.severe("failed to set high refresh mode", err);
+    }
   }
 
   isTv = await isDeviceTv();

@@ -1,3 +1,4 @@
+import 'package:clipious/cloudtube/platform.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -189,7 +190,7 @@ class FileDB extends IDbClient {
   Future<File> _openAppFile(String path) async {
     late Directory docsDir;
     try {
-      docsDir = await getApplicationDocumentsDirectory();
+      docsDir = await ctDataDir();
     } catch (e) {
       docsDir = Directory.current;
     }

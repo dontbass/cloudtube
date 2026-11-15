@@ -1,3 +1,5 @@
+import 'package:clipious/cloudtube/platform.dart';
+import 'package:sembast/sembast_io.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -52,14 +54,16 @@ class SembastSqfDb extends IDbClient {
   SembastSqfDb(this.db);
 
   static Future<SembastSqfDb> create() async {
-    late final Directory docsDir;
-    try {
-      docsDir = await getApplicationDocumentsDirectory();
-    } catch (e) {
-      docsDir = Directory.current;
-    }
+    final Directory docsDir = await ctDataDir();
 
     var dbPath = p.join(docsDir.path, "clipious.db");
+
+    // CloudTube: на ПК — обычный файл sembast (sqflite там без ffi не работает)
+    if (ctDesktop) {
+      await docsDir.create(recursive: true);
+      final db = await databaseFactoryIo.openDatabase(p.join(docsDir.path, "cloudtube.db"), version: 1);
+      return SembastSqfDb(db);
+    }
 
     final databaseFactorySqflite =
         getDatabaseFactorySqflite(sqflite.databaseFactory);

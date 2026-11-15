@@ -1,0 +1,78 @@
+name: Build Windows
+
+# Отдельная сборка для Windows. Android-сборку и релизы не трогает:
+# запускается только из ветки windows (или вручную) и выкладывает zip как артефакт.
+on:
+  push:
+    branches: [windows]
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.3'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        shell: bash
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs || true
+          flutter gen-l10n
+
+      - name: Build
+        shell: bash
+        run: flutter build windows --release --build-name=1.1.${{ github.run_number }} --build-number=${{ github.run_number }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = "build\windows\x64\runner\Release"
+          Compress-Archive -Path "$out\*" -DestinationPath "CloudTube-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudTube-windows-x64
+          path: CloudTube-windows-x64.zip
+
+      # Проверка запуска: открываем приложение, ждём, делаем снимок экрана и сохраняем лог.
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
+          Write-Host "exe: $($exe.FullName)"
+          $p = Start-Process $exe.FullName -PassThru -RedirectStandardOutput app.out.txt -RedirectStandardError app.err.txt
+          Start-Sleep -Seconds 25
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("smoke.png")
+          if ($p.HasExited) { Write-Host "ПРИЛОЖЕНИЕ ЗАКРЫЛОСЬ, код $($p.ExitCode)" ; "exited $($p.ExitCode)" | Out-File smoke-status.txt }
+          else { Write-Host "приложение работает"; "running" | Out-File smoke-status.txt; Stop-Process -Id $p.Id -Force }
+          Get-Content app.out.txt -ErrorAction SilentlyContinue | Select-Object -Last 80
+          Get-Content app.err.txt -ErrorAction SilentlyContinue | Select-Object -Last 40
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke
+          path: |
+            smoke.png
+            smoke-status.txt
+            app.out.txt
+            app.err.txt

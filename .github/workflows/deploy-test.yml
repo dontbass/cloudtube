@@ -20,16 +20,18 @@ jobs:
         run: |
           H=(-H "Host: ct.test" -u admin:testpass123)
           echo "главная:"; curl -s "${H[@]}" http://127.0.0.1/ | grep -o '<title>[^<]*</title>\|/custom/yt.css[^"]*\|/custom/brand.js[^"]*' | head
-          for u in /custom/yt.css /custom/brand.js /logo.svg /manifest.webmanifest /ct-pwa/icon-192.png /api/v1/stats /ct-api/caps /login; do
+          for u in /custom/yt.css /custom/brand.js /logo.svg /manifest.webmanifest /ct-pwa/icon-192.png /api/v1/stats /ct-api/caps /login /ctadmin/whoami /ctadmin/; do
             echo "$u → $(curl -s -o /dev/null -w '%{http_code} %{size_download}b' "${H[@]}" http://127.0.0.1$u)"
           done
           echo "страница входа Invidious:"; curl -s "${H[@]}" http://127.0.0.1/login | grep -o '/custom/inv.css[^"]*' | head -1
           echo "без пароля: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/)"
-          sudo systemctl is-active cloudtube-feed cloudtube-live nginx docker
+          echo "приглашение без пароля сайта: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/invite/nonexistent)"
+          echo "ctinvite: $(sudo ctinvite new -n test 2>&1 | head -2 | tr '\n' ' ')"
+          sudo systemctl is-active cloudtube-feed cloudtube-live cloudtube-invite nginx docker
           sudo docker ps --format '{{.Names}} {{.Status}}'
       - name: Снимки
         run: |
-          for p in "/" "/login"; do
+          for p in "/" "/login" "/ctadmin/"; do
             n=$(echo "$p" | tr -c 'a-z' '_')
             google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
               --host-resolver-rules="MAP ct.test 127.0.0.1" --window-size=1366,860 \

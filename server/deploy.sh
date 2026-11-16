@@ -3,7 +3,8 @@
 #
 # Ставит: Docker, Invidious + invidious-companion + PostgreSQL, Materialious (сайт в виде YouTube)
 # с оформлением CloudTube (логотип, тема, PWA), nginx, сертификат Let's Encrypt, пароль сайта (Basic Auth),
-# аккаунт Invidious с тем же логином и паролем, серверные дополнения CloudTube (лента, Shorts, эфиры, аватарки).
+# аккаунт Invidious с тем же логином и паролем, серверные дополнения CloudTube (лента, Shorts, эфиры, аватарки),
+# приглашения для друзей: «Доступ для друзей» на сайте (для администратора) или `ctinvite new` в консоли.
 #
 # Параметры — переменные окружения или файл /root/.ct-deploy.env:
 #   CT_DOMAIN=video.example.com   домен (A-запись уже указывает на этот сервер)
@@ -316,6 +317,20 @@ server {
         proxy_pass http://127.0.0.1:3000;
     }
 
+    # приглашения (регистрация по ссылке — без пароля сайта) и «Доступ для друзей» (только администратор)
+    location ^~ /invite/ {
+        auth_basic off;
+        limit_except GET POST { deny all; }
+        include snippets/cloudtube-proxy.conf;
+        proxy_pass http://127.0.0.1:3400;
+    }
+    location ^~ /ctadmin {
+        limit_except GET POST { deny all; }
+        include snippets/cloudtube-proxy.conf;
+        proxy_set_header X-Remote-User \$remote_user;
+        proxy_pass http://127.0.0.1:3400;
+    }
+
     # оформление и логотип
     location ^~ /custom/ { alias $WEB/custom/; expires 1h; }
     location = /logo.svg { alias $WEB/custom/logo-icon.svg; }
@@ -417,6 +432,37 @@ EOF
   systemctl daemon-reload; systemctl enable --now cloudtube-live >/dev/null 2>&1; systemctl restart cloudtube-live
 else
   echo "live.py не скачался" >> /var/log/ct-deploy.debug
+fi
+
+P 94 "Ставлю приглашения для друзей (cloudtube-invite)"
+if curl -fsSL "$CT_REPO/server/invite.py" -o /opt/cloudtube-addons/invite.py; then
+  chmod 755 /opt/cloudtube-addons/invite.py
+  ENVS="INVITE_DB=/opt/cloudtube-addons/invites.json HTPASSWD=/etc/nginx/.ct-htpasswd DOMAIN=$CT_DOMAIN INVITE_PORT=3400 ADMIN_USERS=$CT_USER DB_CONTAINER=invidious-db"
+  cat > /usr/local/bin/ctinvite <<EOF
+#!/bin/sh
+exec env $ENVS /usr/bin/python3 /opt/cloudtube-addons/invite.py "\$@"
+EOF
+  chmod 755 /usr/local/bin/ctinvite
+  cat > /etc/systemd/system/cloudtube-invite.service <<EOF
+[Unit]
+Description=CloudTube invites (регистрация друзей по ссылке)
+After=network-online.target docker.service
+[Service]
+Environment=INVITE_DB=/opt/cloudtube-addons/invites.json
+Environment=HTPASSWD=/etc/nginx/.ct-htpasswd
+Environment=DOMAIN=$CT_DOMAIN
+Environment=INVITE_PORT=3400
+Environment=ADMIN_USERS=$CT_USER
+Environment=DB_CONTAINER=invidious-db
+ExecStart=/usr/bin/python3 /opt/cloudtube-addons/invite.py serve
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload; systemctl enable --now cloudtube-invite >/dev/null 2>&1; systemctl restart cloudtube-invite
+else
+  echo "invite.py не скачался" >> /var/log/ct-deploy.debug
 fi
 
 P 95 "Проверяю сервер снаружи"

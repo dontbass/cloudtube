@@ -1,0 +1,10 @@
+name: Probe VISIONOS
+on:
+  push:
+    branches: [probe-vision]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/probe_vision.py

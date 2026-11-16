@@ -81,8 +81,9 @@ class CtYtCookies {
     return out;
   }
 
-  static Future<List<CtYtIdentity>> _accountsFor(int authUser) async {
+  static Future<List<CtYtIdentity>> _accountsFor(int authUser, {String? pageId}) async {
     final h = headers(withIdentity: false)..['X-Goog-AuthUser'] = '$authUser';
+    if (pageId != null) h['X-Goog-PageId'] = pageId;
     final r = await http.post(Uri.parse('https://www.youtube.com/youtubei/v1/account/accounts_list?prettyPrint=false'),
         headers: {
           'Content-Type': 'application/json',
@@ -156,6 +157,35 @@ class CtYtCookies {
       builder: (ctx) => const _CtAccountSheet(),
     );
     return changed == true;
+  }
+
+  /// Какой канал сейчас активен на сайте (после выбора в переключателе YouTube).
+  static Future<void> adoptSiteIdentity() async {
+    String? pageId;
+    var authUser = identity?.authUser ?? 0;
+    try {
+      final r = await http.get(Uri.parse('https://www.youtube.com/?hl=ru'), headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        ...headers(withIdentity: false),
+      });
+      final b = r.body;
+      pageId = RegExp(r'"DELEGATED_SESSION_ID":"(\d+)"').firstMatch(b)?.group(1);
+      final au = RegExp(r'"SESSION_INDEX":"?(\d+)').firstMatch(b)?.group(1);
+      if (au != null) authUser = int.parse(au);
+    } catch (e) {
+      _log.info('site identity: $e');
+    }
+    // имя и фото — из списка каналов с этим каналом
+    var id = CtYtIdentity('', '', '', pageId, authUser, true);
+    await setIdentity(id);
+    try {
+      final list = await _accountsFor(authUser, pageId: pageId);
+      final cur = list.where((a) => pageId != null ? a.pageId == pageId : a.selected).firstOrNull ??
+          list.where((a) => a.selected).firstOrNull;
+      if (cur != null) id = CtYtIdentity(cur.name, cur.handle, cur.photo, pageId ?? cur.pageId, authUser, true);
+    } catch (_) {}
+    await setIdentity(id);
   }
 
   static Future<void> signOut() async {
@@ -269,6 +299,7 @@ class CtYtWebLoginScreen extends StatefulWidget {
 
 class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
   bool _done = false;
+  bool _sawSwitch = false; // в переключателе: пользователь нажал на канал (переход через /signin…pageid)
   double _progress = 0;
 
   // обычный мобильный Chrome: со «встроенным» браузером (wv) Google вход не пускает
@@ -279,7 +310,14 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
     if (_done || url == null) return;
     if (!url.host.endsWith('youtube.com')) return;
     // в переключателе ждём, пока пользователь выберет канал и сайт уйдёт со страницы выбора
-    if (widget.switcher && (url.path.contains('channel_switcher') || url.path.contains('signin'))) return;
+    if (widget.switcher) {
+      final u = url.toString();
+      if (u.contains('signin') || u.contains('pageid=') || u.contains('authuser=')) {
+        _sawSwitch = true;
+        return;
+      }
+      if (!_sawSwitch) return; // ещё выбирают (страница /account со списком «Все каналы»)
+    }
     final all = <String, String>{};
     for (final u in ['https://www.youtube.com', 'https://m.youtube.com', 'https://youtube.com']) {
       try {
@@ -296,12 +334,8 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
     await CtYtCookies.save(cookie);
     if (!mounted) return;
     if (widget.switcher) {
-      // канал выбран на самом сайте — дальше действуем от того канала, который сайт сделал активным
-      await CtYtCookies.setIdentity(null);
-      try {
-        final cur = (await CtYtCookies.accounts()).where((a) => a.selected).firstOrNull;
-        if (cur != null) await CtYtCookies.setIdentity(cur);
-      } catch (_) {}
+      // канал выбран на самом сайте — узнаём, какой сайт сделал активным (как yt-dlp: DELEGATED_SESSION_ID)
+      await CtYtCookies.adoptSiteIdentity();
     } else {
       await CtYtCookies.chooseIdentity(context, force: widget.addAccount);
     }
@@ -316,6 +350,16 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.switcher ? 'Выберите канал' : 'Вход через сайт YouTube'),
+        actions: [
+          if (widget.switcher)
+            TextButton(
+                onPressed: () {
+                  _sawSwitch = true;
+                  _done = false;
+                  _check(WebUri('https://www.youtube.com/'));
+                },
+                child: const Text('Готово')),
+        ],
         bottom: _progress < 1
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(2), child: LinearProgressIndicator(value: _progress, minHeight: 2))

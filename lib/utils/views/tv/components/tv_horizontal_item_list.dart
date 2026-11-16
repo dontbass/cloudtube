@@ -43,21 +43,32 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                 ),
               !state.loading && items.isEmpty
                   ? const SizedBox.shrink()
-                  : SizedBox(
-                      height: 250,
+                  // CloudTube: ~5 карточек в ряд (раньше ~3 крупных), высота по ширине карточки
+                  : LayoutBuilder(builder: (context, c) {
+                      const perRow = 5.2, gap = 14.0;
+                      final w = (c.maxWidth - gap * 5) / perRow;
+                      final textH = (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) * 1.45 * 3 + 14;
+                      return SizedBox(
+                      height: w * 9 / 16 + textH + 8,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         controller: cubit.scrollController,
                         itemCount: items.length + (state.loading ? 10 : 0),
                         itemBuilder: (context, index) {
+                          final Widget child;
                           if (index >= items.length) {
-                            return getPlaceholder();
+                            child = getPlaceholder();
+                          } else {
+                            child = buildItem(context, index, items[index]);
                           }
-                          T e = items[index];
-                          return buildItem(context, index, e);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: gap, top: 4),
+                            child: SizedBox(width: w, child: child),
+                          );
                         },
                       ),
-                    ),
+                    );
+                    }),
             ],
           );
         },
@@ -89,6 +100,7 @@ class TvHorizontalVideoList extends StatelessWidget {
       buildItem: (context, index, e) => TvVideoItem(
         key: ValueKey('video-item-${e.videoId}'),
         video: e,
+        compact: true,
         autoFocus: index == autoFocusedIndex,
         onSelect: onSelect,
         onFocusChange: onItemFocus != null

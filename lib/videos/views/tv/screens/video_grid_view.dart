@@ -30,7 +30,17 @@ class TvGridScreen extends StatelessWidget {
           ItemListCubit(ItemListState(itemList: paginatedVideoList)),
       child: Scaffold(
         body: CtTvLeftEdge(child: TvOverscan(
-          child: BlocBuilder<ItemListCubit<Video>, ItemListState<Video>>(
+          child: BlocConsumer<ItemListCubit<Video>, ItemListState<Video>>(
+              // сетка на ТВ не прокручивается, пока не заполнена, — догружаем сами
+              listenWhen: (a, b) => a.loading && !b.loading,
+              listener: (context, state) {
+                if (state.error == ItemListErrors.none &&
+                    state.items.isNotEmpty &&
+                    state.items.length < 40 &&
+                    state.itemList.getHasMore()) {
+                  context.read<ItemListCubit<Video>>().getMoreItems();
+                }
+              },
               builder: (context, state) {
             var cubit = context.read<ItemListCubit<Video>>();
             return Column(

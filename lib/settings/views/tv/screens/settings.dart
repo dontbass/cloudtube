@@ -1,6 +1,7 @@
 import 'package:clipious/cloudtube/tv_link.dart';
 import 'package:clipious/cloudtube/connect.dart';
 import 'package:clipious/cloudtube/direct.dart';
+import 'package:clipious/cloudtube/speed_test.dart';
 import 'package:clipious/cloudtube/updater.dart';
 import 'package:clipious/cloudtube/tv_scale.dart';
 import 'package:clipious/settings/models/db/settings.dart';
@@ -428,6 +429,14 @@ class TVSettingsScreen extends StatelessWidget {
                   trailing:
                       Switch(onChanged: (value) {}, value: state.forceTvUi),
                 ),
+                if (ctDirectActive)
+                  SettingsTile(
+                    title: 'Проверка скорости YouTube',
+                    leading: const Icon(Icons.speed),
+                    description: 'Время каждого шага и качество последнего видео',
+                    onSelected: (context) => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => const CtSpeedTestScreen())),
+                  ),
                 SettingsTitle(title: locals.about),
                 SettingsTile(
                   title: '${locals.name}: ${state.packageInfo.appName}',
@@ -664,35 +673,47 @@ class SettingsTile extends StatelessWidget {
           final accent = ctAccent(colors);
           return AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 250,
-            height: 140,
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            width: 214,
+            height: 74,
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
             decoration: BoxDecoration(
               color: hasFocus ? accent.withValues(alpha: 0.16) : colors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: hasFocus ? accent : Colors.transparent, width: 3),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: hasFocus ? accent : Colors.transparent, width: 2),
             ),
             child: Opacity(
               opacity: on ? 1 : 0.45,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  IconTheme(
-                    data: IconThemeData(size: 28, color: hasFocus ? accent : colors.primary),
-                    child: leading ?? const Icon(Icons.tune),
+              child: Row(children: [
+                IconTheme(
+                  data: IconThemeData(size: 22, color: hasFocus ? accent : colors.primary),
+                  child: leading ?? const Icon(Icons.tune),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyMedium!.copyWith(
+                                fontWeight: FontWeight.w700, color: colors.onSurface, height: 1.15)),
+                        if ((description ?? '').isNotEmpty)
+                          Text(description!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall!
+                                  .copyWith(color: colors.onSurfaceVariant, height: 1.15)),
+                      ]),
+                ),
+                if (trailing != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 64, maxHeight: 26),
+                        child: FittedBox(child: trailing)),
                   ),
-                  const Spacer(),
-                  if (trailing != null) SizedBox(height: 30, child: FittedBox(child: trailing)),
-                ]),
-                const Spacer(),
-                Text(title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w700, color: colors.onSurface)),
-                if ((description ?? '').isNotEmpty)
-                  Text(description!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall!.copyWith(color: colors.onSurfaceVariant, height: 1.2)),
               ]),
             ),
           );
@@ -717,8 +738,8 @@ List<Widget> ctTvTiles(List<Widget> children) {
   void flush() {
     if (cur.isEmpty) return;
     out.add(Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
-      child: Wrap(spacing: 14, runSpacing: 14, children: cur),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+      child: Wrap(spacing: 10, runSpacing: 10, children: cur),
     ));
     cur = <Widget>[];
   }

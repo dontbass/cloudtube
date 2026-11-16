@@ -136,9 +136,6 @@ class _MainScreenState extends State<MainContentScreen> {
               element.isPermitted(context, app.isLoggedIn) &&
               element.route != null)
           .toList();
-      var navigationWidgets = allowedPages
-          .map((e) => e.getBottomBarNavigationWidget(context))
-          .toList();
 
       var selectedIndex = appState.firstIndex;
       if (selectedIndex >= allowedPages.length) {

@@ -164,8 +164,6 @@ class MyApp extends StatelessWidget {
         buildWhen: (previous, current) => previous.server != current.server,
         // we want to rebuild only when anything other than the navigation index is changed
         builder: (context, state) {
-          bool useDynamicTheme = context
-              .select((SettingsCubit value) => value.state.useDynamicTheme);
           bool useBlackBackground = context
               .select((SettingsCubit value) => value.state.blackBackground);
           String? locale =
@@ -180,33 +178,9 @@ class MyApp extends StatelessWidget {
               valueListenable: ctSoftTheme,
               builder: (context, soft, _) => DynamicColorBuilder(
               builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-            ColorScheme lightColorScheme;
-
-            if (false &&
-                useDynamicTheme &&
-                lightDynamic != null &&
-                darkDynamic != null) {
-              // On Android S+ devices, use the provided dynamic color scheme.
-              // (Recommended) Harmonize the dynamic color scheme' built-in semantic colors.
-              lightColorScheme = lightDynamic.harmonized();
-              // (Optional) Customize the scheme as desired. For example, one might
-              // want to use a brand color to override the dynamic [ColorScheme.secondary].
-              // lightColorScheme = lightColorScheme.copyWith(secondary: brandColor);
-              // (Optional) If applicable, harmonize custom colors.
-              // lightCustomColors = lightCustomColors.harmonized(lightColorScheme);
-
-              // Repeat for the dark color scheme.
-              darkColorScheme = darkDynamic.harmonized();
-              // darkColorScheme = darkColorScheme.copyWith(secondary: brandColor);
-              // darkCustomColors = darkCustomColors.harmonized(darkColorScheme);
-
-              // _isDemoUsingDynamicColors = true; // ignore, only for demo purposes
-            } else {
-              // Otherwise, use fallback schemes.
-              // CloudTube: фиксированная палитра как у сайта
-              lightColorScheme = soft ? ctSoftScheme : ctLightScheme;
-              darkColorScheme = soft ? ctDimScheme : ctDarkScheme;
-            }
+            // CloudTube: фиксированная палитра как у сайта (динамические цвета Android не используем)
+            final ColorScheme lightColorScheme = soft ? ctSoftScheme : ctLightScheme;
+            darkColorScheme = soft ? ctDimScheme : ctDarkScheme;
 
             if (useBlackBackground) {
               darkColorScheme = darkColorScheme.copyWith(

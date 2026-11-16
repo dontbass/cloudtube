@@ -3,9 +3,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
-import 'package:logging/logging.dart';
-
-final _log = Logger('CtYtAccount');
 
 /// Refresh-токен аккаунта YouTube для режима «без сервера» (null — не вошли).
 /// Хранится как authToken «сервера» youtube.direct, сюда копируется при выборе сервера.

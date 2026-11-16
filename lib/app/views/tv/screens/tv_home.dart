@@ -20,6 +20,7 @@ import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
 import '../../../../cloudtube/direct.dart';
 import '../../../../cloudtube/tv_nav.dart';
+import '../../../../cloudtube/home_feed.dart';
 import '../../../../cloudtube/yt_login.dart';
 import '../../../../videos/views/components/popular.dart';
 import '../../../states/app.dart';
@@ -41,7 +42,7 @@ class TvHomeScreen extends StatelessWidget {
   openPopular(BuildContext context) {
     var locals = AppLocalizations.of(context)!;
     AutoRouter.of(context).push(TvGridRoute(
-        paginatedVideoList: SingleEndpointList(service.getPopular),
+        paginatedVideoList: ctSectionList(''),
         title: locals.home));
   }
 

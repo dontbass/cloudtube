@@ -20,6 +20,7 @@ import '../../videos/models/video.dart';
 import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
+import '../../cloudtube/hls_local.dart';
 import 'interfaces/media_player.dart';
 
 part 'video_player.freezed.dart';
@@ -142,7 +143,11 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       case BetterPlayerEventType.openFullscreen:
         break;
       case BetterPlayerEventType.initialized:
-        CtTrace.mark('плеер: поток открыт (initialized)');
+        CtTrace.mark('плеер: поток открыт (initialized), кадр ${videoController?.videoPlayerController?.value.size?.height.toInt() ?? '?'}p');
+        Future.delayed(const Duration(seconds: 6), () {
+          final h = videoController?.videoPlayerController?.value.size?.height.toInt();
+          if (h != null) CtTrace.mark('плеер: через 6 с кадр ${h}p');
+        });
         player.setEvent(MediaEvent<double>(
             state: MediaState.ready,
             type: MediaEventType.aspectRatioChanged,
@@ -368,6 +373,20 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           videoUrl = videoUrl.replaceFirst(_googleCdnRegex, '${(server).url}/');
         }
 
+        var streamHeaders = !offline
+            ? <String, String>{...?server.headersForUrl(videoUrl), ...ctDirectStreamHeaders(videoUrl)}
+            : <String, String>{};
+        // ТВ без сервера: сразу 720–1080p (иначе ExoPlayer на приставке остаётся на 360p)
+        if (isHls && isTv && ctDirectActive) {
+          final local = await CtHlsLocal.atLeast(videoUrl, streamHeaders);
+          CtTrace.mark(local != null ? 'плеер: HLS 720–1080p' : 'плеер: HLS без фильтра качества');
+          _ctFiltered = local != null;
+          if (local != null) videoUrl = local;
+        } else {
+          _ctFiltered = false;
+          CtTrace.mark(isHls ? 'плеер: HLS' : (isUsingDash() ? 'плеер: DASH' : 'плеер: обычный поток ${formatStream?.resolution ?? ''}'));
+        }
+
         log.info(
             'Playing url (dash ${isUsingDash()},  hasHls ? ${newState.video!.hlsUrl != null})  $videoUrl');
 
@@ -391,7 +410,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         betterPlayerDataSource = BetterPlayerDataSource(
           BetterPlayerDataSourceType.network,
           videoUrl,
-          headers: !offline ? {...?server.headersForUrl(videoUrl), ...ctDirectStreamHeaders(videoUrl)} : {},
+          headers: streamHeaders,
           videoFormat: format,
           liveStream: newState.video!.liveNow,
           subtitles: newState.video!.captions
@@ -580,8 +599,11 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   /// ТВ: ExoPlayer начинает HLS с низкого качества и на приставках по Wi-Fi/VPN часто на нём и остаётся
   /// (360p). На ТВ сразу выбираем лучшее качество до 1080p; его можно сменить в меню качества.
+  bool _ctFiltered = false;
+
   void _ctPreferHighQuality({bool retry = true}) {
-    if (!isTv) return;
+    // плейлист уже без низких качеств — между 720p и 1080p пусть выбирает ExoPlayer
+    if (!isTv || _ctFiltered) return;
     final tracks = (videoController?.betterPlayerAsmsTracks ?? const <BetterPlayerAsmsTrack>[])
         .where((t) => (t.height ?? 0) > 0 && (t.height ?? 0) <= 1080)
         .toList();

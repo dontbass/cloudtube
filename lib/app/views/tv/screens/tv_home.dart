@@ -37,7 +37,7 @@ List<Widget> _ctSectionRows(BuildContext context) {
   final textTheme = Theme.of(context).textTheme;
   final colors = Theme.of(context).colorScheme;
   return [
-    for (final c in ctSections.skip(1).where((c) => c.id != 'movies'))
+    for (final (i, c) in ctSections.skip(1).where((c) => c.id != 'movies').indexed)
       Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,7 +48,8 @@ List<Widget> _ctSectionRows(BuildContext context) {
             child: Text(c.label, style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
           ),
           TvHorizontalVideoList(
-            paginatedVideoList: ctSectionList(c.id),
+            // разделы грузятся после главной и подписок, по очереди
+            paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 1500 + 700 * i)),
             autoFocusedIndex: -1,
             onItemFocus: (video, index, focus) {
               final k = _ctRowKeys[c.id]?.currentContext;
@@ -136,6 +137,10 @@ class TvHomeScreen extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       // CloudTube: стрелка влево у левого края открывает боковое меню
+                      child: Focus(
+                      focusNode: ctTvContentArea,
+                      canRequestFocus: false,
+                      skipTraversal: true,
                       child: CtTvLeftEdge(
                       popRoute: false,
                       // terrible work around to be able to scroll to all the global keys
@@ -207,7 +212,7 @@ class TvHomeScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                      )),
+                      ))),
                     ),
                     Positioned(
                       left: 0, top: 0, bottom: 0,
@@ -237,6 +242,13 @@ class TvHomeScreen extends StatelessWidget {
                                   final back = ctTvLastContent;
                                   if (back != null && back.context != null && back.canRequestFocus) {
                                     back.requestFocus();
+                                    return KeyEventResult.handled;
+                                  }
+                                  // некуда вернуться (вернулись с другого экрана, старт приложения) —
+                                  // первый видимый ролик слева сверху
+                                  final first = ctTvFirstVisibleContent();
+                                  if (first != null) {
+                                    first.requestFocus();
                                     return KeyEventResult.handled;
                                   }
                                 }
@@ -424,6 +436,25 @@ final ctTvMenuScope = FocusScopeNode(debugLabel: 'ct-tv-menu');
 
 /// Ролик, с которого ушли в меню (чтобы стрелкой вправо вернуться к нему).
 FocusNode? ctTvLastContent;
+
+/// Область лент стартового экрана.
+final ctTvContentArea = FocusNode(debugLabel: 'ct-tv-content', canRequestFocus: false, skipTraversal: true);
+
+/// Первый видимый ролик (верхний ряд, левее всех).
+FocusNode? ctTvFirstVisibleContent() {
+  FocusNode? best;
+  for (final n in ctTvContentArea.descendants) {
+    if (n is FocusScopeNode || !n.canRequestFocus || n.skipTraversal || n.context == null) continue;
+    final r = n.rect;
+    if (r.isEmpty || r.bottom < 0) continue;
+    if (best == null ||
+        r.top < best.rect.top - 8 ||
+        ((r.top - best.rect.top).abs() <= 8 && r.left < best.rect.left)) {
+      best = n;
+    }
+  }
+  return best;
+}
 
 void ctOpenTvMenu() {
   if (ctTvMenuScope.focusedChild != null) {

@@ -47,11 +47,14 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                   : LayoutBuilder(builder: (context, c) {
                       const perRow = 4.4, gap = 14.0;
                       final w = (c.maxWidth - gap * 4) / perRow;
-                      const textH = ctTvCardTextH;
+                      // системный масштаб шрифта ТВ учитываем, иначе низ карточки и рамка фокуса обрезаются
+                      final textH = MediaQuery.textScalerOf(context).scale(ctTvCardTextH);
                       return SizedBox(
-                      height: w * 9 / 16 + textH + 10,
+                      height: w * 9 / 16 + textH + 22,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                         controller: cubit.scrollController,
                         itemCount: items.length + (state.loading ? 10 : 0),
                         itemBuilder: (context, index) {
@@ -62,7 +65,7 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                             child = buildItem(context, index, items[index]);
                           }
                           return Padding(
-                            padding: const EdgeInsets.only(right: gap, top: 4),
+                            padding: const EdgeInsets.only(right: gap),
                             child: SizedBox(width: w, child: child),
                           );
                         },

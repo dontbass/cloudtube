@@ -38,16 +38,28 @@ class TvPlayerSettingsCubit extends Cubit<TvPlayerSettingsState> {
 
   TvPlayerSettingsCubit(super.initialState, this.player, this.settings);
 
-  List<String> get videoTrackNames =>
-      settings.state.useDash || (player.state.video?.liveNow ?? false)
-          ? player.videoController?.betterPlayerAsmsTracks
-                  .map((e) => '${e.height}p')
-                  .toSet()
-                  .toList() ??
-              []
-          : player.videoController?.betterPlayerDataSource?.resolutions?.keys
-                  .toList() ??
-              [];
+  /// Текущее качество отмечено «✓ ».
+  List<String> get videoTrackNames {
+    List<String> names;
+    int sel = -1;
+    if (player.ctDashActive) {
+      names = player.getVideoTracks();
+      sel = player.selectedVideoTrack();
+    } else if (settings.state.useDash ||
+        (player.state.video?.liveNow ?? false) ||
+        (player.videoController?.betterPlayerAsmsTracks.isNotEmpty ?? false)) {
+      // HLS/DASH: качества из манифеста (раньше на HLS без DASH список был пуст)
+      final tracks = player.videoController?.betterPlayerAsmsTracks ?? const <BetterPlayerAsmsTrack>[];
+      final hs = tracks.map((e) => e.height ?? 0).where((h) => h > 0).toSet().toList()
+        ..sort((a, b) => b.compareTo(a));
+      names = hs.map((h) => '${h}p').toList();
+      final cur = player.videoController?.betterPlayerAsmsTrack?.height;
+      if (cur != null) sel = names.indexOf('${cur}p');
+    } else {
+      names = player.videoController?.betterPlayerDataSource?.resolutions?.keys.toList() ?? [];
+    }
+    return [for (var i = 0; i < names.length; i++) i == sel ? '✓ ${names[i]}' : names[i]];
+  }
 
   List<String> get audioTrackNames => settings.state.useDash
       ? player.videoController?.betterPlayerAsmsAudioTracks
@@ -95,12 +107,16 @@ class TvPlayerSettingsCubit extends Cubit<TvPlayerSettingsState> {
   }
 
   changeVideoTrack(String selected) {
+    selected = selected.replaceFirst('✓ ', '');
     log.fine('Video quality selected $selected');
 
-    if (settings.state.useDash) {
-      BetterPlayerAsmsTrack? track = videoController?.betterPlayerAsmsTracks
-          .firstWhere((element) => '${element.height}p' == selected);
-
+    if (player.ctDashActive) {
+      player.selectVideoTrack(player.getVideoTracks().indexOf(selected));
+      return;
+    }
+    final tracks = videoController?.betterPlayerAsmsTracks ?? const <BetterPlayerAsmsTrack>[];
+    if (tracks.isNotEmpty) {
+      final track = tracks.where((element) => '${element.height}p' == selected).firstOrNull;
       if (track != null) {
         log.fine('Changing video track to $selected');
         videoController?.setTrack(track);

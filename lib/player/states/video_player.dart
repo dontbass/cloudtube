@@ -21,6 +21,7 @@ import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
 import '../../cloudtube/hls_local.dart';
+import '../../cloudtube/tv_scale.dart';
 import 'interfaces/media_player.dart';
 
 part 'video_player.freezed.dart';
@@ -384,10 +385,12 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         // иначе ExoPlayer на приставке берёт 360p и не поднимается. Запасной вариант — HLS 720–1080p.
         var ctDash = false;
         _ctFiltered = false;
+        _ctDashHeight = null;
         if (isTv && ctDirectActive && _ctNoDashFor != newState.video!.videoId) {
-          final d = await CtDashLocal.build(newState.video!.videoId);
+          final d = await CtDashLocal.build(newState.video!.videoId, cap: ctTvQualityCap);
           if (d != null) {
             ctDash = true;
+            _ctDashHeight = d.$2;
             _ctFiltered = true;
             streamHeaders = {...ctDirectStreamHeaders(d.$3)};
             videoUrl = d.$1;
@@ -620,6 +623,17 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   bool _ctFiltered = false;
   // свой DASH на ТВ дал ошибку — для этого ролика дальше HLS
   String? _ctNoDashFor;
+  // высота кадра своего DASH на ТВ (null — обычный режим)
+  int? _ctDashHeight;
+
+  /// Сейчас играет свой DASH ТВ (качество выбирается перезапуском с нужным потолком).
+  bool get ctDashActive => _ctDashHeight != null;
+
+  static String _ctQualityLabel(int h) => switch (h) {
+        2160 => '2160p 4K',
+        1440 => '1440p 2K',
+        _ => '${h}p',
+      };
 
   void _ctPreferHighQuality({bool retry = true}) {
     // плейлист уже без низких качеств — между 720p и 1080p пусть выбирает ExoPlayer
@@ -639,6 +653,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   List<String> getVideoTracks() {
+    if (_ctDashHeight != null && state.video != null) {
+      return CtDashLocal.heights(state.video!.videoId).map(_ctQualityLabel).toList();
+    }
     if (state.video != null) {
       if (videoController?.betterPlayerAsmsTracks.isNotEmpty ?? false) {
         return videoController?.betterPlayerAsmsTracks
@@ -657,6 +674,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   int selectedVideoTrack() {
+    if (_ctDashHeight != null && state.video != null) {
+      return CtDashLocal.heights(state.video!.videoId).indexOf(_ctDashHeight!);
+    }
     if (state.video != null) {
       if (isUsingDash()) {
         var tracks = getVideoTracks();
@@ -740,6 +760,15 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   selectVideoTrack(int index) {
+    if (_ctDashHeight != null && state.video != null) {
+      // своё качество на ТВ: запоминаем как потолок и перезапускаем с той же секунды
+      final hs = CtDashLocal.heights(state.video!.videoId);
+      if (index < 0 || index >= hs.length || hs[index] == _ctDashHeight) return;
+      final pos = videoController?.videoPlayerController?.value.position;
+      ctSetTvQuality(hs[index]);
+      playVideo(false, startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);
+      return;
+    }
     if (isUsingDash()) {
       var betterPlayerAsmsTrack =
           videoController?.betterPlayerAsmsTracks[index];

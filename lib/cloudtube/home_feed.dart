@@ -28,12 +28,14 @@ const ctSections = <CtSection>[
   CtSection('movies', 'Фильмы'),
 ];
 
-PaginatedList<Video> ctSectionList(String id) {
+/// [fill] — догружать первую страницу до ~24 роликов (для сетки; рядам ТВ не нужно — быстрее старт).
+/// [delay] — отложить первую загрузку (ряды разделов ТВ не мешают главной ленте).
+PaginatedList<Video> ctSectionList(String id, {bool fill = true, Duration delay = Duration.zero}) {
   // «Главная»: на сервере с дополнениями /api/v1/popular — персональная лента;
   // на обычном Invidious «популярное» часто выключено — тогда тренды.
   if (id.isEmpty && ctDirectActive) {
     // без сервера: «Главная» — бесконечная подборка поиском
-    return CtPagedList<Video>((page) => service.search('ct:home', page: page).then((r) => r.videos));
+    return CtPagedList<Video>((page) => service.search('ct:home', page: page).then((r) => r.videos), fill: fill);
   }
   if (id.isEmpty) {
     return SingleEndpointList<Video>(() async {
@@ -44,10 +46,13 @@ PaginatedList<Video> ctSectionList(String id) {
       return service.getTrending();
     });
   }
-  return CtPagedList<Video>((page) =>
-          CtServer.hasAddons().then((addons) => addons || ctDirectActive
-              ? service.search('ct:$id', page: page).then((r) => r.videos)
-              : CtServer.fallbackSection(id, page)));
+  return CtPagedList<Video>((page) async {
+    if (page == 1 && delay > Duration.zero) await Future.delayed(delay);
+    final addons = await CtServer.hasAddons();
+    return addons || ctDirectActive
+        ? service.search('ct:$id', page: page).then((r) => r.videos)
+        : CtServer.fallbackSection(id, page);
+  }, fill: fill);
 }
 
 class CtHomeFeed extends StatefulWidget {
@@ -119,8 +124,9 @@ class CtPagedList<T> extends PaginatedList<T> {
   final Future<List<T>> Function(int page) fetch;
   int page = 1;
   bool hasMore = true;
+  final bool fill;
 
-  CtPagedList(this.fetch);
+  CtPagedList(this.fetch, {this.fill = true});
 
   @override
   bool getHasMore() => hasMore;
@@ -131,7 +137,7 @@ class CtPagedList<T> extends PaginatedList<T> {
     hasMore = list.isNotEmpty && page < 30;
     // первая порция должна заполнить экран (иначе прокрутки нет и следующая страница не грузится)
     var extra = 0;
-    while (page == 1 + extra && list.length < 24 && hasMore && extra < 3) {
+    while (fill && page == 1 + extra && list.length < 24 && hasMore && extra < 3) {
       extra++;
       try {
         final more = await fetch(page + extra);

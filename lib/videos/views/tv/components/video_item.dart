@@ -81,7 +81,7 @@ class TvVideoItem extends StatelessWidget {
                     child: AnimatedScale(
                       curve: Curves.easeInOutQuad,
                       duration: animationDuration ~/ 2,
-                      scale: hasFocus ? (compact ? 1.04 : 1) : (compact ? 1 : 0.9),
+                      scale: compact ? 1 : (hasFocus ? 1 : 0.9),
                       child: AnimatedContainer(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),

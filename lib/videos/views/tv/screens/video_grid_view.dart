@@ -68,7 +68,7 @@ class TvGridScreen extends StatelessWidget {
                 Expanded(child: LayoutBuilder(builder: (context, c) {
                   const cols = 5, gap = 14.0;
                   final w = (c.maxWidth - gap * (cols - 1)) / cols;
-                  const textH = ctTvCardTextH + 8;
+                  final textH = MediaQuery.textScalerOf(context).scale(ctTvCardTextH) + 6;
                   final items = [
                     ...state.items.where((element) => !element.filterHide).map((e) => TvVideoItem(
                         key: ValueKey(e.videoId), video: e, autoFocus: false, compact: true)),
@@ -76,7 +76,8 @@ class TvGridScreen extends StatelessWidget {
                   ];
                   return GridView.builder(
                     controller: cubit.scrollController,
-                    padding: const EdgeInsets.only(top: 12, bottom: 24),
+                    padding: const EdgeInsets.fromLTRB(4, 12, 4, 24),
+                    clipBehavior: Clip.none,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: cols,
                       crossAxisSpacing: gap,

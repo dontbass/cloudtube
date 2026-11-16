@@ -20,7 +20,7 @@ class Popular extends StatelessWidget {
       child: isTv
           ? TvHorizontalVideoList(
               // та же лента, что и «Главная» на телефоне (без сервера — бесконечная)
-              paginatedVideoList: ctSectionList(''),
+              paginatedVideoList: ctSectionList('', fill: false),
               onItemFocus: onItemFocus,
             )
           : VideoList(

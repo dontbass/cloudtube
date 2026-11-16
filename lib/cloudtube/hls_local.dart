@@ -109,32 +109,50 @@ class CtDashLocal {
   static bool _ok(Map f) =>
       f['url'] is String && f['initRange'] is Map && f['indexRange'] is Map && f['mimeType'] is String;
 
-  /// (адрес манифеста, высота кадра, адрес первой дорожки для заголовков) или null.
-  static Future<(String, int, String)?> build(String id, {int maxHeight = 1080, bool allowVp9 = false}) async {
+  static bool _avc(Map f) => '${f['mimeType']}'.contains('avc1');
+  static bool _vp9(Map f) => '${f['mimeType']}'.contains('vp9') || '${f['mimeType']}'.contains('vp09');
+
+  /// Лучший видеоформат для каждой высоты: до 1080p — AVC (легче для приставок), выше — VP9
+  /// (4K у YouTube только в VP9/AV1). При равной высоте 30 к/с важнее 60 к/с, затем битрейт.
+  static Map<int, Map> _byHeight(String id) {
+    final e = _raw[id];
+    if (e == null) return const {};
+    final out = <int, Map>{};
+    int rank(Map f) {
+      final h = _h(f);
+      final codec = h <= 1080 ? (_avc(f) ? 0 : 1) : 0;
+      return codec * 10 + (_fps(f) > 30 ? 1 : 0);
+    }
+
+    for (final f in e.$1.whereType<Map>().where(_ok)) {
+      if (!'${f['mimeType']}'.startsWith('video/')) continue;
+      final h = _h(f);
+      if (h <= 0 || h > 2160) continue;
+      if (!(_avc(f) || _vp9(f))) continue;
+      if (h > 1080 && !_vp9(f)) continue;
+      final cur = out[h];
+      if (cur == null || rank(f) < rank(cur) || (rank(f) == rank(cur) && _br(f) > _br(cur))) out[h] = f;
+    }
+    return out;
+  }
+
+  /// Доступные качества ролика (высоты, по убыванию).
+  static List<int> heights(String id) => (_byHeight(id).keys.toList()..sort((a, b) => b.compareTo(a)));
+
+  /// (адрес манифеста, высота кадра, адрес видеодорожки для заголовков) или null.
+  /// [cap] — потолок качества (по умолчанию 4K: берётся лучшее, что есть у ролика).
+  static Future<(String, int, String)?> build(String id, {int cap = 2160}) async {
     final e = _raw[id];
     if (e == null) return null;
     final all = e.$1.whereType<Map>().where(_ok).toList();
-    bool avc(Map f) => '${f['mimeType']}'.contains('avc1');
-    bool vp9(Map f) => '${f['mimeType']}'.contains('vp9') || '${f['mimeType']}'.contains('vp09');
-    final videos = all
-        .where((f) => '${f['mimeType']}'.startsWith('video/') && _h(f) > 0 && _h(f) <= maxHeight)
-        .where((f) => avc(f) || (allowVp9 && vp9(f)))
-        .toList()
-      // выше кадр — лучше; при равной высоте — 30 к/с (60 к/с тяжело для слабых приставок), затем битрейт
-      ..sort((a, b) {
-        final c = _h(b).compareTo(_h(a));
-        if (c != 0) return c;
-        final fa = _fps(a) > 30 ? 1 : 0, fb = _fps(b) > 30 ? 1 : 0;
-        if (fa != fb) return fa.compareTo(fb);
-        return _br(b).compareTo(_br(a));
-      });
+    final byH = _byHeight(id);
+    final hs = byH.keys.where((h) => h <= cap).toList()..sort((a, b) => b.compareTo(a));
     final audios = all
         .where((f) => '${f['mimeType']}'.startsWith('audio/mp4'))
         .toList()
       ..sort((a, b) => _br(b).compareTo(_br(a)));
-    if (videos.isEmpty || audios.isEmpty) return null;
-    final v = videos.first, a = audios.first;
-    if (_h(v) < 480) return null; // ничего лучше 360p — пусть играет как обычно
+    if (hs.isEmpty || audios.isEmpty) return null;
+    final v = byH[hs.first]!, a = audios.first;
     String esc(String s) => s
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')

@@ -19,6 +19,8 @@ import '../../../utils/models/image_object.dart';
 import 'video_metrics.dart';
 import '../../../cloudtube/avatars.dart';
 import '../../../cloudtube/comments.dart';
+import '../../../cloudtube/platform.dart';
+import '../../../main.dart' show isTv;
 
 final log = Logger('VideoInList');
 
@@ -54,7 +56,13 @@ class VideoListItem extends StatelessWidget {
           cubit.showVideoDetails();
         } else {
           if (!(cubit.state.video!.isUpcoming ?? false)) {
-            AutoRouter.of(context).push(VideoRoute(videoId: video!.videoId));
+            if (!isTv && !ctDesktop) {
+              // как в YouTube: нажатие сразу открывает плеер и запускает видео,
+              // данные о ролике грузятся уже в плеере (вкладка «Информация»)
+              context.read<PlayerCubit>().playVideo([video!]);
+            } else {
+              AutoRouter.of(context).push(VideoRoute(videoId: video!.videoId));
+            }
           }
         }
       }

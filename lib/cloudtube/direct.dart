@@ -546,10 +546,19 @@ class _CtDirect {
 
   // ---------- каналы ----------
   Future<Map<String, dynamic>> _channel(String id) async {
+    // всё параллельно: шапка канала, описание и последние видео (раньше — по очереди и без видео)
+    final aboutF = _yt.channels.getAboutPage(id).timeout(const Duration(seconds: 4));
+    final latestF = _channelVideos(id, yt.VideoType.normal, null, null).timeout(const Duration(seconds: 6));
+    unawaited(aboutF.then((_) {}, onError: (_) {}));
+    unawaited(latestF.then((_) {}, onError: (_) {}));
     final c = await _yt.channels.get(id);
     String desc = '';
     try {
-      desc = (await _yt.channels.getAboutPage(id)).description ?? '';
+      desc = (await aboutF).description ?? '';
+    } catch (_) {}
+    var latest = <Map>[];
+    try {
+      latest = ((await latestF)['videos'] as List).cast<Map>().take(15).toList();
     } catch (_) {}
     return {
       'author': c.title,
@@ -570,7 +579,7 @@ class _CtDirect {
       'isFamilyFriendly': true,
       'description': desc,
       'allowedRegions': <String>[],
-      'latestVideos': <Map>[],
+      'latestVideos': latest,
     };
   }
 

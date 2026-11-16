@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 import '../globals.dart';
@@ -10,6 +11,25 @@ import '../settings/models/db/settings.dart';
 
 final _log = Logger('CtYtCookies');
 const _key = 'ct_yt_web_cookie';
+const _idKey = 'ct_yt_web_identity';
+
+/// Канал, от имени которого действуем (у одного Google-аккаунта их может быть несколько,
+/// плюс в окне входа можно войти в несколько Google-аккаунтов).
+class CtYtIdentity {
+  final String name, handle, photo;
+  final String? pageId;
+  final int authUser;
+  final bool selected;
+
+  CtYtIdentity(this.name, this.handle, this.photo, this.pageId, this.authUser, this.selected);
+
+  Map<String, dynamic> toJson() => {'name': name, 'handle': handle, 'photo': photo, 'pageId': pageId, 'authUser': authUser};
+
+  static CtYtIdentity? fromJson(dynamic j) => j is Map
+      ? CtYtIdentity('${j['name'] ?? ''}', '${j['handle'] ?? ''}', '${j['photo'] ?? ''}', j['pageId'] as String?,
+          (j['authUser'] as num?)?.toInt() ?? 0, true)
+      : null;
+}
 
 /// Вход «как на сайте YouTube» (cookie). Нужен для действий от имени аккаунта на сайте:
 /// комментарии, лайки и т.п. Так делают другие клиенты (InnerTune, Metrolist, youtubei.js):
@@ -17,12 +37,149 @@ const _key = 'ct_yt_web_cookie';
 /// Вход кодом (как на ТВ) YouTube для этого не принимает — только для чтения лент.
 class CtYtCookies {
   static String? cookie;
+  static CtYtIdentity? identity;
 
   static void load() {
     try {
       cookie = db.getSettings(_key)?.value;
       if (cookie != null && cookie!.isEmpty) cookie = null;
+      final id = db.getSettings(_idKey)?.value;
+      if (id != null && id.isNotEmpty) identity = CtYtIdentity.fromJson(jsonDecode(id));
     } catch (_) {}
+  }
+
+  static Future<void> setIdentity(CtYtIdentity? id) async {
+    identity = id;
+    if (id == null) {
+      await db.deleteSetting(_idKey);
+    } else {
+      await db.saveSetting(SettingsValue(_idKey, jsonEncode(id.toJson())));
+    }
+  }
+
+  /// Контекст InnerTube с учётом выбранного канала.
+  static Map<String, dynamic> user() =>
+      identity?.pageId != null ? {'onBehalfOfUser': identity!.pageId} : <String, dynamic>{};
+
+  /// Список каналов (и Google-аккаунтов), в которые выполнен вход.
+  static Future<List<CtYtIdentity>> accounts() async {
+    final out = <CtYtIdentity>[];
+    final seen = <String>{};
+    // в окне входа может быть несколько Google-аккаунтов: authuser = 0, 1, 2…
+    for (var au = 0; au < 5; au++) {
+      List<CtYtIdentity> part;
+      try {
+        part = await _accountsFor(au);
+      } catch (e) {
+        if (au == 0) rethrow;
+        break;
+      }
+      final fresh = part.where((a) => seen.add('${a.name}|${a.handle}|${a.pageId}')).toList();
+      if (fresh.isEmpty) break;
+      out.addAll(fresh);
+    }
+    return out;
+  }
+
+  static Future<List<CtYtIdentity>> _accountsFor(int authUser) async {
+    final h = headers(withIdentity: false)..['X-Goog-AuthUser'] = '$authUser';
+    final r = await http.post(Uri.parse('https://www.youtube.com/youtubei/v1/account/accounts_list?prettyPrint=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'X-Youtube-Client-Name': '1',
+          'X-Youtube-Client-Version': '2.20251110.01.00',
+          ...h,
+        },
+        body: jsonEncode({
+          'context': {
+            'client': {'clientName': 'WEB', 'clientVersion': '2.20251110.01.00', 'hl': 'ru', 'gl': 'RU'}
+          },
+          'requestType': 'ACCOUNTS_LIST_REQUEST_TYPE_CHANNEL_SWITCHER',
+          'callCircumstance': 'SWITCHING_USERS_FULL',
+        }));
+    if (r.statusCode != 200) throw 'Список каналов: HTTP ${r.statusCode}';
+    final out = <CtYtIdentity>[];
+    String text(dynamic t) =>
+        t is Map ? '${t['simpleText'] ?? ((t['runs'] as List?)?.map((e) => e['text']).join() ?? '')}' : '';
+    void walk(dynamic n) {
+      if (n is Map) {
+        final item = n['accountItem'];
+        if (item is Map) {
+          String? pageId;
+          final tokens = ((item['serviceEndpoint'] as Map?)?['selectActiveIdentityEndpoint'] as Map?)?['supportedTokens'];
+          var other = false;
+          if (tokens is List) {
+            for (final t in tokens) {
+              if (t is! Map) continue;
+              final pid = (t['pageIdToken'] as Map?)?['pageId'];
+              if (pid is String) pageId = pid;
+              if (t['accountSigninToken'] != null) other = true; // канал другого Google-аккаунта — его покажет свой authuser
+            }
+          }
+          if (!other) {
+            final photo = ((item['accountPhoto'] as Map?)?['thumbnails'] as List?)?.lastOrNull;
+            out.add(CtYtIdentity(text(item['accountName']), text(item['channelHandle']),
+                '${photo is Map ? photo['url'] ?? '' : ''}', pageId, authUser, item['isSelected'] == true));
+          }
+          return;
+        }
+        n.values.forEach(walk);
+      } else if (n is List) {
+        n.forEach(walk);
+      }
+    }
+
+    walk(jsonDecode(utf8.decode(r.bodyBytes)));
+    return out;
+  }
+
+  /// Выбрать канал: если их несколько — спросить пользователя.
+  static Future<void> chooseIdentity(BuildContext context, {bool force = false}) async {
+    List<CtYtIdentity> list;
+    try {
+      list = await accounts();
+    } catch (e) {
+      _log.info('accounts_list: $e');
+      return;
+    }
+    if (list.isEmpty) return;
+    if (list.length == 1 && !force) {
+      await setIdentity(list.first);
+      return;
+    }
+    if (!context.mounted) return;
+    final picked = await showDialog<CtYtIdentity>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('От имени какого канала?'),
+        children: [
+          for (final a in list)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(a),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundImage: a.photo.isNotEmpty ? NetworkImage(a.photo) : null,
+                  child: a.photo.isEmpty ? Text(a.name.isNotEmpty ? a.name[0] : '?') : null,
+                ),
+                title: Text(a.name),
+                subtitle: Text(a.handle),
+                trailing: (identity?.pageId == a.pageId && identity?.authUser == a.authUser)
+                    ? const Icon(Icons.check)
+                    : null,
+              ),
+            ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
+            child: Text('Другой Google-аккаунт: «Вы» → «Комментарии от своего имени» → «Добавить аккаунт Google».',
+                style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+    if (picked != null) await setIdentity(picked);
   }
 
   static Future<void> save(String? c) async {
@@ -47,7 +204,7 @@ class CtYtCookies {
   }
 
   /// Заголовки для запросов InnerTube WEB от имени вошедшего пользователя.
-  static Map<String, String> headers() {
+  static Map<String, String> headers({bool withIdentity = true}) {
     final c = cookie!;
     final sid = _sapisid(c)!;
     const origin = 'https://www.youtube.com';
@@ -57,7 +214,8 @@ class CtYtCookies {
       'Cookie': c,
       'Authorization': 'SAPISIDHASH ${ts}_$hash SAPISID1PHASH ${ts}_$hash SAPISID3PHASH ${ts}_$hash',
       'X-Origin': origin,
-      'X-Goog-AuthUser': '0',
+      'X-Goog-AuthUser': '${withIdentity ? (identity?.authUser ?? 0) : 0}',
+      if (withIdentity && identity?.pageId != null) 'X-Goog-PageId': identity!.pageId!,
       'Origin': origin,
       'Referer': '$origin/',
     };
@@ -66,7 +224,10 @@ class CtYtCookies {
 
 /// Окно входа в Google (страница Google, пароль вводится там). После входа забираем cookie YouTube.
 class CtYtWebLoginScreen extends StatefulWidget {
-  const CtYtWebLoginScreen({super.key});
+  /// true — открыть выбор/добавление Google-аккаунта (для второго аккаунта)
+  final bool addAccount;
+
+  const CtYtWebLoginScreen({super.key, this.addAccount = false});
 
   @override
   State<CtYtWebLoginScreen> createState() => _CtYtWebLoginScreenState();
@@ -98,6 +259,8 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
     final cookie = all.entries.map((e) => '${e.key}=${e.value}').join('; ');
     await CtYtCookies.save(cookie);
     if (!mounted) return;
+    await CtYtCookies.chooseIdentity(context, force: widget.addAccount);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Готово: теперь можно комментировать от своего имени')));
     Navigator.of(context).pop(true);
@@ -116,7 +279,9 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
       body: InAppWebView(
         initialUrlRequest: URLRequest(
             url: WebUri(
-                'https://accounts.google.com/ServiceLogin?service=youtube&hl=ru&continue=${Uri.encodeComponent('https://m.youtube.com/')}')),
+                widget.addAccount
+                    ? 'https://accounts.google.com/AddSession?service=youtube&hl=ru&continue=${Uri.encodeComponent('https://m.youtube.com/')}'
+                    : 'https://accounts.google.com/ServiceLogin?service=youtube&hl=ru&continue=${Uri.encodeComponent('https://m.youtube.com/')}')),
         initialSettings: InAppWebViewSettings(
           userAgent: _ua,
           javaScriptEnabled: true,

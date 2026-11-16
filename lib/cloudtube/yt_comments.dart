@@ -28,9 +28,10 @@ class CtYtComments {
     return k;
   }
 
-  static Map<String, dynamic> _ctx() => {
+  static Map<String, dynamic> _ctx({bool auth = false}) => {
         'context': {
           'client': {'clientName': 'WEB', 'clientVersion': _webVersion, 'hl': 'ru', 'gl': 'RU', 'userAgent': _ua},
+          if (auth && CtYtCookies.active) 'user': CtYtCookies.user(),
         },
       };
 
@@ -45,7 +46,7 @@ class CtYtComments {
     // от имени пользователя WEB принимает только cookie сайта (вход кодом, как на ТВ, тут даёт 400)
     if (auth && CtYtCookies.active) headers.addAll(CtYtCookies.headers());
     final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/next?prettyPrint=false'),
-        headers: headers, body: jsonEncode({..._ctx(), ...body}));
+        headers: headers, body: jsonEncode({..._ctx(auth: auth), ...body}));
     if (r.statusCode != 200) throw 'YouTube next: ${r.statusCode}';
     return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
   }
@@ -129,7 +130,7 @@ class CtYtComments {
           'X-Youtube-Client-Version': _webVersion,
           ...CtYtCookies.headers(),
         },
-        body: jsonEncode({..._ctx(), 'commentText': text, 'createCommentParams': params}));
+        body: jsonEncode({..._ctx(auth: true), 'commentText': text, 'createCommentParams': params}));
     final body = utf8.decode(r.bodyBytes);
     if (r.statusCode != 200) {
       _log.warning('create_comment ${r.statusCode}: ${body.length > 400 ? body.substring(0, 400) : body}');
@@ -150,15 +151,100 @@ class CtYtComments {
         : {'author': 'Вы', 'content': text, 'publishedText': 'только что', 'likeCount': 0};
   }
 
+  /// Действие с комментарием от своего имени: ответ, правка, удаление.
+  static Future<Map<String, dynamic>> _action(String endpoint, Map<String, dynamic> body) async {
+    if (!CtYtCookies.active) throw CtNeedWebLogin();
+    final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/comment/$endpoint?prettyPrint=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': _ua,
+          'X-Youtube-Client-Name': '1',
+          'X-Youtube-Client-Version': _webVersion,
+          ...CtYtCookies.headers(),
+        },
+        body: jsonEncode({..._ctx(auth: true), ...body}));
+    final txt = utf8.decode(r.bodyBytes);
+    if (r.statusCode == 401) throw CtNeedWebLogin();
+    if (r.statusCode != 200) {
+      _log.warning('$endpoint ${r.statusCode}: ${txt.length > 400 ? txt.substring(0, 400) : txt}');
+      String msg = '${r.statusCode}';
+      try {
+        msg = '${r.statusCode} ${(jsonDecode(txt)['error']?['message'] ?? '')}';
+      } catch (_) {}
+      throw 'YouTube отклонил действие: $msg';
+    }
+    final j = jsonDecode(txt) as Map<String, dynamic>;
+    final st = '${(j['actionResult'] as Map?)?['status'] ?? 'STATUS_SUCCEEDED'}';
+    if (st != 'STATUS_SUCCEEDED') throw 'YouTube отклонил действие ($st)';
+    return j;
+  }
+
+  static Future<Map<String, dynamic>?> reply(String videoId, String params, String text) async {
+    final j = await _action('create_comment_reply', {'commentText': text, 'createReplyParams': params});
+    final p = _parse(videoId, j);
+    return p.items.isNotEmpty ? p.items.first : {'author': 'Вы', 'content': text, 'publishedText': 'только что'};
+  }
+
+  static Future<void> edit(String params, String text, {bool isReply = false}) => _action(
+      isReply ? 'update_comment_reply' : 'update_comment',
+      {'commentText': text, if (isReply) 'updateReplyParams': params else 'updateCommentParams': params});
+
+  static Future<void> delete(String action) => _action('perform_comment_action', {
+        'actions': [action]
+      });
+
+  /// Параметры действий (ответить / изменить / удалить) из данных комментария.
+  static void _attachActions(Map<String, dynamic> c, List<dynamic> sources) {
+    String? reply, edit, editReply, del;
+    final delRe = RegExp(r'удал|delete', caseSensitive: false);
+    String? str(dynamic v) => v is String ? v : null;
+    for (final src in sources) {
+      reply ??= str(_findKey(src, 'createReplyParams'));
+      edit ??= str(_findKey(src, 'updateCommentParams'));
+      editReply ??= str(_findKey(src, 'updateReplyParams'));
+      del ??= _findMenuAction(src, delRe);
+    }
+    if (reply != null) c['ctReply'] = reply;
+    if (edit != null) c['ctEdit'] = edit;
+    if (editReply != null) c['ctEditReply'] = editReply;
+    if (del != null) c['ctDelete'] = del;
+  }
+
+  /// В меню комментария найти пункт с подписью (например «Удалить») и вернуть его action.
+  static String? _findMenuAction(dynamic n, RegExp label) {
+    String? found;
+    void walk(dynamic x) {
+      if (found != null) return;
+      if (x is Map) {
+        final t = _text(x['text']).isNotEmpty ? _text(x['text']) : _text(x['title']);
+        if (t.isNotEmpty && label.hasMatch(t)) {
+          final ep = _findKey(x, 'performCommentActionEndpoint');
+          if (ep is Map && ep['action'] is String) {
+            found = ep['action'];
+            return;
+          }
+        }
+        x.values.forEach(walk);
+      } else if (x is List) {
+        x.forEach(walk);
+      }
+    }
+
+    walk(n);
+    return found;
+  }
+
   // ---------- разбор ----------
   static _Page _parse(String videoId, Map<String, dynamic> j) {
     final p = _Page();
     // сущности нового формата
     final entities = <String, Map>{};
+    final payloads = <String, dynamic>{}; // все сущности по ключу (меню, панель действий и т.п.)
     _walk(j['frameworkUpdates'], (k, v) {
       if (k == 'mutations' && v is List) {
         for (final m in v) {
           final pl = (m as Map?)?['payload'];
+          if (m != null && m['entityKey'] != null) payloads['${m['entityKey']}'] = pl;
           if (pl is Map && pl['commentEntityPayload'] is Map) entities['${m!['entityKey']}'] = pl['commentEntityPayload'];
           if (pl is Map && pl['commentEntityPayload'] is Map) {
             final key = (pl['commentEntityPayload'] as Map)['key'];
@@ -209,9 +295,18 @@ class CtYtComments {
       Map<String, dynamic>? c;
       if (vm != null) {
         final e = entities['${vm['commentKey']}'];
-        if (e != null) c = _fromEntity(e);
+        if (e != null) {
+          c = _fromEntity(e);
+          // связанные сущности: ключи, на которые ссылается commentViewModel
+          final related = <dynamic>[vm, e];
+          for (final v in vm.values) {
+            if (v is String && payloads.containsKey(v)) related.add(payloads[v]);
+          }
+          _attachActions(c, related);
+        }
       } else if (old != null) {
         c = _fromRenderer(old);
+        _attachActions(c, [old]);
       }
       if (c == null) continue;
       if (repliesToken != null) {

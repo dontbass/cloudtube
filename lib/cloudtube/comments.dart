@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/settings/models/db/server.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('CtComments');
@@ -26,6 +27,9 @@ class CtComment {
   final bool heart;
   final bool edited;
   final String? repliesContinuation;
+  // действия от своего имени (есть, только если вошли через сайт YouTube)
+  String? replyParams, editParams, deleteAction;
+  bool editIsReply = false;
 
   CtComment(this.author, this.avatar, this.text, this.published, this.likes, this.replies,
       this.owner, this.heart, this.edited, [this.repliesContinuation]);
@@ -57,8 +61,19 @@ class CtComment {
       j['creatorHeart'] != null,
       j['isEdited'] == true,
       rep is Map ? rep['continuation'] as String? : null,
-    );
+    )
+      ..replyParams = j['ctReply'] as String?
+      ..editParams = (j['ctEdit'] ?? j['ctEditReply']) as String?
+      ..editIsReply = j['ctEdit'] == null && j['ctEditReply'] != null
+      ..deleteAction = j['ctDelete'] as String?;
   }
+
+  CtComment copyWithText(String t) => CtComment(author, avatar, t, published, likes, replies, owner, heart, true,
+      repliesContinuation)
+    ..replyParams = replyParams
+    ..editParams = editParams
+    ..editIsReply = editIsReply
+    ..deleteAction = deleteAction;
 }
 
 class CtCommentsPage {
@@ -419,6 +434,164 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     );
   }
 
+  CtComment? _parentOf(CtComment r) {
+    for (final e in _replies.entries) {
+      if (e.value?.contains(r) ?? false) return e.key;
+    }
+    return null;
+  }
+
+  void _replace(CtComment old, CtComment? now) {
+    setState(() {
+      final i = items.indexOf(old);
+      if (i >= 0) {
+        if (now == null) {
+          items.removeAt(i);
+        } else {
+          items[i] = now;
+        }
+        return;
+      }
+      final p = _parentOf(old);
+      final list = p == null ? null : _replies[p];
+      if (list != null) {
+        final k = list.indexOf(old);
+        if (now == null) {
+          list.removeAt(k);
+        } else {
+          list[k] = now;
+        }
+      }
+    });
+  }
+
+  Future<String?> _askText(String title, {String initial = '', String action = 'Отправить'}) {
+    final ctl = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 6,
+          decoration: const InputDecoration(hintText: 'Текст комментария'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()), child: Text(action)),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _ensureLogin() async {
+    if (CtYtCookies.active) return true;
+    final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen()));
+    return ok == true;
+  }
+
+  Future<void> _run(Future<void> Function() f) async {
+    try {
+      await f();
+    } on CtNeedWebLogin {
+      if (await _ensureLogin()) await _run(f);
+    } catch (e) {
+      if (mounted) setState(() => _err = '$e');
+    }
+  }
+
+  Future<void> _reply(CtComment c) async {
+    if (!ctDirectActive) return;
+    if (!await _ensureLogin()) return;
+    if (c.replyParams == null) {
+      // параметры ответа приходят только при загрузке под своим входом — перезагрузим ветку
+      setState(() => _err = 'Обновите комментарии (потяните вниз или «Сначала новые/популярные»), чтобы ответить');
+      return;
+    }
+    final author = c.author.startsWith('@') ? c.author : '@${c.author}';
+    final text = await _askText('Ответ $author', initial: '$author ');
+    if (text == null || text.isEmpty) return;
+    await _run(() async {
+      final j = await CtYtComments.reply(widget.videoId, c.replyParams!, text);
+      final r = CtComment.fromJson(j) ?? CtComment('Вы', '', text, 'только что', 0, 0, false, false, false);
+      final parent = _parentOf(c) ?? c;
+      setState(() {
+        final l = _replies[parent] ?? <CtComment>[];
+        l.add(r);
+        _replies[parent] = l;
+      });
+    });
+  }
+
+  Future<void> _menu(CtComment c, {bool reply = false}) async {
+    final canEdit = c.editParams != null, canDel = c.deleteAction != null;
+    final what = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (ctDirectActive)
+            ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text('Ответить'),
+                onTap: () => Navigator.of(ctx).pop('reply')),
+          if (canEdit)
+            ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Изменить'),
+                onTap: () => Navigator.of(ctx).pop('edit')),
+          if (canDel)
+            ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Удалить'),
+                onTap: () => Navigator.of(ctx).pop('delete')),
+          ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Копировать текст'),
+              onTap: () => Navigator.of(ctx).pop('copy')),
+          if (ctDirectActive && !canEdit && !canDel && CtYtCookies.active)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text('Изменить и удалить можно только свои комментарии (от выбранного канала).',
+                  style: TextStyle(fontSize: 12)),
+            ),
+        ]),
+      ),
+    );
+    if (!mounted || what == null) return;
+    switch (what) {
+      case 'reply':
+        await _reply(c);
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: c.text));
+      case 'edit':
+        final t = await _askText('Изменить комментарий', initial: c.text, action: 'Сохранить');
+        if (t == null || t.isEmpty || t == c.text) return;
+        await _run(() async {
+          await CtYtComments.edit(c.editParams!, t, isReply: c.editIsReply);
+          _replace(c, c.copyWithText(t));
+        });
+      case 'delete':
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Удалить комментарий?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Отмена')),
+              FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Удалить')),
+            ],
+          ),
+        );
+        if (ok != true) return;
+        await _run(() async {
+          await CtYtComments.delete(c.deleteAction!);
+          _replace(c, null);
+        });
+    }
+  }
+
   Widget _tile(CtComment c, ColorScheme colors, {bool reply = false}) {
     final size = reply ? 26.0 : 36.0;
     final hasReplies = !reply && c.replies > 0;
@@ -461,7 +634,14 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
                   ),
                 ),
-                Icon(Icons.more_horiz, size: 20, color: colors.onSurfaceVariant),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => _menu(c, reply: reply),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(Icons.more_horiz, size: 20, color: colors.onSurfaceVariant),
+                  ),
+                ),
               ]),
               const SizedBox(height: 3),
               Text(c.text, style: const TextStyle(fontSize: 15, height: 1.38)),
@@ -475,7 +655,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 const SizedBox(width: 26),
                 const Icon(Icons.thumb_down_outlined, size: 20),
                 const SizedBox(width: 26),
-                const Icon(Icons.chat_outlined, size: 20),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => _reply(c),
+                  child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.chat_outlined, size: 20)),
+                ),
                 if (c.heart) ...[
                   const SizedBox(width: 26),
                   const Icon(Icons.favorite, size: 18, color: Color(0xFFFF0033)),

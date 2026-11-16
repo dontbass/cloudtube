@@ -87,7 +87,6 @@ class TVSettingsScreen extends StatelessWidget {
 
     AutoRouter.of(context).push(TvSelectFromListRoute(
       title: locals.appLanguage,
-                  leading: const Icon(Icons.translate),
       options: [locals.followSystem, ...localsStrings],
       selected: selected?.nativeDisplayLanguageScript ?? locals.followSystem,
       onSelect: (String selected) {
@@ -105,7 +104,6 @@ class TVSettingsScreen extends StatelessWidget {
     var cubit = context.read<SettingsCubit>();
     AutoRouter.of(context).push(TvSelectFromListRoute(
       title: locals.themeBrightness,
-                  leading: const Icon(Icons.brightness_6_outlined),
       options:
           ThemeMode.values.map((e) => cubit.getThemeLabel(locals, e)).toList(),
       selected: cubit.getThemeLabel(locals, cubit.state.themeMode),
@@ -221,6 +219,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.appLanguage,
+                  leading: const Icon(Icons.translate),
                   description:
                       cubit.getLocaleDisplayName() ?? locals.followSystem,
                   onSelected: (context) => showSelectLanguage(context),
@@ -355,6 +354,7 @@ class TVSettingsScreen extends StatelessWidget {
                 SettingsTitle(title: locals.appearance),
                 SettingsTile(
                   title: locals.themeBrightness,
+                  leading: const Icon(Icons.brightness_6_outlined),
                   description: cubit.getThemeLabel(locals, state.themeMode),
                   onSelected: (context) => selectTheme(context),
                 ),

@@ -18,7 +18,9 @@ class ExpandedPlayer extends StatelessWidget {
     var player = context.read<PlayerCubit>();
     var controller = player.state;
 
-    Video? video = controller.currentlyPlaying;
+    // пока грузятся данные — сразу показываем то, что известно из ленты (название, канал)
+    Video? video = controller.currentlyPlaying ??
+        (controller.offlineCurrentlyPlaying == null && controller.videos.isNotEmpty ? controller.videos.first : null);
     DownloadedVideo? offlineVid = controller.offlineCurrentlyPlaying;
     context.watch<SettingsCubit>();
 

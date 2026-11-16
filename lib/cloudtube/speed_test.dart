@@ -7,6 +7,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import '../globals.dart';
 import 'direct.dart';
+import 'trace.dart';
 import 'yt_fast.dart';
 
 /// Проверка скорости на устройстве: сколько занимает каждый шаг запуска видео.
@@ -97,7 +98,8 @@ class _CtSpeedTestScreenState extends State<CtSpeedTestScreen> {
     if (mounted) setState(() => running = false);
   }
 
-  String _report() => steps.map((s) => '${s.ok ? '✓' : '✗'} ${s.name}: ${s.ms} мс ${s.note}').join('\n');
+  String _report() =>
+      '${steps.map((s) => '${s.ok ? '✓' : '✗'} ${s.name}: ${s.ms} мс ${s.note}').join('\n')}\n\nПоследнее открытие видео:\n${CtTrace.report()}';
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +117,27 @@ class _CtSpeedTestScreenState extends State<CtSpeedTestScreen> {
       ]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text('Замеряет каждый шаг запуска видео на вашем устройстве и в вашей сети. '
+            'Откройте любое видео из ленты, вернитесь сюда — ниже появится хронометраж от нажатия до старта. '
             'Скопируйте результат и пришлите — так видно, где задержка.',
             style: TextStyle(color: colors.onSurfaceVariant)),
+        if (CtTrace.marks.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Row(children: [
+            const Expanded(child: Text('Последнее открытие видео', style: TextStyle(fontWeight: FontWeight.w700))),
+            TextButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: CtTrace.report()));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Скопировано')));
+                },
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Копировать')),
+          ]),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: colors.surfaceContainerHigh, borderRadius: BorderRadius.circular(10)),
+            child: SelectableText(CtTrace.report(), style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(controller: _vid, decoration: const InputDecoration(labelText: 'ID видео для проверки')),
         const SizedBox(height: 12),

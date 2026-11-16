@@ -20,6 +20,7 @@ import 'video_metrics.dart';
 import '../../../cloudtube/avatars.dart';
 import '../../../cloudtube/comments.dart';
 import '../../../cloudtube/platform.dart';
+import '../../../cloudtube/trace.dart';
 import '../../../main.dart' show isTv;
 
 final log = Logger('VideoInList');
@@ -59,6 +60,7 @@ class VideoListItem extends StatelessWidget {
             if (!isTv && !ctDesktop) {
               // как в YouTube: нажатие сразу открывает плеер и запускает видео,
               // данные о ролике грузятся уже в плеере (вкладка «Информация»)
+              CtTrace.start('нажатие на ролик ${video!.videoId}');
               context.read<PlayerCubit>().playVideo([video!]);
             } else {
               AutoRouter.of(context).push(VideoRoute(videoId: video!.videoId));

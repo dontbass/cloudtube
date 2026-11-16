@@ -7,6 +7,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 import 'yt_account.dart';
 import 'yt_comments.dart';
+import 'trace.dart';
 import 'yt_fast.dart';
 
 final _log = Logger('CtDirect');
@@ -211,6 +212,7 @@ class _CtDirect {
   }
 
   Future<Map<String, dynamic>> _video0(String id) async {
+    CtTrace.mark('адаптер: начало');
     // быстрый путь: сразу «player» без страницы просмотра (как NewPipe/LibreTube)
     try {
       final f = await CtYtFast.video(id);

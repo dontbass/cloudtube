@@ -19,6 +19,7 @@ import '../../utils/pretty_bytes.dart';
 import '../../videos/models/video.dart';
 import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
+import '../../cloudtube/trace.dart';
 import 'interfaces/media_player.dart';
 
 part 'video_player.freezed.dart';
@@ -104,6 +105,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         break;
 
       case BetterPlayerEventType.progress:
+        if (CtTrace.marks.isNotEmpty && !CtTrace.marks.last.$2.startsWith('плеер: пошло')) {
+          CtTrace.mark('плеер: пошло воспроизведение');
+        }
         EasyThrottle.throttle(
             'video-player-progress', const Duration(seconds: 1), () {
           player.setEvent(MediaEvent(
@@ -138,6 +142,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       case BetterPlayerEventType.openFullscreen:
         break;
       case BetterPlayerEventType.initialized:
+        CtTrace.mark('плеер: поток открыт (initialized)');
         player.setEvent(MediaEvent<double>(
             state: MediaState.ready,
             type: MediaEventType.aspectRatioChanged,
@@ -411,6 +416,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       bool fillVideo = settings.state.fillFullscreen;
 
       if (videoController == null) {
+        CtTrace.mark('плеер: создаю ExoPlayer');
         videoController = BetterPlayerController(
             BetterPlayerConfiguration(
                 overlay: isTv

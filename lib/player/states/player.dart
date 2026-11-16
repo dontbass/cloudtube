@@ -31,6 +31,7 @@ import '../../utils/models/pair.dart';
 import '../../videos/models/db/progress.dart' as db_progress;
 import '../../videos/models/sponsor_segment.dart';
 import '../../videos/models/sponsor_segment_types.dart';
+import '../../cloudtube/trace.dart';
 import '../../videos/models/video.dart';
 
 part 'player.freezed.dart';
@@ -499,6 +500,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
           top: 500));
 
       showBigPlayer();
+      CtTrace.mark('плеер: открыт');
       if (isOffline) {
         await switchToOfflineVideo(state.offlineVideos[0]);
       } else {
@@ -540,6 +542,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     try {
       // we move the existing video to the stack of played video
       await audioSession.setActive(true);
+      CtTrace.mark('аудиосессия активна');
       bool isOffline = video is DownloadedVideo;
       // we want to switch to audio mode as soon as we can to prevent problems when switching from audio to video or the other way
       if (isOffline) {
@@ -579,7 +582,9 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
             video.adaptiveFormats != null) {
           v = video;
         } else {
+          CtTrace.mark('запрос данных видео');
           v = await service.getVideo(video.videoId);
+          CtTrace.mark('данные видео получены');
         }
         currentlyPlaying = v;
         mediaCommand = MediaCommand(MediaCommandType.switchVideo,
@@ -634,6 +639,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     }
     // TODO: find how to do this with auto router
     log.fine('Playing ${videos.length} videos');
+    CtTrace.mark('плеер: playVideo');
 
     setAudio(audio);
 

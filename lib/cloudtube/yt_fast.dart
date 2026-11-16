@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'trace.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 final _log = Logger('CtYtFast');
@@ -106,6 +107,7 @@ class CtYtFast {
   /// Собрать JSON видео в формате Invidious. null — быстрый путь не сработал.
   static Future<Map<String, dynamic>?> video(String id) async {
     final sw = Stopwatch()..start();
+    CtTrace.mark('адаптер: запросы к YouTube');
     final iosF = player(id, yt.YoutubeApiClient.ios).catchError((e) {
       _log.info('ios $id: $e');
       return null;
@@ -117,7 +119,9 @@ class CtYtFast {
     final nextF = next(id);
     unawaited(nextF.then((_) {}, onError: (_) {}));
     final ios = await iosF;
+    CtTrace.mark('адаптер: player iOS ${ios != null ? 'ok' : 'нет'}');
     final vr = await vrF;
+    CtTrace.mark('адаптер: player VR ${vr != null ? 'ok' : 'нет'}');
     final base = ios ?? vr;
     if (base == null) return null;
     final d = (base['videoDetails'] as Map?) ?? const {};
@@ -190,7 +194,9 @@ class CtYtFast {
     // «next» ждём не дольше 0,7 с после готовности потоков — видео важнее
     try {
       final n = await nextF.timeout(const Duration(milliseconds: 700));
+      CtTrace.mark('адаптер: next получен');
       _applyNext(j, n);
+      CtTrace.mark('адаптер: next разобран');
     } catch (_) {
       // догрузим в фоне — при следующем открытии будет полностью
       unawaited(nextF.then((n) => _applyNext(j, n), onError: (_) {}));

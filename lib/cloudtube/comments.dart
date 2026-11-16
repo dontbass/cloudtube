@@ -414,7 +414,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     try {
       final j = await CtYtComments.post(widget.videoId, text);
       _input.clear();
-      FocusScope.of(context).unfocus();
+      if (mounted) FocusScope.of(context).unfocus();
       final c = CtComment.fromJson(j) ?? CtComment('Вы', '', text, 'только что', 0, 0, false, false, false);
       if (mounted) setState(() => items.insert(0, c));
       messenger.showSnackBar(const SnackBar(content: Text('Комментарий опубликован')));

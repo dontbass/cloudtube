@@ -16,7 +16,6 @@ import 'package:clipious/videos/models/db/history_video_cache.dart';
 import 'package:clipious/videos/models/db/progress.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import '../notifications/models/db/channel_notifications.dart';

@@ -1,9 +1,29 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/globals.dart';
+import 'package:clipious/main.dart' show isTv;
 import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/utils/states/thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+Server? _ctSrv;
+DateTime _ctSrvAt = DateTime(2000);
+Future<Server?>? _ctSrvFut;
+
+Future<Server?> _ctServer() {
+  if (_ctSrv != null && DateTime.now().difference(_ctSrvAt) < const Duration(seconds: 15)) {
+    return Future.value(_ctSrv);
+  }
+  return _ctSrvFut ??= db.getCurrentlySelectedServer().then<Server?>((s) {
+    _ctSrv = s;
+    _ctSrvAt = DateTime.now();
+    _ctSrvFut = null;
+    return s;
+  }, onError: (_) {
+    _ctSrvFut = null;
+    return null;
+  });
+}
 
 class Thumbnail extends StatelessWidget {
   final Widget? child;
@@ -25,7 +45,10 @@ class Thumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     ColorScheme colors = Theme.of(context).colorScheme;
     return FutureBuilder<Server?>(
-        future: db.getCurrentlySelectedServer(),
+        // сервер кэшируем: раньше каждая миниатюра при каждой перерисовке читала список серверов
+        // из базы — при быстрой прокрутке плиток это и давало подтормаживание
+        future: _ctServer(),
+        initialData: _ctSrv,
         builder: (context, server) {
           return !server.hasData || server.data == null
               ? Container(
@@ -50,6 +73,8 @@ class Thumbnail extends StatelessWidget {
 
                       return CachedNetworkImage(
                         key: ValueKey(url),
+                        // ТВ: декодируем сразу в размер карточки, а не 640×480 — меньше работы и памяти
+                        memCacheWidth: isTv ? 480 : null,
                         cacheKey: url,
                         httpHeaders: server.data?.headersForUrl(url),
                         errorListener: (value) => cubit.onThumbnailFailed(),

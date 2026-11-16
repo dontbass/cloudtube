@@ -50,7 +50,7 @@ class CtYouPage extends StatelessWidget {
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       Server s = await db.getCurrentlySelectedServer();

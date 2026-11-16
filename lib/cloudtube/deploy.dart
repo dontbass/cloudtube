@@ -223,11 +223,12 @@ class _CtDeployScreenState extends State<CtDeployScreen> {
       _progress = 1;
       _step = 'Подключаю приложение к серверу…';
     });
+    final app = context.read<AppCubit>();
     try {
       final url = _url ?? 'https://$_domainClean';
       await ctConnectServer(
         url: url,
-        app: context.read<AppCubit>(),
+        app: app,
         siteUser: _user.text.trim(),
         sitePass: _pass.text,
         user: _user.text.trim(),
@@ -239,7 +240,7 @@ class _CtDeployScreenState extends State<CtDeployScreen> {
       try {
         await ctConnectServer(
             url: _url ?? 'https://$_domainClean',
-            app: context.read<AppCubit>(),
+            app: app,
             siteUser: _user.text.trim(),
             sitePass: _pass.text);
       } catch (_) {}

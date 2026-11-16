@@ -30,6 +30,22 @@ const overlayBackgroundOpacity = 0.8;
 const double overlayBlur = 25.0;
 GlobalKey popularTitle = GlobalKey(debugLabel: 'popular title');
 GlobalKey subscriptionTitle = GlobalKey(debugLabel: 'subscription title');
+DateTime _ctLastBack = DateTime(2000);
+GlobalKey? _ctCurRow;
+
+/// Вертикальная прокрутка к ряду — только при смене ряда. Раньше она запускалась на КАЖДОМ
+/// ролике при движении вправо-влево и спорила с горизонтальной прокруткой — отсюда рывки.
+void ctTvScrollToRow(GlobalKey? key) {
+  if (key == null || identical(key, _ctCurRow)) return;
+  final ctx = key.currentContext;
+  if (ctx == null) return;
+  _ctCurRow = key;
+  Scrollable.ensureVisible(ctx,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
+}
+
 final _ctRowKeys = {for (final c in ctSections.skip(1)) c.id: GlobalKey(debugLabel: 'row ${c.id}')};
 
 /// Ряды разделов (Музыка, Новости, Спорт…) под основными лентами стартового экрана.
@@ -52,13 +68,7 @@ List<Widget> _ctSectionRows(BuildContext context) {
             paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 1500 + 700 * i)),
             autoFocusedIndex: -1,
             onItemFocus: (video, index, focus) {
-              final k = _ctRowKeys[c.id]?.currentContext;
-              if (focus && k != null) {
-                Scrollable.ensureVisible(k,
-                    duration: animationDuration,
-                    curve: Curves.easeInOutQuad,
-                    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
-              }
+              if (focus) ctTvScrollToRow(_ctRowKeys[c.id]);
             },
           ),
         ],
@@ -111,6 +121,25 @@ class TvHomeScreen extends StatelessWidget {
     TextTheme textTheme = Theme.of(context).textTheme;
     var locals = AppLocalizations.of(context)!;
     return _CtTvStartup(
+      child: PopScope(
+      // выход из приложения — двойным «Назад», как в SmartTube
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (now.difference(_ctLastBack) < const Duration(milliseconds: 2500)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _ctLastBack = now;
+        ScaffoldMessenger.maybeOf(context)
+          ?..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+              content: Text('Нажмите «Назад» ещё раз для выхода', textAlign: TextAlign.center),
+              behavior: SnackBarBehavior.floating,
+              width: 420,
+              duration: Duration(milliseconds: 2500)));
+      },
       child: Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
@@ -171,14 +200,7 @@ class TvHomeScreen extends StatelessWidget {
                               };
 
                               focusFunction(video, index, focus) {
-                                if (key != null && focus) {
-                                  Scrollable.ensureVisible(key.currentContext!,
-                                      duration: animationDuration,
-                                      curve: Curves.easeInOutQuad,
-                                      alignmentPolicy:
-                                          ScrollPositionAlignmentPolicy
-                                              .keepVisibleAtStart);
-                                }
+                                if (focus) ctTvScrollToRow(key);
                               }
 
                               return Column(
@@ -383,7 +405,7 @@ class TvHomeScreen extends StatelessWidget {
           }),
         ),
       ),
-    ));
+    )));
   }
 }
 

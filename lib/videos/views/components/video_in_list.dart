@@ -16,7 +16,6 @@ import 'package:logging/logging.dart';
 import '../../../downloads/models/downloaded_video.dart';
 import '../../../utils.dart';
 import '../../../utils/models/image_object.dart';
-import 'video_metrics.dart';
 import '../../../cloudtube/avatars.dart';
 import '../../../cloudtube/comments.dart';
 import '../../../cloudtube/platform.dart';
@@ -395,13 +394,6 @@ class VideoListItem extends StatelessWidget {
                                       color: colorScheme.onSurfaceVariant),
                             ),
                           ),
-                          if (false && showMetrics && !small && video != null)
-                            VideoMetrics(
-                              video: video,
-                              style: textTheme.bodySmall,
-                              showDuration: false,
-                              iconSize: 13,
-                            )
                         ],
                       ),
                     ),

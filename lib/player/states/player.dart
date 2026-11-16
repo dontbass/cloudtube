@@ -372,9 +372,15 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         var skipTo = nextSegment.last + 1000;
         final segIndex = state.sponsorSegments.indexOf(nextSegment);
         final segType = segIndex >= 0 && segIndex < _ctSegTypes.length ? _ctSegTypes[segIndex] : null;
-        ctShowSponsorToast(segType != null
-            ? 'Пропущен фрагмент «${ctSponsorLabel(segType)}»'
-            : 'Пропущен фрагмент SponsorBlock');
+        // одно сообщение на фрагмент (если перемотка не сразу сработала — не повторяем)
+        final now = DateTime.now();
+        if (_ctLastSkipStart != nextSegment.first || now.difference(_ctLastSkipAt) > const Duration(seconds: 15)) {
+          ctShowSponsorToast(segType != null
+              ? 'Пропущен фрагмент «${ctSponsorLabel(segType)}»'
+              : 'Пропущен фрагмент SponsorBlock');
+        }
+        _ctLastSkipStart = nextSegment.first;
+        _ctLastSkipAt = now;
 
         emit(state.copyWith(
             mediaEvent: const MediaEvent(
@@ -785,6 +791,8 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
 
   // категории сегментов в том же порядке, что и state.sponsorSegments (для сообщения в кадре)
   List<SponsorSegmentType> _ctSegTypes = const [];
+  int _ctLastSkipStart = -1;
+  DateTime _ctLastSkipAt = DateTime(2000);
 
   Future<void> setSponsorBlock() async {
     List<Pair<int>> newSegments = [];

@@ -189,7 +189,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       _recoverFor = v.videoId;
       _recoverTries = 0;
     }
-    if (_ctDashHeight != null && isTv && ctDirectActive) {
+    if (_ctCurHeight != null && isTv && ctDirectActive) {
       await _ctRecoverDash(v.videoId, 'ошибка плеера');
       return;
     }
@@ -387,6 +387,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         var ctDash = false;
         _ctFiltered = false;
         _ctDashHeight = null;
+        _ctCurHeight = null;
         if (isTv && ctDirectActive && _ctNoDashFor != newState.video!.videoId) {
           final id = newState.video!.videoId;
           final d = await CtDashLocal.build(id,
@@ -395,6 +396,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           if (d != null) {
             ctDash = true;
             _ctDashHeight = d.$2;
+            _ctCurHeight = d.$2;
             _ctCurItag = d.$4;
             _ctArmPlaybackWatch(id);
             _ctFiltered = true;
@@ -404,10 +406,16 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           }
         }
         if (!ctDash && isHls && isTv && ctDirectActive) {
-          final local = await CtHlsLocal.atLeast(videoUrl, streamHeaders);
-          CtTrace.mark(local != null ? 'плеер: HLS 720–1080p' : 'плеер: HLS без фильтра качества');
+          // запасной путь — HLS, но тоже с одним качеством (лучшее не выше выбранного)
+          final local = await CtHlsLocal.single(videoUrl, streamHeaders,
+              cap: _ctCapFor == newState.video!.videoId ? _ctCapOverride! : ctTvQualityCap);
+          CtTrace.mark(local != null ? 'плеер: HLS ${local.$2}p (одно качество)' : 'плеер: HLS без фильтра качества');
           _ctFiltered = local != null;
-          if (local != null) videoUrl = local;
+          if (local != null) {
+            videoUrl = local.$1;
+            _ctCurHeight = local.$2;
+            _ctArmPlaybackWatch(newState.video!.videoId);
+          }
         } else if (!ctDash) {
           CtTrace.mark(isHls ? 'плеер: HLS' : (isUsingDash() ? 'плеер: DASH' : 'плеер: обычный поток ${formatStream?.resolution ?? ''}'));
         }
@@ -631,6 +639,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   String? _ctNoDashFor;
   // высота кадра своего DASH на ТВ (null — обычный режим)
   int? _ctDashHeight;
+  // высота кадра в режиме ТВ без сервера (свой DASH или HLS с одним качеством)
+  int? _ctCurHeight;
   String? _ctCurItag;
   // формат, выбранный вручную в меню (для этого ролика)
   String? _ctItagFor, _ctItag;
@@ -650,7 +660,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     Duration? last;
     var still = 0;
     _ctWatch = Timer.periodic(const Duration(seconds: 3), (t) {
-      if (isClosed || state.video?.videoId != id || _ctDashHeight == null) {
+      if (isClosed || state.video?.videoId != id || _ctCurHeight == null) {
         t.cancel();
         return;
       }
@@ -678,20 +688,21 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     _ctLastFail = now;
     _ctFails++;
     final pos = videoController?.videoPlayerController?.value.position;
-    if (_ctFails >= 5) {
+    // 1-й сбой — тот же поток со свежими ссылками; 2-й на своём DASH — HLS того же качества;
+    // дальше — ступенью ниже (только для этого ролика)
+    if (_ctFails == 1) {
+      CtTrace.mark('плеер: $why — сбой №1, перезапуск с той же секунды');
+    } else if (_ctFails == 2 && _ctDashHeight != null) {
       _ctNoDashFor = id;
-      CtTrace.mark('плеер: $why — 5-й сбой, переход на HLS');
-    } else if (_ctFails >= 3) {
-      // похоже, приставка/канал не тянет это качество — на ступень ниже (только для этого ролика)
-      final lower = CtDashLocal.heights(id).where((h) => h < (_ctDashHeight ?? 99999)).firstOrNull;
+      CtTrace.mark('плеер: $why — сбой №2, переход на HLS того же качества');
+    } else {
+      final lower = [2160, 1440, 1080, 720, 480, 360].where((h) => h < (_ctCurHeight ?? 99999)).firstOrNull;
       if (lower != null) {
         _ctCapFor = id;
         _ctCapOverride = lower;
         _ctItagFor = null;
       }
-      CtTrace.mark('плеер: $why — сбой №$_ctFails, качество ${lower ?? _ctDashHeight}p');
-    } else {
-      CtTrace.mark('плеер: $why — сбой №$_ctFails, перезапуск с той же секунды');
+      CtTrace.mark('плеер: $why — сбой №$_ctFails, качество до ${lower ?? _ctCurHeight}p');
     }
     log.warning('ct dash recover $id: $why (#$_ctFails)');
     ctDirectForget(id);
@@ -707,7 +718,11 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   }
 
   /// Сейчас играет свой DASH ТВ (качество выбирается перезапуском с нужным потолком).
-  bool get ctDashActive => _ctDashHeight != null;
+  bool get ctDashActive => _ctMenu;
+
+  // меню «Видеоформат» (как в SmartTube) — и на своём DASH, и на запасном HLS
+  bool get _ctMenu =>
+      _ctCurHeight != null && state.video != null && CtDashLocal.formats(state.video!.videoId).isNotEmpty;
 
 
   void _ctPreferHighQuality({bool retry = true}) {
@@ -728,7 +743,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   List<String> getVideoTracks() {
-    if (_ctDashHeight != null && state.video != null) {
+    if (_ctMenu) {
       return CtDashLocal.formats(state.video!.videoId).map(CtDashLocal.label).toList();
     }
     if (state.video != null) {
@@ -749,7 +764,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   int selectedVideoTrack() {
-    if (_ctDashHeight != null && state.video != null) {
+    if (_ctMenu) {
+      if (_ctDashHeight == null) return -1; // играет запасной HLS
       return CtDashLocal.formats(state.video!.videoId).indexWhere((f) => '${f['itag']}' == _ctCurItag);
     }
     if (state.video != null) {
@@ -835,16 +851,17 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   selectVideoTrack(int index) {
-    if (_ctDashHeight != null && state.video != null) {
+    if (_ctMenu) {
       // формат из меню: этот ролик — ровно он, высота запоминается как потолок для следующих
       final id = state.video!.videoId;
       final fs = CtDashLocal.formats(id);
-      if (index < 0 || index >= fs.length || '${fs[index]['itag']}' == _ctCurItag) return;
+      if (index < 0 || index >= fs.length || (_ctDashHeight != null && '${fs[index]['itag']}' == _ctCurItag)) return;
       final f = fs[index];
       final pos = videoController?.videoPlayerController?.value.position;
       _ctItagFor = id;
       _ctItag = '${f['itag']}';
       _ctCapFor = null;
+      _ctNoDashFor = null;
       _ctFails = 0;
       ctSetTvQuality((f['height'] as num?)?.toInt() ?? 2160);
       CtTrace.mark('плеер: выбран формат ${CtDashLocal.label(f)}');

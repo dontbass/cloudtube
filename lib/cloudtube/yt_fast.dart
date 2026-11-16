@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'trace.dart';
 import 'hls_local.dart';
+import 'direct.dart' show kCtVisionUserAgent;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 final _log = Logger('CtYtFast');
@@ -15,6 +16,9 @@ final _log = Logger('CtYtFast');
 /// Описание, канал и рекомендации — отдельным запросом «next» параллельно.
 class CtYtFast {
   static http.Client client = http.Client();
+
+  /// Нужны адаптивные потоки (ТВ: своё DASH-качество) — тогда ждём ответа VISIONOS.
+  static bool wantAdaptive = false;
   static String? _visitor;
   static Future<String?>? _visitorFut;
 
@@ -72,6 +76,58 @@ class CtYtFast {
       _log.info('player $name $id: $st ${(j['playabilityStatus'] as Map?)?['reason'] ?? ''}');
       return null;
     }
+    return j;
+  }
+
+  /// «player» клиента VISIONOS (YouTube для Apple Vision Pro): адаптивные потоки до 4K,
+  /// без PO-токена; ANDROID_VR с августа 2026 отдаёт ссылки, которые рвутся через ~1 минуту.
+  static Future<Map<String, dynamic>?> playerVision(String id) async {
+    final v = await visitorData();
+    final body = {
+      'context': {
+        'client': {
+          'clientName': 'VISIONOS',
+          'clientVersion': '1.02',
+          'deviceMake': 'Apple',
+          'deviceModel': 'RealityDevice17,1',
+          'osName': 'visionOS',
+          'osVersion': '26.5.23O471',
+          'userAgent': kCtVisionUserAgent,
+          'hl': 'ru',
+          'gl': 'US',
+          if (v != null) 'visitorData': v,
+        }
+      },
+      'videoId': id,
+      'contentCheckOk': true,
+      'racyCheckOk': true,
+    };
+    final r = await client
+        .post(Uri.parse('https://www.youtube.com/youtubei/v1/player?prettyPrint=false'),
+            body: jsonEncode(body),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': kCtVisionUserAgent,
+              'X-Youtube-Client-Name': '101',
+              'X-Youtube-Client-Version': '1.02',
+              if (v != null) 'X-Goog-Visitor-Id': v,
+              'Origin': 'https://www.youtube.com',
+              'Referer': 'https://www.youtube.com/',
+            })
+        .timeout(const Duration(seconds: 7));
+    if (r.statusCode != 200) {
+      _log.info('player VISIONOS $id: HTTP ${r.statusCode}');
+      return null;
+    }
+    final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    final st = (j['playabilityStatus'] as Map?)?['status'];
+    if (st != 'OK') {
+      _log.info('player VISIONOS $id: $st ${(j['playabilityStatus'] as Map?)?['reason'] ?? ''}');
+      return null;
+    }
+    // без прямых ссылок (только шифр) нам не годится
+    final af = (j['streamingData'] as Map?)?['adaptiveFormats'] as List?;
+    if (af == null || !af.any((f) => f is Map && f['url'] is String)) return null;
     return j;
   }
 
@@ -193,6 +249,10 @@ class CtYtFast {
       return null;
     });
     unawaited(anF.then((_) {}, onError: (_) {}));
+    final visF = playerVision(id).catchError((e) {
+      _log.info('visionos $id: $e');
+      return null;
+    });
     final nextF = next(id);
     unawaited(nextF.then((_) {}, onError: (_) {}));
     final ios = await iosF;
@@ -204,7 +264,21 @@ class CtYtFast {
       CtTrace.mark('адаптер: player ANDROID ${an != null ? 'ok' : 'нет'}');
       if (an != null) vr = an;
     }
-    final base = ios ?? vr;
+    // VISIONOS ждём не дольше 2,5 с: нужен для качественных адаптивных потоков (ТВ, 4K)
+    Map<String, dynamic>? vis;
+    if (wantAdaptive) {
+      try {
+        vis = await visF.timeout(const Duration(milliseconds: 2500));
+      } catch (_) {}
+    } else {
+      // телефон играет HLS — не ждём; потоки VISIONOS запомним, когда придут
+      unawaited(visF.then((v) {
+        final af = (v?['streamingData'] as Map?)?['adaptiveFormats'] as List?;
+        if (af != null) CtDashLocal.remember(id, af, (int.tryParse('${(v?['videoDetails'] as Map?)?['lengthSeconds'] ?? 0}') ?? 0) * 1000);
+      }, onError: (_) {}));
+    }
+    CtTrace.mark('адаптер: player VISIONOS ${vis != null ? 'ok' : 'нет'}');
+    final base = ios ?? vis ?? vr;
     if (base == null) return null;
     final d = (base['videoDetails'] as Map?) ?? const {};
     final j = <String, dynamic>{
@@ -235,7 +309,9 @@ class CtYtFast {
 
     final hls = (ios?['streamingData'] as Map?)?['hlsManifestUrl'] ?? (vr?['streamingData'] as Map?)?['hlsManifestUrl'];
     if (hls is String) j['hlsUrl'] = hls;
+    // адаптивные потоки — от VISIONOS (не рвутся через минуту), иначе от VR/ANDROID
     final sd = (vr?['streamingData'] as Map?) ?? const {};
+    final sdAdaptive = (vis?['streamingData'] as Map?) ?? sd;
     j['formatStreams'] = [
       for (final f in (sd['formats'] as List?) ?? const [])
         if (f is Map && f['url'] is String)
@@ -252,7 +328,7 @@ class CtYtFast {
           }
     ];
     j['adaptiveFormats'] = [
-      for (final f in (sd['adaptiveFormats'] as List?) ?? const [])
+      for (final f in (sdAdaptive['adaptiveFormats'] as List?) ?? const [])
         if (f is Map && f['url'] is String)
           {
             'url': f['url'],
@@ -271,7 +347,7 @@ class CtYtFast {
           }
     ];
     // сырые форматы (с initRange/indexRange) — для своего DASH на ТВ
-    CtDashLocal.remember(id, sd['adaptiveFormats'] as List?, (j['lengthSeconds'] as int) * 1000);
+    CtDashLocal.remember(id, sdAdaptive['adaptiveFormats'] as List?, (j['lengthSeconds'] as int) * 1000);
     if (j['hlsUrl'] == null && (j['formatStreams'] as List).isEmpty) {
       CtTrace.mark('адаптер: нет ни HLS, ни потока со звуком → запасной путь');
       return null;

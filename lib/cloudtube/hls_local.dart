@@ -36,39 +36,49 @@ class CtHlsLocal {
     return s.port;
   }
 
-  /// Адрес отфильтрованного мастер-плейлиста или null (оставить исходный).
-  static Future<String?> atLeast(String masterUrl, Map<String, String> headers,
-      {int minHeight = 720, int maxHeight = 1080}) async {
+  /// Мастер-плейлист с ОДНИМ вариантом видео — лучшим не выше [cap] (при равной высоте —
+  /// 30 к/с, затем больший битрейт). ExoPlayer не может сам уйти на низкое качество.
+  /// (адрес, высота) или null.
+  static Future<(String, int)?> single(String masterUrl, Map<String, String> headers, {int cap = 2160}) async {
     try {
       final r = await http.get(Uri.parse(masterUrl), headers: headers).timeout(const Duration(seconds: 6));
       if (r.statusCode != 200 || !r.body.contains('#EXT-X-STREAM-INF')) return null;
       final lines = r.body.split('\n');
+      int h(String l) => int.tryParse(RegExp(r'RESOLUTION=\d+x(\d+)').firstMatch(l)?.group(1) ?? '') ?? 0;
+      double fps(String l) => double.tryParse(RegExp(r'FRAME-RATE=([\d.]+)').firstMatch(l)?.group(1) ?? '') ?? 30;
+      int bw(String l) => int.tryParse(RegExp(r'[^-]BANDWIDTH=(\d+)').firstMatch(l)?.group(1) ?? '') ?? 0;
+      int? best;
+      for (var i = 0; i < lines.length; i++) {
+        final l = lines[i];
+        if (!l.startsWith('#EXT-X-STREAM-INF') || h(l) > cap || h(l) <= 0) continue;
+        if (best == null) {
+          best = i;
+          continue;
+        }
+        final b = lines[best];
+        final better = h(l) > h(b) ||
+            (h(l) == h(b) && (fps(l) <= 30) && fps(b) > 30) ||
+            (h(l) == h(b) && (fps(l) > 30) == (fps(b) > 30) && bw(l) > bw(b));
+        if (better) best = i;
+      }
+      if (best == null || best + 1 >= lines.length) return null;
       final out = <String>[];
-      var kept = 0, total = 0;
       for (var i = 0; i < lines.length; i++) {
         final l = lines[i];
         if (l.startsWith('#EXT-X-STREAM-INF')) {
-          total++;
-          final h = int.tryParse(RegExp(r'RESOLUTION=\d+x(\d+)').firstMatch(l)?.group(1) ?? '') ?? 0;
-          final uri = i + 1 < lines.length ? lines[i + 1] : '';
-          if (h >= minHeight && h <= maxHeight) {
-            out..add(_abs(masterUrl, l))..add(_absUri(masterUrl, uri));
-            kept++;
-          }
-          i++; // строка с адресом варианта уже обработана
+          if (i == best) out..add(_abs(masterUrl, l))..add(_absUri(masterUrl, lines[i + 1]));
+          i++;
           continue;
         }
         out.add(_abs(masterUrl, l));
       }
-      if (kept == 0) return null; // нужного качества нет — пусть ExoPlayer выбирает сам
       final id = '${++_n}.m3u8';
       _lists[id] = out.join('\n');
       if (_lists.length > 20) _lists.remove(_lists.keys.first);
       final port = await _port();
-      _log.info('HLS: оставлено $kept из $total вариантов ($minHeight–${maxHeight}p)');
-      return 'http://127.0.0.1:$port/$id';
+      return ('http://127.0.0.1:$port/$id', h(lines[best]));
     } catch (e) {
-      _log.info('HLS filter: $e');
+      _log.info('HLS single: $e');
       return null;
     }
   }

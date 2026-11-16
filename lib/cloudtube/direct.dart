@@ -17,6 +17,10 @@ const kCtDirectUrl = 'https://youtube.direct';
 const _host = 'youtube.direct';
 
 /// Потоки YouTube, полученные от клиента iOS, отдаются только с его User-Agent (иначе 403/зависание).
+/// Клиент YouTube для Apple Vision Pro: прямые ссылки без PO-токена и без обрыва потока
+/// через ~1 минуту (так с августа 2026 обрывается ANDROID_VR; yt-dlp перешёл на VISIONOS).
+const kCtVisionUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 const kCtIosUserAgent = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
 
 /// Заголовки для воспроизведения ссылок YouTube в режиме без сервера.
@@ -37,6 +41,8 @@ String ctUserAgentForClient(String c) {
       return 'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12; eureka-user Build/SQ3A.220605.009.A1) gzip';
     case 'IOS':
       return kCtIosUserAgent;
+    case 'VISIONOS':
+      return kCtVisionUserAgent;
     default:
       return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
   }

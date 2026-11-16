@@ -124,10 +124,12 @@ class _CtDeployScreenState extends State<CtDeployScreen> {
       ].join('\n');
       // параметры передаём через stdin в файл (не видны в списке процессов), установщик работает
       // отдельно от SSH-сессии — если телефон уснёт, установка продолжится, а мы потом догоним по логу
+      // идёт ли уже установка — по PID-файлу (раньше «pgrep -f ct-deploy.sh» находил саму эту
+      // команду, в её тексте есть «ct-deploy.sh», — и мастер вечно «подключался» к несуществующей установке)
       final launch = await client.execute('umask 077; cat > /root/.ct-deploy.env; '
-          'if pgrep -f ct-deploy.sh >/dev/null; then echo already; else '
+          'if [ -f /root/.ct-deploy.pid ] && kill -0 "\$(cat /root/.ct-deploy.pid)" 2>/dev/null; then echo already; else '
           'curl -fsSL https://raw.githubusercontent.com/$kCtUpdateRepo/main/server/deploy.sh -o /root/ct-deploy.sh '
-          '&& (setsid nohup bash /root/ct-deploy.sh > /var/log/ct-deploy.log 2>&1 < /dev/null &) && echo started '
+          '&& (setsid nohup bash -c \'echo \$\$ > /root/.ct-deploy.pid; exec bash /root/ct-deploy.sh\' > /var/log/ct-deploy.log 2>&1 < /dev/null &) && echo started '
           '|| echo "##ERR Не удалось скачать установщик — у сервера нет доступа к GitHub?"; fi');
       launch.stdin.add(utf8.encode('$env\n'));
       await launch.stdin.close();

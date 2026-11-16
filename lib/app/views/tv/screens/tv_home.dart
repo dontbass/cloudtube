@@ -217,7 +217,7 @@ class TvHomeScreen extends StatelessWidget {
                     Positioned(
                       left: 0, top: 0, bottom: 0,
                       child: AnimatedContainer(
-                      width: homeState ? 260 : 0,
+                      width: homeState ? 236 : 0,
                       duration: animationDuration ~/ 2,
                       curve: Curves.easeInOutQuad,
                       decoration: BoxDecoration(
@@ -226,16 +226,18 @@ class TvHomeScreen extends StatelessWidget {
                       // меню как в SmartTube: скрыто, выезжает поверх лент по стрелке «влево»
                       child: ClipRect(child: OverflowBox(
                           alignment: Alignment.topLeft,
-                          minWidth: 260,
-                          maxWidth: 260,
+                          minWidth: 236,
+                          maxWidth: 236,
                           child: Padding(
                           padding: EdgeInsets.only(
                               top: TvOverscan.vertical,
-                              left: TvOverscan.horizontal,
+                              left: 16,
                               bottom: TvOverscan.vertical,
-                              right: homeState ? TvOverscan.horizontal : 8),
+                              right: 10),
                           child: FocusScope(
-                              node: ctTvMenuScope,
+                              // закрытое меню не участвует в переходах стрелками: «влево» по роликам
+                              // ведёт к соседнему ролику, а меню открывается только с края ряда
+                              node: ctTvMenuScope..descendantsAreTraversable = homeState,
                               // стрелка вправо из меню — обратно к роликам, туда, откуда пришли
                               onKeyEvent: (node, e) {
                                 if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowRight) {
@@ -288,7 +290,7 @@ class TvHomeScreen extends StatelessWidget {
                                         .map(
                                           (e) => Padding(
                                             padding: const EdgeInsets.only(
-                                                bottom: 8.0),
+                                                bottom: 4.0),
                                             child: TvButton(
                                               onFocusChanged: homeCubit
                                                   .menuItemFocusChanged,
@@ -311,7 +313,7 @@ class TvHomeScreen extends StatelessWidget {
                                                   .withValues(alpha: 0.0),
                                               child: Padding(
                                                 padding:
-                                                    const EdgeInsets.all(8),
+                                                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                                 child: Row(
                                                   children: [
                                                     Padding(
@@ -338,7 +340,7 @@ class TvHomeScreen extends StatelessWidget {
                                   unfocusedColor: colors.secondaryContainer
                                       .withValues(alpha: 0.0),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                     child: Row(
                                       children: [
                                         const Padding(
@@ -358,7 +360,7 @@ class TvHomeScreen extends StatelessWidget {
                                   unfocusedColor: colors.secondaryContainer
                                       .withValues(alpha: 0.0),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                     child: Row(
                                       children: [
                                         const Padding(
@@ -395,7 +397,8 @@ class MenuItemText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: style,
+      // компактное меню: всё, включая «Вход в YouTube», помещается в одну строку
+      style: style ?? const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       maxLines: 1,
       softWrap: false,
       overflow: TextOverflow.fade,
@@ -460,7 +463,14 @@ void ctOpenTvMenu() {
   if (ctTvMenuScope.focusedChild != null) {
     ctTvMenuScope.focusedChild!.requestFocus();
   } else {
-    ctTvMenuScope.requestFocus();
-    ctTvMenuScope.nextFocus();
+    // закрытое меню исключено из обхода стрелками — фокусируем первый пункт напрямую
+    final first = ctTvMenuScope.descendants
+        .where((n) => n is! FocusScopeNode && n.canRequestFocus && n.context != null)
+        .firstOrNull;
+    if (first != null) {
+      first.requestFocus();
+    } else {
+      ctTvMenuScope.requestFocus();
+    }
   }
 }

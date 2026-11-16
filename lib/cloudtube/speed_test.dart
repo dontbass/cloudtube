@@ -63,8 +63,26 @@ class _CtSpeedTestScreenState extends State<CtSpeedTestScreen> {
     await _run('visitorData', () => CtYtFast.visitorData(), (r) => r == null ? 'нет' : 'есть');
     final ios = await _run('player iOS (HLS)', () => CtYtFast.player(id, yt.YoutubeApiClient.ios),
         (r) => r == null ? 'недоступно' : 'ok');
-    await _run('player ANDROID_VR', () => CtYtFast.player(id, yt.YoutubeApiClient.androidVr),
+    final vr = await _run('player ANDROID_VR', () => CtYtFast.player(id, yt.YoutubeApiClient.androidVr),
         (r) => r == null ? 'недоступно' : 'ok');
+    final vis = await _run('player VISIONOS (потоки до 4K)', () => CtYtFast.playerVision(id),
+        (r) => r == null ? 'недоступно' : 'ok');
+    // главное для ТВ: отдаёт ли YouTube поток дальше первой минуты (ANDROID_VR с августа 2026 — нет)
+    for (final (name, p) in [('VISIONOS', vis), ('ANDROID_VR', vr)]) {
+      final fs = (((p?['streamingData'] as Map?)?['adaptiveFormats'] as List?) ?? const [])
+          .whereType<Map>()
+          .where((f) => f['url'] is String && '${f['mimeType']}'.startsWith('video/'))
+          .toList()
+        ..sort((a, b) => ((b['height'] as num?) ?? 0).compareTo((a['height'] as num?) ?? 0));
+      if (fs.isEmpty) continue;
+      final f = fs.first;
+      final url = f['url'] as String;
+      final len = int.tryParse('${f['contentLength'] ?? 0}') ?? 0;
+      final off = (len * 0.6).round();
+      await _run('$name: ${f['qualityLabel']} с середины ролика',
+          () => c.get(Uri.parse(url), headers: {...ctDirectStreamHeaders(url), 'Range': 'bytes=$off-${off + 262143}'}),
+          (r) => 'HTTP ${r.statusCode}${r.statusCode == 206 ? ' — поток идёт' : ' — поток обрывается'}');
+    }
     await _run('next (канал, рекомендации)', () => CtYtFast.next(id), (r) => 'ok');
     final master = (ios?['streamingData'] as Map?)?['hlsManifestUrl'] as String?;
     if (master != null) {

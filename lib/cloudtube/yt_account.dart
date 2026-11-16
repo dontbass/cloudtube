@@ -24,6 +24,8 @@ class CtYtAccount {
       'com.amazon.firetv.youtube/22.3.r2.v66.0';
   static const tvClientVersion = '7.20260901.15.00';
   static const _scope = 'http://gdata.youtube.com https://www.googleapis.com/auth/youtube-paid-content';
+  // + полный доступ YouTube Data API (нужен для отправки комментариев); если Google не примет — без него
+  static const _scopeFull = '$_scope https://www.googleapis.com/auth/youtube';
 
   static http.Client client = http.Client();
 
@@ -66,8 +68,12 @@ class CtYtAccount {
   /// Шаг 1: получить код для ввода на youtube.com/activate.
   static Future<CtDeviceCode> startLogin() async {
     final (id, _) = await clientCreds();
-    final j = await _post('https://www.youtube.com/o/oauth2/device/code',
-        {'client_id': id, 'device_id': _deviceId(), 'model_name': 'ytlr::', 'scope': _scope});
+    var j = await _post('https://www.youtube.com/o/oauth2/device/code',
+        {'client_id': id, 'device_id': _deviceId(), 'model_name': 'ytlr::', 'scope': _scopeFull});
+    if (j['device_code'] == null) {
+      j = await _post('https://www.youtube.com/o/oauth2/device/code',
+          {'client_id': id, 'device_id': _deviceId(), 'model_name': 'ytlr::', 'scope': _scope});
+    }
     if (j['device_code'] == null) throw 'YouTube не выдал код: ${j['error'] ?? j['_status']}';
     return CtDeviceCode(j['device_code'], j['user_code'], (j['verification_url'] as String?) ?? 'https://www.youtube.com/activate',
         (j['interval'] as num?)?.toInt() ?? 5, (j['expires_in'] as num?)?.toInt() ?? 1800);

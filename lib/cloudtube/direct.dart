@@ -470,15 +470,14 @@ class _CtDirect {
     }
     if (t == 'shorts') {
       // Shorts: чередуем запросы, чтобы лента не кончалась; длительность в выдаче часто пустая (0) — пропускаем
-      const qs = ['shorts смешные', 'shorts животные', 'shorts музыка', 'shorts спорт', 'shorts лайфхак', 'shorts авто'];
-      // если запрос не удался — пробуем следующий, а не роняем всю ленту
+      const qs = ['shorts', 'shorts смешные', 'shorts животные', 'shorts музыка', 'shorts спорт', 'shorts лайфхак'];
+      // поиск через InnerTube (JSON) — надёжнее HTML-поиска; если запрос не удался — следующий
       for (var k = 0; k < qs.length; k++) {
         final n = page - 1 + k;
         final q = qs[n % qs.length];
         final sub = n ~/ qs.length + 1;
         try {
-          final r = await _videoSearchPage(q, yt.DurationFilters.short, sub);
-          final out = r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 180 && v['liveNow'] != true).toList();
+          final out = await _shortsPage(q, sub);
           if (out.isNotEmpty) return out;
         } catch (e) {
           _log.info('shorts "$q": $e');
@@ -494,6 +493,24 @@ class _CtDirect {
             : yt.UploadDateFilter.lastWeek;
     final r = await _videoSearchPage(query, f, page);
     return t == 'shorts' ? r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 90).toList() : r;
+  }
+
+  final _shortsPagers = <String, ({List<List<Map<String, dynamic>>> pages, String? next})>{};
+
+  Future<List<Map<String, dynamic>>> _shortsPage(String q, int page) async {
+    var pg = _shortsPagers[q];
+    if (pg == null || page == 1) {
+      final (list, next) = await CtYtFast.searchShorts(q);
+      pg = (pages: [list], next: next);
+      _shortsPagers[q] = pg;
+    }
+    while (pg!.pages.length < page && pg.next != null) {
+      final (list, next) = await CtYtFast.searchShorts(q, continuation: pg.next);
+      pg = (pages: [...pg.pages, list], next: list.isEmpty ? null : next);
+      _shortsPagers[q] = pg;
+    }
+    final r = page <= pg.pages.length ? pg.pages[page - 1] : <Map<String, dynamic>>[];
+    return r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 180).toList();
   }
 
   // ---------- аккаунт YouTube (вход кодом, как на ТВ) ----------

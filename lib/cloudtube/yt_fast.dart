@@ -97,6 +97,76 @@ class CtYtFast {
     return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
   }
 
+  /// Поиск через InnerTube (JSON, как приложение YouTube), а не через HTML-страницу результатов.
+  /// params EgIYAQ== — короткие видео (до 4 мин). Возвращает ролики и токен продолжения.
+  static Future<(List<Map<String, dynamic>>, String?)> searchShorts(String query, {String? continuation}) async {
+    final r = await client
+        .post(Uri.parse('https://www.youtube.com/youtubei/v1/search?prettyPrint=false'),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+              'X-Youtube-Client-Name': '1',
+              'X-Youtube-Client-Version': '2.20251110.01.00',
+              'Origin': 'https://www.youtube.com',
+            },
+            body: jsonEncode({
+              'context': {
+                'client': {'clientName': 'WEB', 'clientVersion': '2.20251110.01.00', 'hl': 'ru', 'gl': 'RU'}
+              },
+              if (continuation != null) 'continuation': continuation else ...{'query': query, 'params': 'EgIYAQ=='},
+            }))
+        .timeout(const Duration(seconds: 8));
+    if (r.statusCode != 200) throw 'search ${r.statusCode}';
+    final j = jsonDecode(utf8.decode(r.bodyBytes));
+    final out = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    String? next;
+    void add(String id, String title, String author, String ch, int len) {
+      if (id.length != 11 || !seen.add(id)) return;
+      out.add({
+        'type': 'video',
+        'videoId': id,
+        'title': title,
+        'author': author,
+        'authorId': ch,
+        'authorUrl': ch.isEmpty ? '' : '/channel/$ch',
+        'lengthSeconds': len,
+        'viewCount': 0,
+        'published': 0,
+        'publishedText': '',
+        'videoThumbnails': thumbs(id),
+      });
+    }
+
+    void walk(dynamic x) {
+      if (x is Map) {
+        final v = x['videoRenderer'];
+        if (v is Map && v['videoId'] is String) {
+          final ch = _find(v['ownerText'] ?? v['longBylineText'], 'browseId');
+          add(v['videoId'], _text(v['title']), _text(v['ownerText'] ?? v['longBylineText']), '${ch ?? ''}',
+              _dur(_text(v['lengthText'])));
+        }
+        final sl = x['shortsLockupViewModel'];
+        if (sl is Map) {
+          final id = _find(sl['onTap'], 'videoId');
+          final title = _find(sl['overlayMetadata'], 'primaryText');
+          if (id is String) add(id, title is Map ? '${title['content'] ?? ''}' : '', '', '', 0);
+        }
+        final reel = x['reelItemRenderer'];
+        if (reel is Map && reel['videoId'] is String) add(reel['videoId'], _text(reel['headline']), '', '', 0);
+        final cmd = x['continuationCommand'];
+        if (cmd is Map && cmd['token'] is String) next = cmd['token'];
+        x.values.forEach(walk);
+      } else if (x is List) {
+        x.forEach(walk);
+      }
+    }
+
+    walk(j);
+    return (out, next);
+  }
+
   static List<Map<String, dynamic>> thumbs(String id) => [
         {'quality': 'maxres', 'url': 'https://i.ytimg.com/vi/$id/maxresdefault.jpg', 'width': 1280, 'height': 720},
         {'quality': 'sddefault', 'url': 'https://i.ytimg.com/vi/$id/sddefault.jpg', 'width': 640, 'height': 480},

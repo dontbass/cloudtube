@@ -150,7 +150,10 @@ class CtYtComments {
         final e = (jsonDecode(body) as Map)['error'] as Map;
         msg = '${r.statusCode} ${e['message'] ?? ''} ${((e['errors'] as List?)?.firstOrNull as Map?)?['reason'] ?? ''}';
       } catch (_) {}
-      errors.add('API: $msg');
+      errors.add(msg.contains('insufficient')
+          ? 'Нет права на комментарии: выйдите из аккаунта YouTube («Вы» → «Выйти») и войдите заново — '
+              'новый вход запрашивает и это право'
+          : 'API: $msg');
       _log.warning('commentThreads.insert: $body');
     } catch (e) {
       errors.add('API: $e');

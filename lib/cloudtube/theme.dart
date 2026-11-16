@@ -175,3 +175,16 @@ enum CtTheme {
   static CtTheme of(bool darkNow, bool soft) =>
       darkNow ? (soft ? dim : dark) : (soft ? CtTheme.soft : light);
 }
+
+
+/// Все всплывающие подсказки (SnackBar): тёмная плашка со скруглёнными углами, белый текст —
+/// одинаково читается в светлой, мягкой и тёмной темах.
+const ctSnackBarTheme = SnackBarThemeData(
+  behavior: SnackBarBehavior.floating,
+  backgroundColor: Color(0xF0202124),
+  contentTextStyle: TextStyle(color: Colors.white, fontSize: 15),
+  actionTextColor: Color(0xFF8AB4F8),
+  elevation: 6,
+  insetPadding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+);

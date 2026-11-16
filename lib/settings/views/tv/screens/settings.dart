@@ -278,6 +278,13 @@ class TVSettingsScreen extends StatelessWidget {
                     }),
                 SettingsTitle(title: locals.videoPlayer),
                 SettingsTile(
+                  title: 'Автовоспроизведение',
+                  leading: const Icon(Icons.playlist_play),
+                  description: 'После ролика — следующий из рекомендаций',
+                  onSelected: (context) => cubit.setPlayRecommendedNext(!state.playRecommendedNext),
+                  trailing: Switch(onChanged: (value) {}, value: state.playRecommendedNext),
+                ),
+                SettingsTile(
                   title: locals.useDash,
                   leading: const Icon(Icons.high_quality_outlined),
                   description: locals.useDashDescription,

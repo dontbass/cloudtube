@@ -117,17 +117,21 @@ Future<void> main() async {
   appRouter = AppRouter(hasServer: hasServer);
 
   // CloudTube: уведомления и частота экрана — только Android
+  isTv = await isDeviceTv();
   if (Platform.isAndroid) {
     initializeNotifications();
-    try {
-      log.fine("Forcing refresh rate");
-      await FlutterDisplayMode.setHighRefreshRate();
-    } catch (err) {
-      log.severe("failed to set high refresh mode", err);
+    // телефон: включаем 90/120 Гц. На ТВ этот запрос заставляет телевизор переключать режим
+    // HDMI — экран при запуске моргал, будто меняется разрешение. Поэтому на ТВ не трогаем
+    if (!isTv) {
+      try {
+        log.fine("Forcing refresh rate");
+        await FlutterDisplayMode.setHighRefreshRate();
+      } catch (err) {
+        log.severe("failed to set high refresh mode", err);
+      }
     }
   }
 
-  isTv = await isDeviceTv();
   CtYtFast.wantAdaptive = isTv;
   if (isTv) ctLoadTvScale();
   await ctSponsorDefaults();
@@ -299,6 +303,7 @@ class MyApp extends StatelessWidget {
                           thumbColor: WidgetStatePropertyAll(lightColorScheme.onSurfaceVariant.withValues(alpha: 0.5)))
                       : null,
                   switchTheme: ctSwitchTheme(lightColorScheme),
+                  snackBarTheme: ctSnackBarTheme,
                   radioTheme: ctRadioTheme(lightColorScheme),
                   scaffoldBackgroundColor: lightColorScheme.surface,
                   sliderTheme: sliderTheme.copyWith(
@@ -323,6 +328,7 @@ class MyApp extends StatelessWidget {
                           thumbColor: WidgetStatePropertyAll(darkColorScheme.onSurfaceVariant.withValues(alpha: 0.5)))
                       : null,
                   switchTheme: ctSwitchTheme(darkColorScheme),
+                  snackBarTheme: ctSnackBarTheme,
                   radioTheme: ctRadioTheme(darkColorScheme),
                   scaffoldBackgroundColor: darkColorScheme.surface,
                   sliderTheme: sliderTheme.copyWith(

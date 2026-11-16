@@ -1,4 +1,5 @@
 import '../../../../cloudtube/sponsor_toast.dart';
+import '../../../../cloudtube/up_next.dart';
 import 'package:clipious/player/states/tv_player_controls.dart';
 import 'package:clipious/player/views/tv/components/player_settings.dart';
 import 'package:clipious/utils/views/components/thumbnail.dart';
@@ -58,6 +59,8 @@ class TvPlayerControls extends StatelessWidget {
                 children: [
                   // SponsorBlock: «Пропущен фрагмент …» поверх видео
                   const Positioned(left: 56, bottom: 120, child: CtSponsorToast()),
+                  // «Далее: …» за 10 секунд до конца
+                  const Positioned(right: 56, bottom: 120, child: CtUpNextCard()),
                   Positioned(
                     top: 0,
                     left: 0,
@@ -143,6 +146,24 @@ class TvPlayerControls extends StatelessWidget {
                                             ),
                                           )
                                         ],
+                                      ),
+                                    ),
+                                    // качество и сколько осталось
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 10.0),
+                                      child: ValueListenableBuilder<String?>(
+                                        valueListenable: ctNowQuality,
+                                        builder: (context, q, _) {
+                                          final len = currentlyPlaying?.lengthSeconds ?? 0;
+                                          final left = len - position.inSeconds;
+                                          final parts = [
+                                            if (q != null) q,
+                                            if (len > 0 && left > 0 && currentlyPlaying?.liveNow != true)
+                                              'осталось ${_ctFmt(left)}',
+                                          ];
+                                          return Text(parts.join('  ·  '),
+                                              style: textTheme.titleMedium?.copyWith(color: Colors.white70));
+                                        },
                                       ),
                                     )
                                   ],
@@ -243,7 +264,8 @@ class TvPlayerControls extends StatelessWidget {
                                             ),
                                           ),
                                           Visibility(
-                                            visible: videos.length > 1,
+                                            // и когда очередь кончилась — следующим пойдёт рекомендация
+                                            visible: videos.length > 1 || player.ctHasNext,
                                             child: TvButton(
                                               onPressed: (context) =>
                                                   player.playNext(),
@@ -410,4 +432,10 @@ class TvPlayerControls extends StatelessWidget {
       ),
     );
   }
+}
+
+String _ctFmt(int s) {
+  final h = s ~/ 3600, m = (s % 3600) ~/ 60, sec = s % 60;
+  String two(int v) => v.toString().padLeft(2, '0');
+  return h > 0 ? '$h:${two(m)}:${two(sec)}' : '$m:${two(sec)}';
 }

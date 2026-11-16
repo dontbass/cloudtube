@@ -66,7 +66,7 @@ List<Widget> _ctSectionRows(BuildContext context) {
           ),
           TvHorizontalVideoList(
             // разделы грузятся после главной и подписок, по очереди
-            paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 1500 + 700 * i)),
+            paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 300 + 150 * i)),
             autoFocusedIndex: -1,
             onItemFocus: (video, index, focus) {
               if (focus) ctTvScrollToRow(_ctRowKeys[c.id]);
@@ -193,8 +193,11 @@ class TvHomeScreen extends StatelessWidget {
                               right: 10),
                           child: FocusScope(
                               // закрытое меню не участвует в переходах стрелками: «влево» по роликам
-                              // ведёт к соседнему ролику, а меню открывается только с края ряда
+                              // ведёт к соседнему ролику, а меню открывается только с края ряда.
+                              // Сама область меню (во всю высоту) тоже не цель для стрелок — иначе
+                              // «вниз» с верхнего ряда иногда уходило в меню
                               node: ctTvMenuScope..descendantsAreTraversable = homeState,
+                              skipTraversal: true,
                               // стрелка вправо из меню — обратно к роликам, туда, откуда пришли
                               onKeyEvent: (node, e) {
                                 if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowRight) {

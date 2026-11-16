@@ -1,4 +1,5 @@
 import '../../cloudtube/sponsor_toast.dart';
+import '../../cloudtube/up_next.dart';
 import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
@@ -165,7 +166,10 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         if (state.currentlyPlaying != null) {
           saveProgress(state.currentlyPlaying!.lengthSeconds ?? 0);
         }
-        playNext();
+        ctUpNext.value = null;
+        // автопереход отменили «Назад» на плашке «Далее» — остаёмся на этом ролике
+        final cur = state.currentlyPlaying?.videoId;
+        if (cur == null || ctUpNextCancelledFor != cur) playNext();
         _setPlaying(false);
         break;
       default:
@@ -355,6 +359,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     log.fine("video progress event");
 
     emit(state.copyWith(position: newPosition));
+    if (isTv) _ctUpdateUpNext();
 
     // if we're already within the last 5 seconds we don't skip to avoid infinite skip loop on late outro segment
     if (state.sponsorSegments.isNotEmpty &&
@@ -438,6 +443,14 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
           await switchToOfflineVideo(state.offlineVideos[0]);
         }
         generatePlayQueue();
+      } else if (state.videos.isNotEmpty && settings.state.playRecommendedNext) {
+        // очередь кончилась — как в YouTube: следующий из рекомендаций к текущему ролику
+        await _ctLoadRecs(currentVideoId);
+        final next = _ctNextCandidate();
+        if (next != null) {
+          emit(state.copyWith(videos: [...state.videos, next]));
+          await switchToVideo(next);
+        }
       }
     }
   }
@@ -794,6 +807,79 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
   int _ctLastSkipStart = -1;
   DateTime _ctLastSkipAt = DateTime(2000);
 
+  // рекомендации текущего ролика для автоперехода (без сервера они иногда догружаются позже)
+  String? _ctRecsFor;
+  List<Video> _ctRecs = const [];
+
+  Future<void> _ctLoadRecs(String? id) async {
+    if (id == null) return;
+    final cur = state.currentlyPlaying;
+    if (cur != null && cur.videoId == id && cur.recommendedVideos.isNotEmpty) {
+      _ctRecsFor = id;
+      _ctRecs = cur.recommendedVideos;
+      return;
+    }
+    if (_ctRecsFor == id && _ctRecs.isNotEmpty) return;
+    _ctRecsFor = id;
+    try {
+      final fresh = await service.getVideo(id);
+      if (_ctRecsFor == id) _ctRecs = fresh.recommendedVideos;
+    } catch (_) {}
+  }
+
+  /// Что пойдёт следующим: очередь, иначе первый непросмотренный из рекомендаций.
+  Video? _ctNextCandidate() {
+    if (state.playQueue.isNotEmpty) {
+      final id = state.playQueue.first;
+      return state.videos.where((v) => v.videoId == id).firstOrNull;
+    }
+    if (!settings.state.playRecommendedNext ||
+        settings.state.playerRepeatMode != PlayerRepeat.noRepeat) {
+      return null;
+    }
+    final cur = state.currentlyPlaying;
+    if (cur == null) return null;
+    final recs = cur.recommendedVideos.isNotEmpty ? cur.recommendedVideos : (_ctRecsFor == cur.videoId ? _ctRecs : const <Video>[]);
+    final seen = {...state.playedVideos, ...state.videos.map((v) => v.videoId), cur.videoId};
+    for (final r in recs) {
+      if (seen.contains(r.videoId) || r.liveNow == true) continue;
+      if (db.getVideoProgress(r.videoId) >= 0.9) continue;
+      return r;
+    }
+    return null;
+  }
+
+  /// Есть ли что запускать кнопкой «Следующее».
+  bool get ctHasNext => _ctNextCandidate() != null;
+
+  void _ctUpdateUpNext() {
+    final cur = state.currentlyPlaying;
+    final len = cur?.lengthSeconds ?? 0;
+    if (cur == null || len < 30 || cur.liveNow == true || ctUpNextCancelledFor == cur.videoId) {
+      if (ctUpNext.value != null) ctUpNext.value = null;
+      return;
+    }
+    final left = len - state.position.inSeconds;
+    if (left <= 40 && _ctRecsFor != cur.videoId) unawaited(_ctLoadRecs(cur.videoId));
+    if (left > 10 || left < 0) {
+      if (ctUpNext.value != null) ctUpNext.value = null;
+      return;
+    }
+    final next = _ctNextCandidate();
+    ctUpNext.value = next == null ? null : (next.title ?? '', left);
+  }
+
+  /// OK на плашке «Далее» — сразу к следующему; «Назад» — отменить автопереход.
+  void ctUpNextNow() {
+    ctUpNext.value = null;
+    playNext();
+  }
+
+  void ctUpNextCancel() {
+    ctUpNextCancelledFor = state.currentlyPlaying?.videoId;
+    ctUpNext.value = null;
+  }
+
   Future<void> setSponsorBlock() async {
     List<Pair<int>> newSegments = [];
     _ctSegTypes = const [];
@@ -844,7 +930,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     emit(state.copyWith(
       totalFastForward: state.totalFastForward + state.forwardStep,
       forwardStep: (state.forwardStep *
-              (settings.state.skipExponentially ? stepMultiplier : 1))
+              ((settings.state.skipExponentially || isTv) ? stepMultiplier : 1))
           .floor(),
     ));
     EasyDebounce.debounce('fast-forward-step', const Duration(seconds: 1), () {
@@ -860,7 +946,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     emit(state.copyWith(
       totalRewind: state.totalRewind + state.rewindStep,
       rewindStep: (state.rewindStep *
-              (settings.state.skipExponentially ? stepMultiplier : 1))
+              ((settings.state.skipExponentially || isTv) ? stepMultiplier : 1))
           .floor(),
     ));
     EasyDebounce.debounce('fast-rewind-step', const Duration(seconds: 1), () {

@@ -22,6 +22,7 @@ import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
 import '../../cloudtube/hls_local.dart';
 import '../../cloudtube/tv_scale.dart';
+import '../../cloudtube/up_next.dart';
 import 'interfaces/media_player.dart';
 
 part 'video_player.freezed.dart';
@@ -378,6 +379,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         // ТВ без сервера: как в SmartTube — свой DASH с одним (лучшим до 1080p) качеством,
         // иначе ExoPlayer на приставке берёт 360p и не поднимается. Запасной вариант — HLS 720–1080p.
         var ctDash = false;
+        ctNowQuality.value = isHls ? null : formatStream?.resolution;
         _ctFiltered = false;
         _ctDashHeight = null;
         _ctCurHeight = null;
@@ -396,6 +398,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
             streamHeaders = {...ctDirectStreamHeaders(d.$3)};
             videoUrl = d.$1;
             CtTrace.mark('плеер: DASH ${d.$2}p (одно качество)');
+            final f = CtDashLocal.formats(id).where((f) => '${f['itag']}' == d.$4).firstOrNull;
+            ctNowQuality.value = f != null ? CtDashLocal.label(f).replaceAll(', ', ' · ') : '${d.$2}p';
           }
         }
         if (!ctDash && isHls && isTv && ctDirectActive) {
@@ -407,6 +411,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           if (local != null) {
             videoUrl = local.$1;
             _ctCurHeight = local.$2;
+            ctNowQuality.value = '${local.$2}p';
             _ctArmPlaybackWatch(newState.video!.videoId);
           }
         } else if (!ctDash) {

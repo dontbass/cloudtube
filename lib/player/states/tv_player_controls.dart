@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:clipious/player/states/player.dart';
+import '../../cloudtube/up_next.dart';
 import 'package:logging/logging.dart';
 
 import '../../utils.dart';
@@ -45,6 +46,18 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
         !state.showQueue && !state.showSettings && !state.displayControls;
     log.fine(
         'Key: ${event.logicalKey}, Timeline control: $timeLineControl, showQueue: ${state.showQueue}, showSettings: ${state.showSettings}, showControls: ${state.displayControls}');
+    // плашка «Далее»: OK — сразу следующее, «Назад» — отменить автопереход (и не выходить из плеера)
+    if (ctUpNext.value != null) {
+      final k = event.logicalKey;
+      if (k == LogicalKeyboardKey.goBack || k == LogicalKeyboardKey.escape || k == LogicalKeyboardKey.browserBack) {
+        if (event is KeyUpEvent) player.ctUpNextCancel();
+        return KeyEventResult.handled;
+      }
+      if (timeLineControl && isOk(k)) {
+        if (event is KeyUpEvent) player.ctUpNextNow();
+        return KeyEventResult.handled;
+      }
+    }
     showUi();
 
     // looks like back is activate on pressdown and not press up

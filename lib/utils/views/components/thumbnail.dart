@@ -92,8 +92,10 @@ class Thumbnail extends StatelessWidget {
                         ),
                         imageUrl: url,
                         placeholderFadeInDuration: animationDuration,
-                        fadeInDuration: animationDuration,
-                        fadeOutDuration: animationDuration,
+                        // ТВ: быстрое появление картинки и без крутилок на каждой карточке —
+                        // десятки анимированных индикаторов при прокрутке заметно нагружали приставку
+                        fadeInDuration: isTv ? const Duration(milliseconds: 120) : animationDuration,
+                        fadeOutDuration: isTv ? const Duration(milliseconds: 80) : animationDuration,
                         errorWidget: (context, url, error) => _ErrorWidget(
                           decoration: decoration,
                           width: width,
@@ -106,13 +108,14 @@ class Thumbnail extends StatelessWidget {
                           alignment: Alignment.center,
                           decoration: decoration.copyWith(
                               color: colors.secondaryContainer),
-                          // duration: animationDuration,
-                          child: const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1,
-                              )),
+                          child: isTv
+                              ? null
+                              : const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1,
+                                  )),
                         ),
                       );
                     }

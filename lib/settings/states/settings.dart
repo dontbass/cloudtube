@@ -523,7 +523,8 @@ sealed class SettingsState with _$SettingsState {
   String get lastSubtitles => _get(lastSubtitle)?.value ?? '';
 
   bool get playRecommendedNext =>
-      _get(playRecommendedNextSettingName)?.value == "true";
+      // по умолчанию включено — как в YouTube: после ролика идёт следующий
+      _get(playRecommendedNextSettingName)?.value != "false";
 
   Country get country =>
       getCountryFromCode(_get(browsingCountry)?.value ?? 'US');

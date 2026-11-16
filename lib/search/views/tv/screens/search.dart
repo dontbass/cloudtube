@@ -20,6 +20,7 @@ import '../../../../globals.dart';
 import '../../../../settings/states/settings.dart';
 import '../../../states/search.dart';
 import '../../../states/tv_search.dart';
+import '../../../../cloudtube/tv_nav.dart';
 import '../../screens/search.dart';
 
 @RoutePage()
@@ -68,7 +69,7 @@ class TvSearchScreen extends StatelessWidget {
 
     var settings = context.read<SettingsCubit>();
     return Scaffold(
-      body: TvOverscan(
+      body: CtTvLeftEdge(child: TvOverscan(
         child: DefaultTextStyle(
           style: textTheme.bodyLarge!,
           child: MultiBlocProvider(
@@ -337,7 +338,7 @@ class TvSearchScreen extends StatelessWidget {
             }),
           ),
         ),
-      ),
+      )),
     );
   }
 

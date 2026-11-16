@@ -21,8 +21,8 @@ class TvSponsorBlockSettingsScreen extends StatelessWidget {
         builder: (context, state) {
           var cubit = context.read<SettingsCubit>();
           return TvOverscan(
-            child: ListView(
-              children: [
+            child: CtTvTileScope(child: ListView(
+              children: ctTvTiles([
                 SettingsTitle(
                     title: locals.sponsorBlockSettingsQuickDescription),
                 ...SponsorSegmentType.values.map((t) {
@@ -36,8 +36,8 @@ class TvSponsorBlockSettingsScreen extends StatelessWidget {
                     description: SponsorSegmentType.getDescription(t, locals),
                   );
                 })
-              ],
-            ),
+              ]),
+            )),
           );
         },
       ),

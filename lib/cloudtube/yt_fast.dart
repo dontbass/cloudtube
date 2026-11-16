@@ -296,7 +296,18 @@ class CtYtFast {
     final owner = _find(n, 'videoOwnerRenderer');
     if (owner is Map) {
       final th = _find(owner['thumbnail'], 'thumbnails');
-      if (th is List && th.isNotEmpty) j['authorThumbnails'] = th;
+      if (th is List && th.isNotEmpty) {
+        j['authorThumbnails'] = [
+          for (final t in th)
+            if (t is Map && t['url'] is String)
+              {
+                'url': (t['url'] as String).startsWith('//') ? 'https:${t['url']}' : t['url'],
+                'width': t['width'] ?? 88,
+                'height': t['height'] ?? 88,
+                'quality': 'default',
+              }
+        ];
+      }
       final sub = _text(owner['subscriberCountText']);
       if (sub.isNotEmpty) j['subCountText'] = sub.replaceAll(RegExp(r'\s*подписчик\S*', caseSensitive: false), '');
     }

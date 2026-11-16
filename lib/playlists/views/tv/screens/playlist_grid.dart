@@ -7,6 +7,7 @@ import 'package:clipious/playlists/states/playlist_list.dart';
 import 'package:clipious/playlists/views/components/playlist_in_list.dart';
 import 'package:clipious/utils/models/paginated_list.dart';
 import 'package:clipious/utils/views/components/placeholders.dart';
+import '../../../../cloudtube/tv_nav.dart';
 import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
 
 @RoutePage()
@@ -25,7 +26,7 @@ class TvPlaylistGridScreen extends StatelessWidget {
       create: (context) =>
           PlaylistListCubit(PlaylistListState(paginatedList: playlistList)),
       child: Scaffold(
-        body: TvOverscan(
+        body: CtTvLeftEdge(child: TvOverscan(
           child: BlocBuilder<PlaylistListCubit, PlaylistListState>(
               builder: (context, state) {
             var cubit = context.read<PlaylistListCubit>();
@@ -69,7 +70,7 @@ class TvPlaylistGridScreen extends StatelessWidget {
               ],
             );
           }),
-        ),
+        )),
       ),
     );
   }

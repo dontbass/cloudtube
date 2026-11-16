@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
 
 import '../../../../player/states/player.dart';
+import '../../../../cloudtube/tv_nav.dart';
 import '../../../../videos/views/components/video_thumbnail.dart';
 
 @RoutePage()
@@ -41,7 +42,7 @@ class TvPlaylistScreen extends PlaylistViewScreen {
       create: (context) => PlaylistCubit(
           PlaylistState(playlist: playlist, playlistItemHeight: 0), player),
       child: Scaffold(
-        body: BlocBuilder<PlaylistCubit, PlaylistState>(
+        body: CtTvLeftEdge(child: BlocBuilder<PlaylistCubit, PlaylistState>(
           builder: (context, playlistState) {
             var cubit = context.read<PlaylistCubit>();
             return Stack(
@@ -216,7 +217,7 @@ class TvPlaylistScreen extends PlaylistViewScreen {
               ],
             );
           },
-        ),
+        )),
       ),
     );
   }

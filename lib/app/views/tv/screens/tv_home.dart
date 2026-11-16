@@ -19,6 +19,7 @@ import '../../../../router.dart';
 import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
 import '../../../../cloudtube/direct.dart';
+import '../../../../cloudtube/tv_nav.dart';
 import '../../../../cloudtube/yt_login.dart';
 import '../../../../videos/views/components/popular.dart';
 import '../../../states/app.dart';
@@ -246,23 +247,8 @@ class TvHomeScreen extends StatelessWidget {
                     ),
                     Expanded(
                       // CloudTube: стрелка влево у левого края открывает боковое меню
-                      child: Focus(
-                      canRequestFocus: false,
-                      skipTraversal: true,
-                      onKeyEvent: (node, e) {
-                        if (e is KeyDownEvent && e.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                          final cur = FocusManager.instance.primaryFocus;
-                          if (cur == null) return KeyEventResult.ignored;
-                          // элемент у левого края контента — открываем меню (иначе обычный переход влево)
-                          if (cur.rect.left - node.rect.left < 80 ||
-                              !cur.focusInDirection(TraversalDirection.left)) {
-                            ctTvLastContent = cur;
-                            ctOpenTvMenu();
-                          }
-                          return KeyEventResult.handled;
-                        }
-                        return KeyEventResult.ignored;
-                      },
+                      child: CtTvLeftEdge(
+                      popRoute: false,
                       // terrible work around to be able to scroll to all the global keys
                       child: SingleChildScrollView(
                         child: Padding(

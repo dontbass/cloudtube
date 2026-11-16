@@ -19,8 +19,8 @@ class TvDearrowSettingsScreen extends StatelessWidget {
           var settings = context.watch<SettingsCubit>();
           var state = settings.state;
           return TvOverscan(
-            child: ListView(
-              children: [
+            child: CtTvTileScope(child: ListView(
+              children: ctTvTiles([
                 SettingsTitle(title: locals.deArrowWarning),
                 SettingsTile(
                   title: 'DeArrow',
@@ -39,8 +39,8 @@ class TvDearrowSettingsScreen extends StatelessWidget {
                       onChanged: state.dearrow ? (value) {} : null,
                       value: state.dearrowThumbnails),
                 ),
-              ],
-            ),
+              ]),
+            )),
           );
         },
       ),

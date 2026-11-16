@@ -87,6 +87,7 @@ class TVSettingsScreen extends StatelessWidget {
 
     AutoRouter.of(context).push(TvSelectFromListRoute(
       title: locals.appLanguage,
+                  leading: const Icon(Icons.translate),
       options: [locals.followSystem, ...localsStrings],
       selected: selected?.nativeDisplayLanguageScript ?? locals.followSystem,
       onSelect: (String selected) {
@@ -104,6 +105,7 @@ class TVSettingsScreen extends StatelessWidget {
     var cubit = context.read<SettingsCubit>();
     AutoRouter.of(context).push(TvSelectFromListRoute(
       title: locals.themeBrightness,
+                  leading: const Icon(Icons.brightness_6_outlined),
       options:
           ThemeMode.values.map((e) => cubit.getThemeLabel(locals, e)).toList(),
       selected: cubit.getThemeLabel(locals, cubit.state.themeMode),
@@ -201,17 +203,19 @@ class TVSettingsScreen extends StatelessWidget {
           var cubit = context.read<SettingsCubit>();
           return DefaultTextStyle(
             style: textTheme.bodyLarge!,
-            child: ListView(
-              children: [
+            child: CtTvTileScope(child: ListView(
+              children: ctTvTiles([
                 SettingsTitle(title: locals.browsing),
                 SettingsTile(
                   title: locals.customizeAppLayout,
+                  leading: const Icon(Icons.dashboard_customize_outlined),
                   description:
                       state.appLayout.map((e) => e.getLabel(locals)).join(", "),
                   onSelected: (context) => openAppLayout(context),
                 ),
                 SettingsTile(
                   title: locals.country,
+                  leading: const Icon(Icons.public),
                   description: state.country.name,
                   onSelected: (context) => openSelectCountry(context),
                 ),
@@ -223,6 +227,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: 'Return YouTube Dislike',
+                  leading: const Icon(Icons.thumb_down_alt_outlined),
                   description: locals.returnYoutubeDislikeDescription,
                   onSelected: (context) => cubit.toggleReturnYoutubeDislike(
                       !state.useReturnYoutubeDislike),
@@ -232,6 +237,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.rydCustomInstance,
+                  leading: const Icon(Icons.dns_outlined),
                   description:
                       '${state.returnYoutubeDislikeUrl.isNotEmpty ? '${locals.currentServer(state.returnYoutubeDislikeUrl)}\n' : ''}${locals.rydCustomInstanceDescription}',
                   enabled: state.useReturnYoutubeDislike,
@@ -239,11 +245,13 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.searchHistory,
+                  leading: const Icon(Icons.manage_search),
                   description: locals.searchHistoryDescription,
                   onSelected: openSearchHistorySettings,
                 ),
                 SettingsTile(
                   title: 'DeArrow',
+                  leading: const Icon(Icons.auto_fix_high),
                   description: state.dearrow
                       ? locals.enabled
                       : locals.deArrowSettingDescription,
@@ -251,6 +259,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.videoFilters,
+                  leading: const Icon(Icons.filter_alt_outlined),
                   description: locals.videoFiltersSettingTileDescriptions,
                   onSelected: (context) => AutoRouter.of(context)
                       .push(const TvFilterListSettingsRoute()),
@@ -262,6 +271,7 @@ class TVSettingsScreen extends StatelessWidget {
                     builder: (context, app) {
                       return SettingsTile(
                           title: locals.manageServers,
+                  leading: const Icon(Icons.dns),
                           description: app.server != null
                               ? locals.currentServer(app.server!.url)
                               : "",
@@ -270,12 +280,14 @@ class TVSettingsScreen extends StatelessWidget {
                 SettingsTitle(title: locals.videoPlayer),
                 SettingsTile(
                   title: locals.useDash,
+                  leading: const Icon(Icons.high_quality_outlined),
                   description: locals.useDashDescription,
                   onSelected: (context) => cubit.toggleDash(!state.useDash),
                   trailing: Switch(onChanged: (value) {}, value: state.useDash),
                 ),
                 SettingsTile(
                   title: locals.useProxy,
+                  leading: const Icon(Icons.shield_outlined),
                   description: locals.useProxyDescription,
                   onSelected: (context) => cubit.toggleProxy(!state.useProxy),
                   trailing:
@@ -283,6 +295,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 AdjustmentSettingTile(
                   title: locals.skipStep,
+                  leading: const Icon(Icons.forward_10),
                   value: state.skipStep.floor(),
                   description: locals.skipStepDescription,
                   possibleValues: skipSteps,
@@ -290,6 +303,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.exponentialSkip,
+                  leading: const Icon(Icons.fast_forward),
                   description: locals.exponentialSkipDescription,
                   onSelected: (context) =>
                       cubit.setSkipExponentially(!state.skipExponentially),
@@ -298,6 +312,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 AdjustmentSettingTile(
                   title: locals.subtitleFontSize,
+                  leading: const Icon(Icons.format_size),
                   value: state.subtitleSize.floor(),
                   step: 1,
                   description: locals.subtitleFontSizeDescription,
@@ -305,6 +320,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.subtitlesBackground,
+                  leading: const Icon(Icons.subtitles_outlined),
                   description: locals.subtitlesBackgroundDescription,
                   onSelected: (context) =>
                       cubit.setSubtitlesBackground(!state.subtitlesBackground),
@@ -313,6 +329,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.rememberSubtitleLanguage,
+                  leading: const Icon(Icons.closed_caption_outlined),
                   description: locals.rememberSubtitleLanguageDescription,
                   onSelected: (context) =>
                       cubit.toggleRememberSubtitles(!state.rememberSubtitles),
@@ -321,6 +338,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.rememberPlaybackSpeed,
+                  leading: const Icon(Icons.speed),
                   description: locals.rememberPlaybackSpeedDescription,
                   onSelected: (context) => cubit.toggleRememberPlaybackSpeed(
                       !state.rememberPlayBackSpeed),
@@ -330,6 +348,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: 'SponsorBlock',
+                  leading: const Icon(Icons.block),
                   description: locals.sponsorBlockDescription,
                   onSelected: openSponsorBlockSettings,
                 ),
@@ -394,6 +413,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.blackBackground,
+                  leading: const Icon(Icons.dark_mode_outlined),
                   description: locals.blackBackgroundDescription,
                   onSelected: (context) =>
                       cubit.toggleBlackBackground(!state.blackBackground),
@@ -402,6 +422,7 @@ class TVSettingsScreen extends StatelessWidget {
                 ),
                 SettingsTile(
                   title: locals.forceTvUi,
+                  leading: const Icon(Icons.tv),
                   description: locals.forceTvUiExplanation,
                   onSelected: (context) => cubit.setForceTvUi(!state.forceTvUi),
                   trailing:
@@ -410,18 +431,20 @@ class TVSettingsScreen extends StatelessWidget {
                 SettingsTitle(title: locals.about),
                 SettingsTile(
                   title: '${locals.name}: ${state.packageInfo.appName}',
+                  leading: const Icon(Icons.info_outline),
                   description:
                       '${locals.package}: ${state.packageInfo.packageName}',
                   onSelected: (context) {},
                 ),
                 SettingsTile(
                   title: '${locals.version}: ${state.packageInfo.version}',
+                  leading: const Icon(Icons.new_releases_outlined),
                   description:
                       '${locals.build}: ${state.packageInfo.buildNumber}',
                   onSelected: (context) {},
                 )
-              ],
-            ),
+              ]),
+            )),
           );
         }),
       ),
@@ -446,7 +469,7 @@ class SettingsTitle extends StatelessWidget {
       ),
       child: Text(
         title,
-        style: textTheme.labelLarge?.copyWith(color: colors.onSurfaceVariant),
+        style: textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -459,9 +482,11 @@ class AdjustmentSettingTile extends StatelessWidget {
   final List<int>? possibleValues;
   final String? description;
   final Function(int) onNewValue;
+  final Widget? leading;
 
   const AdjustmentSettingTile(
       {super.key,
+      this.leading,
       required this.onNewValue,
       required this.title,
       this.description,
@@ -504,9 +529,27 @@ class AdjustmentSettingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     TextTheme textTheme = Theme.of(context).textTheme;
+    if (CtTvTileScope.active(context)) {
+      // в сетке плиток стрелки двигают фокус, поэтому значение меняется кнопкой ОК (по кругу)
+      return SettingsTile(
+        title: title,
+        description: 'Сейчас: ${value.floor()} — ОК, чтобы изменить',
+        leading: leading,
+        onSelected: (_) {
+          if (possibleValues != null && possibleValues!.isNotEmpty) {
+            final i = possibleValues!.indexOf(value);
+            onNewValue(possibleValues![(i + 1) % possibleValues!.length]);
+          } else {
+            final st = step ?? 1;
+            onNewValue(value + st > 40 ? 10 : value + st);
+          }
+        },
+      );
+    }
     return SettingsTile(
       title: title,
       description: description,
+      leading: leading,
       onKeyEvent: onKeyEvent,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -560,6 +603,7 @@ class SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     ColorScheme colors = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
+    if (CtTvTileScope.active(context)) return _tile(context, colors, textTheme);
     return Focus(
         canRequestFocus: enabled,
         autofocus: autofocus ?? false,
@@ -605,4 +649,88 @@ class SettingsTile extends StatelessWidget {
           );
         }));
   }
+
+  /// Плитка: скруглённая карточка с иконкой, названием и коротким описанием.
+  Widget _tile(BuildContext context, ColorScheme colors, TextTheme textTheme) {
+    final on = enabled ?? true;
+    return Focus(
+        canRequestFocus: enabled,
+        autofocus: autofocus ?? false,
+        onKeyEvent: (node, event) => onKeyEvent != null
+            ? onKeyEvent!(node, event, context)
+            : onTvSelect(event, context, onSelected != null ? onSelected! : (context) {}),
+        child: Builder(builder: (ctx) {
+          final hasFocus = Focus.of(ctx).hasFocus;
+          final accent = ctAccent(colors);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 250,
+            height: 140,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: hasFocus ? accent.withValues(alpha: 0.16) : colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: hasFocus ? accent : Colors.transparent, width: 3),
+            ),
+            child: Opacity(
+              opacity: on ? 1 : 0.45,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  IconTheme(
+                    data: IconThemeData(size: 28, color: hasFocus ? accent : colors.primary),
+                    child: leading ?? const Icon(Icons.tune),
+                  ),
+                  const Spacer(),
+                  if (trailing != null) SizedBox(height: 30, child: FittedBox(child: trailing)),
+                ]),
+                const Spacer(),
+                Text(title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall!.copyWith(fontWeight: FontWeight.w700, color: colors.onSurface)),
+                if ((description ?? '').isNotEmpty)
+                  Text(description!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall!.copyWith(color: colors.onSurfaceVariant, height: 1.2)),
+              ]),
+            ),
+          );
+        }));
+  }
+}
+
+/// Внутри — пункты настроек рисуются плитками (а не строками).
+class CtTvTileScope extends InheritedWidget {
+  const CtTvTileScope({super.key, required super.child});
+
+  static bool active(BuildContext context) => context.dependOnInheritedWidgetOfExactType<CtTvTileScope>() != null;
+
+  @override
+  bool updateShouldNotify(CtTvTileScope oldWidget) => false;
+}
+
+/// Заголовки разделов — как есть, пункты между ними — сеткой плиток.
+List<Widget> ctTvTiles(List<Widget> children) {
+  final out = <Widget>[];
+  var cur = <Widget>[];
+  void flush() {
+    if (cur.isEmpty) return;
+    out.add(Padding(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
+      child: Wrap(spacing: 14, runSpacing: 14, children: cur),
+    ));
+    cur = <Widget>[];
+  }
+
+  for (final w in children) {
+    if (w is SettingsTitle) {
+      flush();
+      out.add(w);
+    } else {
+      cur.add(w);
+    }
+  }
+  flush();
+  return out;
 }

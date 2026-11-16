@@ -106,6 +106,18 @@ class TvPlayerControls extends StatelessWidget {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
+                                          // нет картинки канала (без сервера она приходит не всегда) —
+                                          // буква канала вместо значка ошибки «!»
+                                          if ((currentlyPlaying?.authorThumbnails ?? const []).isEmpty)
+                                            CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor: Colors.white24,
+                                              child: Text(
+                                                (currentlyPlaying?.author ?? '?').characters.firstOrNull?.toUpperCase() ?? '?',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                                              ),
+                                            )
+                                          else
                                           Thumbnail(
                                             thumbnails: ImageObject
                                                 .getThumbnailUrlsByPreferredOrder(

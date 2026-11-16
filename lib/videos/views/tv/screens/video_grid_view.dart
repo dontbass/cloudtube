@@ -7,6 +7,7 @@ import 'package:clipious/utils/views/components/placeholders.dart';
 import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
 import 'package:clipious/videos/views/tv/components/video_item.dart';
 
+import '../../../../cloudtube/tv_nav.dart';
 import '../../../../utils/states/item_list.dart';
 
 @RoutePage()
@@ -28,7 +29,7 @@ class TvGridScreen extends StatelessWidget {
       create: (BuildContext context) =>
           ItemListCubit(ItemListState(itemList: paginatedVideoList)),
       child: Scaffold(
-        body: TvOverscan(
+        body: CtTvLeftEdge(child: TvOverscan(
           child: BlocBuilder<ItemListCubit<Video>, ItemListState<Video>>(
               builder: (context, state) {
             var cubit = context.read<ItemListCubit<Video>>();
@@ -53,26 +54,33 @@ class TvGridScreen extends StatelessWidget {
                         : const SizedBox.shrink()
                   ],
                 ),
-                Expanded(
-                    child: GridView.count(
-                  controller: cubit.scrollController,
-                  childAspectRatio: 16 / 13,
-                  crossAxisCount: 3,
-                  children: [
-                    ...state.items.where((element) => !element.filterHide).map(
-                        (e) => TvVideoItem(
-                            key: ValueKey(e.videoId),
-                            video: e,
-                            autoFocus: false)),
-                    if (state.loading)
-                      ...repeatWidget(() => const TvVideoItemPlaceHolder(),
-                          count: 10)
-                  ],
-                ))
+                // плотная сетка: 5 роликов в ряд (раньше 3), меньше промежутки
+                Expanded(child: LayoutBuilder(builder: (context, c) {
+                  const cols = 5, gap = 14.0;
+                  final w = (c.maxWidth - gap * (cols - 1)) / cols;
+                  final textH = (textTheme.bodyMedium?.fontSize ?? 14) * 1.45 * 3 + 14;
+                  final items = [
+                    ...state.items.where((element) => !element.filterHide).map((e) => TvVideoItem(
+                        key: ValueKey(e.videoId), video: e, autoFocus: false, compact: true)),
+                    if (state.loading) ...repeatWidget(() => const TvVideoItemPlaceHolder(), count: 10)
+                  ];
+                  return GridView.builder(
+                    controller: cubit.scrollController,
+                    padding: const EdgeInsets.only(top: 12, bottom: 24),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: gap,
+                      mainAxisSpacing: gap,
+                      mainAxisExtent: w * 9 / 16 + textH,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, i) => items[i],
+                  );
+                })),
               ],
             );
           }),
-        ),
+        )),
       ),
     );
   }

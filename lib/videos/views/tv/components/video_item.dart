@@ -19,12 +19,16 @@ class TvVideoItem extends StatelessWidget {
   final void Function(bool focus)? onFocusChange;
   final Function(BuildContext context, Video video)? onSelect;
 
+  /// Плотная сетка (5 в ряд): без фиксированных пропорций карточки, мельче текст.
+  final bool compact;
+
   const TvVideoItem(
       {super.key,
       required this.video,
       required this.autoFocus,
       this.onSelect,
-      this.onFocusChange});
+      this.onFocusChange,
+      this.compact = false});
 
   openVideo(BuildContext context, Video e, FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent &&
@@ -60,9 +64,9 @@ class TvVideoItem extends StatelessWidget {
           VideoInListCubit(VideoInListState(video: video, offlineVideo: null)),
       child: BlocBuilder<VideoInListCubit, VideoInListState>(
         builder: (context, state) => DefaultTextStyle(
-          style: textTheme.bodyLarge!,
+          style: compact ? textTheme.bodyMedium! : textTheme.bodyLarge!,
           child: Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: EdgeInsets.only(right: compact ? 0 : 8.0),
             child: Focus(
                 onFocusChange: onFocusChange,
                 onKeyEvent: (node, event) =>
@@ -75,7 +79,7 @@ class TvVideoItem extends StatelessWidget {
                     child: AnimatedScale(
                       curve: Curves.easeInOutQuad,
                       duration: animationDuration ~/ 2,
-                      scale: hasFocus ? 1 : 0.9,
+                      scale: hasFocus ? (compact ? 1.04 : 1) : (compact ? 1 : 0.9),
                       child: AnimatedContainer(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
@@ -84,8 +88,8 @@ class TvVideoItem extends StatelessWidget {
                                 .withValues(alpha: hasFocus ? 1 : 0),
                           ),
                           duration: animationDuration,
-                          child: AspectRatio(
-                            aspectRatio: 16 / 13,
+                          child: _CtAspect(
+                            compact: compact,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,4 +290,17 @@ class TvVideoItem extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Обычная карточка — пропорции 16:13; в плотной сетке высоту задаёт сама сетка.
+class _CtAspect extends StatelessWidget {
+  final bool compact;
+  final Widget child;
+
+  const _CtAspect({required this.compact, required this.child});
+
+  @override
+  Widget build(BuildContext context) =>
+      compact ? child : AspectRatio(aspectRatio: 16 / 13, child: child);
 }

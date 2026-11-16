@@ -148,6 +148,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
             type: MediaEventType.aspectRatioChanged,
             value: getAspectRatio()));
         mediaState = MediaState.ready;
+        _ctPreferHighQuality();
         break;
       case BetterPlayerEventType.hideFullscreen:
         break;
@@ -575,6 +576,23 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   String _subtitleToString(BetterPlayerSubtitlesSource? source) {
     return '${source?.name}';
+  }
+
+  /// ТВ: ExoPlayer начинает HLS с низкого качества и на приставках по Wi-Fi/VPN часто на нём и остаётся
+  /// (360p). На ТВ сразу выбираем лучшее качество до 1080p; его можно сменить в меню качества.
+  void _ctPreferHighQuality({bool retry = true}) {
+    if (!isTv) return;
+    final tracks = (videoController?.betterPlayerAsmsTracks ?? const <BetterPlayerAsmsTrack>[])
+        .where((t) => (t.height ?? 0) > 0 && (t.height ?? 0) <= 1080)
+        .toList();
+    if (tracks.isEmpty) {
+      // список качеств HLS иногда появляется чуть позже
+      if (retry) Future.delayed(const Duration(seconds: 2), () => _ctPreferHighQuality(retry: false));
+      return;
+    }
+    tracks.sort((a, b) => (b.height ?? 0).compareTo(a.height ?? 0));
+    log.info('ТВ: качество ${tracks.first.height}p');
+    videoController?.setTrack(tracks.first);
   }
 
   @override

@@ -21,6 +21,7 @@ import 'package:clipious/l10n/generated/app_localizations.dart';
 import '../../../../playlists/models/playlist.dart';
 import '../../../../playlists/views/components/playlist_in_list.dart';
 import '../../../../utils.dart';
+import '../../../../cloudtube/tv_nav.dart';
 import '../../../states/tv_channel.dart';
 
 @RoutePage()
@@ -36,7 +37,7 @@ class TvChannelScreen extends StatelessWidget {
     ColorScheme colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: MultiBlocProvider(
+      body: CtTvLeftEdge(child: MultiBlocProvider(
         providers: [
           BlocProvider(
             create: (context) =>
@@ -316,7 +317,7 @@ class TvChannelScreen extends StatelessWidget {
                   );
           }),
         ),
-      ),
+      )),
     );
   }
 }

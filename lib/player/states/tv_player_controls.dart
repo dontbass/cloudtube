@@ -91,8 +91,11 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
           fastForward();
         } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
           fastRewind();
-        } else if (isOk(event.logicalKey)) {
+        } else if (isOk(event.logicalKey) || event.logicalKey == LogicalKeyboardKey.arrowUp) {
           emit(state.copyWith(displayControls: true));
+        } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          // как в SmartTube: стрелка вниз — сразу настройки (качество, звук, скорость…)
+          displaySettings();
         }
       } else {}
     }
@@ -121,7 +124,8 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
 
   hideControls() {
     EasyDebounce.debounce('tv-controls', controlFadeOut, () {
-      if (!isClosed) {
+      // открытые настройки/очередь не прячем сами — пользователь выбирает, закрываются кнопкой «Назад»
+      if (!isClosed && !state.showSettings && !state.showQueue) {
         emit(state.copyWith(
             controlsOpacity: 0,
             showSettings: false,

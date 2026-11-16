@@ -1,3 +1,4 @@
+import '../../cloudtube/sponsor_toast.dart';
 import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
@@ -369,6 +370,11 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         // sometimes when reaching the end of a video, the sponsor skip keeps on being triggered
         // we remove on second of last segment if it is the case
         var skipTo = nextSegment.last + 1000;
+        final segIndex = state.sponsorSegments.indexOf(nextSegment);
+        final segType = segIndex >= 0 && segIndex < _ctSegTypes.length ? _ctSegTypes[segIndex] : null;
+        ctShowSponsorToast(segType != null
+            ? 'Пропущен фрагмент «${ctSponsorLabel(segType)}»'
+            : 'Пропущен фрагмент SponsorBlock');
 
         emit(state.copyWith(
             mediaEvent: const MediaEvent(
@@ -777,8 +783,12 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     }
   }
 
+  // категории сегментов в том же порядке, что и state.sponsorSegments (для сообщения в кадре)
+  List<SponsorSegmentType> _ctSegTypes = const [];
+
   Future<void> setSponsorBlock() async {
     List<Pair<int>> newSegments = [];
+    _ctSegTypes = const [];
     if (state.currentlyPlaying != null) {
       List<SponsorSegmentType> types = SponsorSegmentType.values
           .where((e) => db.getSettings(e.settingsName())?.value == 'true')
@@ -787,6 +797,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
       if (types.isNotEmpty) {
         List<SponsorSegment> sponsorSegments = await service.getSponsorSegments(
             state.currentlyPlaying!.videoId, types);
+        _ctSegTypes = sponsorSegments.map((e) => e.category).toList();
         List<Pair<int>> segments = List.from(sponsorSegments.map((e) {
           Duration start = Duration(seconds: e.segment[0].floor());
           Duration end = Duration(seconds: e.segment[1].floor());

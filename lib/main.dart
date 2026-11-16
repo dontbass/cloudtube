@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dynamic_color/dynamic_color.dart';
+import 'cloudtube/sponsor_toast.dart';
 import 'package:feedback/feedback.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -126,6 +127,7 @@ Future<void> main() async {
 
   isTv = await isDeviceTv();
   if (isTv) ctLoadTvScale();
+  await ctSponsorDefaults();
   runApp(BetterFeedback(
     child: MultiBlocProvider(providers: [
       BlocProvider(

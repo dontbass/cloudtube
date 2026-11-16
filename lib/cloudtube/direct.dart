@@ -48,6 +48,9 @@ bool ctDirectActive = false;
 /// Сбросить кэш видео (для проверки скорости).
 void ctDirectClearCache() => _CtDirect.instance._videoCache.clear();
 
+/// Забыть один ролик (при восстановлении после сбоя — свежие ссылки на потоки).
+void ctDirectForget(String id) => _CtDirect.instance._videoCache.remove(id);
+
 bool ctIsDirectUrl(String? url) => url != null && Uri.tryParse(url)?.host == _host;
 
 /// HTTP-клиент приложения. Запросы к обычным серверам уходят как есть, а запросы к youtube.direct

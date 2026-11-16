@@ -1,3 +1,4 @@
+import '../../../../cloudtube/sponsor_toast.dart';
 import 'package:clipious/player/states/tv_player_controls.dart';
 import 'package:clipious/player/views/tv/components/player_settings.dart';
 import 'package:clipious/utils/views/components/thumbnail.dart';
@@ -55,6 +56,8 @@ class TvPlayerControls extends StatelessWidget {
                   cubit.handleRemoteEvents(node, event),
               child: Stack(
                 children: [
+                  // SponsorBlock: «Пропущен фрагмент …» поверх видео
+                  const Positioned(left: 56, bottom: 120, child: CtSponsorToast()),
                   Positioned(
                     top: 0,
                     left: 0,

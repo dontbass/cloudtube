@@ -139,9 +139,40 @@ class CtDashLocal {
   /// Доступные качества ролика (высоты, по убыванию).
   static List<int> heights(String id) => (_byHeight(id).keys.toList()..sort((a, b) => b.compareTo(a)));
 
+  static bool _av1(Map f) => '${f['mimeType']}'.contains('av01');
+
+  /// Все видеоформаты ролика для меню (как «Видеоформат» в SmartTube): выше качество — выше в списке.
+  static List<Map> formats(String id) {
+    final e = _raw[id];
+    if (e == null) return const [];
+    final out = e.$1
+        .whereType<Map>()
+        .where(_ok)
+        .where((f) => '${f['mimeType']}'.startsWith('video/') && _h(f) > 0 && _h(f) <= 2160)
+        .where((f) => _avc(f) || _vp9(f) || _av1(f))
+        .toList()
+      ..sort((a, b) {
+        final c = _h(b).compareTo(_h(a));
+        if (c != 0) return c;
+        final fc = _fps(b).compareTo(_fps(a));
+        if (fc != 0) return fc;
+        return _br(b).compareTo(_br(a));
+      });
+    return out;
+  }
+
+  /// «(4K) 2160p, 25fps, 12.42Mbps, vp9»
+  static String label(Map f) {
+    final h = _h(f);
+    final tag = h >= 2160 ? '(4K) ' : (h >= 1440 ? '(2K) ' : '');
+    final codec = _avc(f) ? 'avc' : (_vp9(f) ? 'vp9' : 'av1');
+    return '$tag${h}p, ${_fps(f)}fps, ${(_br(f) / 1e6).toStringAsFixed(2)}Mbps, $codec';
+  }
+
   /// (адрес манифеста, высота кадра, адрес видеодорожки для заголовков) или null.
   /// [cap] — потолок качества (по умолчанию 4K: берётся лучшее, что есть у ролика).
-  static Future<(String, int, String)?> build(String id, {int cap = 2160}) async {
+  /// [itag] — конкретный формат, выбранный в меню (если есть у ролика).
+  static Future<(String, int, String, String)?> build(String id, {int cap = 2160, String? itag}) async {
     final e = _raw[id];
     if (e == null) return null;
     final all = e.$1.whereType<Map>().where(_ok).toList();
@@ -151,8 +182,13 @@ class CtDashLocal {
         .where((f) => '${f['mimeType']}'.startsWith('audio/mp4'))
         .toList()
       ..sort((a, b) => _br(b).compareTo(_br(a)));
-    if (hs.isEmpty || audios.isEmpty) return null;
-    final v = byH[hs.first]!, a = audios.first;
+    if (audios.isEmpty) return null;
+    Map? v = itag == null ? null : formats(id).where((f) => '${f['itag']}' == itag).firstOrNull;
+    if (v == null) {
+      if (hs.isEmpty) return null;
+      v = byH[hs.first]!;
+    }
+    final a = audios.first;
     String esc(String s) => s
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
@@ -185,6 +221,6 @@ class CtDashLocal {
     CtHlsLocal._lists[name] = mpd;
     if (CtHlsLocal._lists.length > 20) CtHlsLocal._lists.remove(CtHlsLocal._lists.keys.first);
     final port = await CtHlsLocal._port();
-    return ('http://127.0.0.1:$port/$name', _h(v), v['url'] as String);
+    return ('http://127.0.0.1:$port/$name', _h(v), v['url'] as String, '${v['itag']}');
   }
 }

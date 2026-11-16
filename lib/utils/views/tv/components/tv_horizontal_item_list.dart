@@ -43,13 +43,13 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                 ),
               !state.loading && items.isEmpty
                   ? const SizedBox.shrink()
-                  // CloudTube: ~5 карточек в ряд (раньше ~3 крупных), высота по ширине карточки
+                  // CloudTube: как в SmartTube — ~4 крупные карточки на всю ширину (раньше ~3 крупных), высота по ширине карточки
                   : LayoutBuilder(builder: (context, c) {
-                      const perRow = 5.2, gap = 14.0;
-                      final w = (c.maxWidth - gap * 5) / perRow;
-                      final textH = (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) * 1.45 * 3 + 14;
+                      const perRow = 4.4, gap = 14.0;
+                      final w = (c.maxWidth - gap * 4) / perRow;
+                      const textH = ctTvCardTextH;
                       return SizedBox(
-                      height: w * 9 / 16 + textH + 8,
+                      height: w * 9 / 16 + textH + 10,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         controller: cubit.scrollController,

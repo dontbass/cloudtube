@@ -192,6 +192,10 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     final pos = videoController?.videoPlayerController?.value.position;
     log.warning('playback error on ${v.videoId}, recovery #$_recoverTries');
     if (_recoverTries == 2 && isUsingDash()) _forceProgressive = true;
+    if (isTv && ctDirectActive) {
+      _ctNoDashFor = v.videoId;
+      CtTrace.mark('плеер: ошибка — переход на HLS');
+    }
     try {
       final fresh = await service.getVideo(v.videoId);
       if (isClosed || state.video?.videoId != v.videoId) return;
@@ -376,21 +380,35 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         var streamHeaders = !offline
             ? <String, String>{...?server.headersForUrl(videoUrl), ...ctDirectStreamHeaders(videoUrl)}
             : <String, String>{};
-        // ТВ без сервера: сразу 720–1080p (иначе ExoPlayer на приставке остаётся на 360p)
-        if (isHls && isTv && ctDirectActive) {
+        // ТВ без сервера: как в SmartTube — свой DASH с одним (лучшим до 1080p) качеством,
+        // иначе ExoPlayer на приставке берёт 360p и не поднимается. Запасной вариант — HLS 720–1080p.
+        var ctDash = false;
+        _ctFiltered = false;
+        if (isTv && ctDirectActive && _ctNoDashFor != newState.video!.videoId) {
+          final d = await CtDashLocal.build(newState.video!.videoId);
+          if (d != null) {
+            ctDash = true;
+            _ctFiltered = true;
+            streamHeaders = {...ctDirectStreamHeaders(d.$3)};
+            videoUrl = d.$1;
+            CtTrace.mark('плеер: DASH ${d.$2}p (одно качество)');
+          }
+        }
+        if (!ctDash && isHls && isTv && ctDirectActive) {
           final local = await CtHlsLocal.atLeast(videoUrl, streamHeaders);
           CtTrace.mark(local != null ? 'плеер: HLS 720–1080p' : 'плеер: HLS без фильтра качества');
           _ctFiltered = local != null;
           if (local != null) videoUrl = local;
-        } else {
-          _ctFiltered = false;
+        } else if (!ctDash) {
           CtTrace.mark(isHls ? 'плеер: HLS' : (isUsingDash() ? 'плеер: DASH' : 'плеер: обычный поток ${formatStream?.resolution ?? ''}'));
         }
 
         log.info(
             'Playing url (dash ${isUsingDash()},  hasHls ? ${newState.video!.hlsUrl != null})  $videoUrl');
 
-        BetterPlayerVideoFormat format = isHls
+        BetterPlayerVideoFormat format = ctDash
+            ? BetterPlayerVideoFormat.dash
+            : isHls
             ? BetterPlayerVideoFormat.hls
             : isUsingDash()
                 ? BetterPlayerVideoFormat.dash
@@ -600,6 +618,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   /// ТВ: ExoPlayer начинает HLS с низкого качества и на приставках по Wi-Fi/VPN часто на нём и остаётся
   /// (360p). На ТВ сразу выбираем лучшее качество до 1080p; его можно сменить в меню качества.
   bool _ctFiltered = false;
+  // свой DASH на ТВ дал ошибку — для этого ролика дальше HLS
+  String? _ctNoDashFor;
 
   void _ctPreferHighQuality({bool retry = true}) {
     // плейлист уже без низких качеств — между 720p и 1080p пусть выбирает ExoPlayer

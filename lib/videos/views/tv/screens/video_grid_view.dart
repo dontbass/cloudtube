@@ -64,11 +64,11 @@ class TvGridScreen extends StatelessWidget {
                         : const SizedBox.shrink()
                   ],
                 ),
-                // плотная сетка: 5 роликов в ряд (раньше 3), меньше промежутки
+                // плотная сетка: 6 роликов в ряд (раньше 3), меньше промежутки
                 Expanded(child: LayoutBuilder(builder: (context, c) {
                   const cols = 5, gap = 14.0;
                   final w = (c.maxWidth - gap * (cols - 1)) / cols;
-                  final textH = (textTheme.bodyMedium?.fontSize ?? 14) * 1.45 * 3 + 14;
+                  const textH = ctTvCardTextH + 8;
                   final items = [
                     ...state.items.where((element) => !element.filterHide).map((e) => TvVideoItem(
                         key: ValueKey(e.videoId), video: e, autoFocus: false, compact: true)),

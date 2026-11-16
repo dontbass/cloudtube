@@ -6,6 +6,7 @@ import '../../../main.dart';
 import '../../../utils/models/paginated_list.dart';
 import '../../../utils/views/tv/components/tv_horizontal_item_list.dart';
 import 'video_list.dart';
+import '../../../cloudtube/home_feed.dart';
 
 class Popular extends StatelessWidget {
   final void Function(Video video, int index, bool focus)? onItemFocus;
@@ -18,7 +19,8 @@ class Popular extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       child: isTv
           ? TvHorizontalVideoList(
-              paginatedVideoList: SingleEndpointList(service.getPopular),
+              // та же лента, что и «Главная» на телефоне (без сервера — бесконечная)
+              paginatedVideoList: ctSectionList(''),
               onItemFocus: onItemFocus,
             )
           : VideoList(

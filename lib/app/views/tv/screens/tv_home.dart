@@ -20,6 +20,7 @@ import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
 import '../../../../cloudtube/direct.dart';
 import '../../../../cloudtube/tv_nav.dart';
+import 'package:clipious/utils/views/tv/components/tv_horizontal_item_list.dart';
 import '../../../../cloudtube/home_feed.dart';
 import '../../../../cloudtube/yt_login.dart';
 import '../../../../videos/views/components/popular.dart';
@@ -29,6 +30,40 @@ const overlayBackgroundOpacity = 0.8;
 const double overlayBlur = 25.0;
 GlobalKey popularTitle = GlobalKey(debugLabel: 'popular title');
 GlobalKey subscriptionTitle = GlobalKey(debugLabel: 'subscription title');
+final _ctRowKeys = {for (final c in ctSections.skip(1)) c.id: GlobalKey(debugLabel: 'row ${c.id}')};
+
+/// Ряды разделов (Музыка, Новости, Спорт…) под основными лентами стартового экрана.
+List<Widget> _ctSectionRows(BuildContext context) {
+  final textTheme = Theme.of(context).textTheme;
+  final colors = Theme.of(context).colorScheme;
+  return [
+    for (final c in ctSections.skip(1).where((c) => c.id != 'movies'))
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            key: _ctRowKeys[c.id],
+            padding: const EdgeInsets.only(top: 10.0, bottom: 6, left: 4),
+            child: Text(c.label, style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
+          ),
+          TvHorizontalVideoList(
+            paginatedVideoList: ctSectionList(c.id),
+            autoFocusedIndex: -1,
+            onItemFocus: (video, index, focus) {
+              final k = _ctRowKeys[c.id]?.currentContext;
+              if (focus && k != null) {
+                Scrollable.ensureVisible(k,
+                    duration: animationDuration,
+                    curve: Curves.easeInOutQuad,
+                    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
+              }
+            },
+          ),
+        ],
+      ),
+  ];
+}
 GlobalKey trendingTitle = GlobalKey(debugLabel: 'trending title');
 
 @RoutePage()
@@ -97,18 +132,98 @@ class TvHomeScreen extends StatelessWidget {
             }, builder: (context, state) {
               return DefaultTextStyle(
                 style: textTheme.bodyLarge!,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Stack(
                   children: [
-                    AnimatedContainer(
-                      width: homeState ? 320 : 118,
+                    Positioned.fill(
+                      // CloudTube: стрелка влево у левого края открывает боковое меню
+                      child: CtTvLeftEdge(
+                      popRoute: false,
+                      // terrible work around to be able to scroll to all the global keys
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              top: TvOverscan.vertical,
+                              bottom: TvOverscan.vertical,
+                              right: TvOverscan.horizontal,
+                              left: TvOverscan.horizontal),
+                          child: ListView(
+                            controller: homeCubit.scrollController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            // crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [...allowedPages
+                                .where((e) =>
+                                    e == HomeDataSource.subscription ||
+                                    e == HomeDataSource.trending ||
+                                    e == HomeDataSource.popular)
+                                .map((e) {
+                              GlobalKey? key = switch (e) {
+                                (HomeDataSource.popular) => popularTitle,
+                                (HomeDataSource.subscription) =>
+                                  subscriptionTitle,
+                                (HomeDataSource.trending) => trendingTitle,
+                                (_) => null,
+                              };
+
+                              focusFunction(video, index, focus) {
+                                if (key != null && focus) {
+                                  Scrollable.ensureVisible(key.currentContext!,
+                                      duration: animationDuration,
+                                      curve: Curves.easeInOutQuad,
+                                      alignmentPolicy:
+                                          ScrollPositionAlignmentPolicy
+                                              .keepVisibleAtStart);
+                                }
+                              }
+
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    key: key,
+                                    padding: const EdgeInsets.only(top: 10.0, bottom: 6, left: 4),
+                                    child: Text(e.getLabel(locals),
+                                        style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
+                                  ),
+                                  switch (e) {
+                                    (HomeDataSource.popular) => Popular(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (HomeDataSource.subscription) =>
+                                      Subscriptions(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (HomeDataSource.trending) => Trending(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (_) => const SizedBox.shrink(),
+                                  }
+                                ],
+                              );
+                            }),
+                              // ещё ленты разделов, как в SmartTube: экран заполнен, вниз — новые ряды
+                              ..._ctSectionRows(context),
+                            ],
+                          ),
+                        ),
+                      )),
+                    ),
+                    Positioned(
+                      left: 0, top: 0, bottom: 0,
+                      child: AnimatedContainer(
+                      width: homeState ? 260 : 0,
                       duration: animationDuration ~/ 2,
                       curve: Curves.easeInOutQuad,
                       decoration: BoxDecoration(
-                          color: homeState
-                              ? colors.secondaryContainer.withValues(alpha: 0.5)
-                              : Colors.transparent),
-                      child: Padding(
+                          color: colors.surfaceContainer.withValues(alpha: 0.97),
+                          boxShadow: const [BoxShadow(blurRadius: 24, color: Colors.black54)]),
+                      // меню как в SmartTube: скрыто, выезжает поверх лент по стрелке «влево»
+                      child: ClipRect(child: OverflowBox(
+                          alignment: Alignment.topLeft,
+                          minWidth: 260,
+                          maxWidth: 260,
+                          child: Padding(
                           padding: EdgeInsets.only(
                               top: TvOverscan.vertical,
                               left: TvOverscan.horizontal,
@@ -132,14 +247,14 @@ class TvHomeScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 30.0),
+                                  padding: const EdgeInsets.only(bottom: 18.0),
                                   child: SizedBox(
-                                      height: 50,
+                                      height: 40,
                                       child: Row(
                                         children: [
                                           const AppIcon(
-                                            width: 50,
-                                            height: 50,
+                                            width: 40,
+                                            height: 40,
                                           ),
                                           if (homeState)
                                             Padding(
@@ -244,79 +359,8 @@ class TvHomeScreen extends StatelessWidget {
                                     ),
                                   ),
                                 )
-                              ]))),
+                              ]))))),
                     ),
-                    Expanded(
-                      // CloudTube: стрелка влево у левого края открывает боковое меню
-                      child: CtTvLeftEdge(
-                      popRoute: false,
-                      // terrible work around to be able to scroll to all the global keys
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                              top: TvOverscan.vertical,
-                              bottom: TvOverscan.vertical,
-                              right: TvOverscan.horizontal,
-                              left: 8),
-                          child: ListView(
-                            controller: homeCubit.scrollController,
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            // crossAxisAlignment: CrossAxisAlignment.start,
-                            children: allowedPages
-                                .where((e) =>
-                                    e == HomeDataSource.subscription ||
-                                    e == HomeDataSource.trending ||
-                                    e == HomeDataSource.popular)
-                                .map((e) {
-                              GlobalKey? key = switch (e) {
-                                (HomeDataSource.popular) => popularTitle,
-                                (HomeDataSource.subscription) =>
-                                  subscriptionTitle,
-                                (HomeDataSource.trending) => trendingTitle,
-                                (_) => null,
-                              };
-
-                              focusFunction(video, index, focus) {
-                                if (key != null && focus) {
-                                  Scrollable.ensureVisible(key.currentContext!,
-                                      duration: animationDuration,
-                                      curve: Curves.easeInOutQuad,
-                                      alignmentPolicy:
-                                          ScrollPositionAlignmentPolicy
-                                              .keepVisibleAtStart);
-                                }
-                              }
-
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    key: key,
-                                    padding: const EdgeInsets.only(top: 16.0),
-                                    child: Text(e.getLabel(locals),
-                                        style: textTheme.titleLarge),
-                                  ),
-                                  switch (e) {
-                                    (HomeDataSource.popular) => Popular(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.subscription) =>
-                                      Subscriptions(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.trending) => Trending(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (_) => const SizedBox.shrink(),
-                                  }
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      )),
                     ),
                   ],
                 ),

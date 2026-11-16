@@ -64,7 +64,9 @@ class TvVideoItem extends StatelessWidget {
           VideoInListCubit(VideoInListState(video: video, offlineVideo: null)),
       child: BlocBuilder<VideoInListCubit, VideoInListState>(
         builder: (context, state) => DefaultTextStyle(
-          style: compact ? textTheme.bodyMedium! : textTheme.bodyLarge!,
+          style: compact
+              ? textTheme.bodySmall!.copyWith(fontSize: 14, height: 1.25)
+              : textTheme.bodyLarge!,
           child: Padding(
             padding: EdgeInsets.only(right: compact ? 0 : 8.0),
             child: Focus(
@@ -84,8 +86,10 @@ class TvVideoItem extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
                             border: ctFocusBorder(colors, hasFocus),
-                            color: colors.primaryContainer
-                                .withValues(alpha: hasFocus ? 1 : 0),
+                            // как в SmartTube: карточка на тёмной подложке, в фокусе — подсвечена
+                            color: hasFocus
+                                ? colors.primaryContainer
+                                : (compact ? colors.surfaceContainerHigh : colors.primaryContainer.withValues(alpha: 0)),
                           ),
                           duration: animationDuration,
                           child: _CtAspect(
@@ -261,7 +265,7 @@ class TvVideoItem extends StatelessWidget {
                                           ),
                                         )),
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
+                                  padding: EdgeInsets.only(left: compact ? 4 : 8.0, top: compact ? 4 : 0),
                                   child: Text(
                                     (state.video?.filtered ?? false)
                                         ? '**********'
@@ -272,11 +276,12 @@ class TvVideoItem extends StatelessWidget {
                                   ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
+                                  padding: EdgeInsets.only(left: compact ? 4 : 8.0),
                                   child: Text(
                                     video.author ?? '',
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: colors.secondary),
+                                    style: TextStyle(color: colors.secondary, fontSize: compact ? 12.5 : null),
                                   ),
                                 ),
                               ],
@@ -304,3 +309,6 @@ class _CtAspect extends StatelessWidget {
   Widget build(BuildContext context) =>
       compact ? child : AspectRatio(aspectRatio: 16 / 13, child: child);
 }
+
+/// Высота подписи компактной карточки ТВ (2 строки названия + автор + отступы).
+const double ctTvCardTextH = 14 * 1.25 * 2 + 12.5 * 1.4 + 16;

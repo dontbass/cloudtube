@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'trace.dart';
+import 'hls_local.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 final _log = Logger('CtYtFast');
@@ -269,6 +270,8 @@ class CtYtFast {
             if (f['audioQuality'] != null) 'audioQuality': '${f['audioQuality']}',
           }
     ];
+    // сырые форматы (с initRange/indexRange) — для своего DASH на ТВ
+    CtDashLocal.remember(id, sd['adaptiveFormats'] as List?, (j['lengthSeconds'] as int) * 1000);
     if (j['hlsUrl'] == null && (j['formatStreams'] as List).isEmpty) {
       CtTrace.mark('адаптер: нет ни HLS, ни потока со звуком → запасной путь');
       return null;

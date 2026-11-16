@@ -162,48 +162,13 @@ class CtYouPage extends StatelessWidget {
               subtitle: 'Список каналов, отписаться'),
         ],
         if (direct && !isTv && !ctDesktop)
-          tile(Icons.forum_outlined, 'Комментарии от своего имени',
+          tile(Icons.forum_outlined, 'Аккаунт для комментариев',
               () async {
-                if (!CtYtCookies.active) {
-                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen()));
-                } else {
-                  final what = await showModalBottomSheet<String>(
-                    context: context,
-                    showDragHandle: true,
-                    builder: (ctx) => SafeArea(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        ListTile(
-                            leading: const Icon(Icons.switch_account),
-                            title: const Text('Сменить канал'),
-                            subtitle: const Text('Если у аккаунта несколько каналов'),
-                            onTap: () => Navigator.of(ctx).pop('switch')),
-                        ListTile(
-                            leading: const Icon(Icons.person_add_alt),
-                            title: const Text('Добавить аккаунт Google'),
-                            subtitle: const Text('Войти во второй аккаунт и выбрать его канал'),
-                            onTap: () => Navigator.of(ctx).pop('add')),
-                        ListTile(
-                            leading: const Icon(Icons.logout),
-                            title: const Text('Отключить вход через сайт'),
-                            onTap: () => Navigator.of(ctx).pop('off')),
-                      ]),
-                    ),
-                  );
-                  if (!context.mounted) return;
-                  if (what == 'switch') await CtYtCookies.chooseIdentity(context, force: true);
-                  if (what == 'add') {
-                    await Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen(addAccount: true)));
-                  }
-                  if (what == 'off') {
-                    await CtYtCookies.save(null);
-                    await CtYtCookies.setIdentity(null);
-                  }
-                }
+                await CtYtCookies.manage(context);
                 if (context.mounted) (context as Element).markNeedsBuild();
               },
               subtitle: CtYtCookies.active
-                  ? 'Канал: ${CtYtCookies.identity?.name ?? 'основной'}${(CtYtCookies.identity?.handle ?? '').isNotEmpty ? ' (${CtYtCookies.identity!.handle})' : ''} · нажмите, чтобы сменить'
+                  ? 'Пишете как: ${CtYtCookies.identity?.name ?? 'основной канал'} — сменить канал или выйти'
                   : 'Вход через сайт Google — нужен, чтобы писать комментарии'),
         tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute()),
             subtitle: 'Видео, сохранённые для просмотра без интернета'),

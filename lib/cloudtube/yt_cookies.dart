@@ -135,6 +135,32 @@ class CtYtCookies {
     return out;
   }
 
+  /// Единое окно «Аккаунт для комментариев»: текущий канал, все доступные каналы
+  /// (один щелчок — переключиться), добавить другой аккаунт Google, выйти.
+  /// Возвращает true, если что-то изменилось.
+  static Future<bool> manage(BuildContext context) async {
+    if (!active) {
+      final ok = await Navigator.of(context)
+          .push<bool>(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen()));
+      return ok == true;
+    }
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => const _CtAccountSheet(),
+    );
+    return changed == true;
+  }
+
+  static Future<void> signOut() async {
+    await save(null);
+    await setIdentity(null);
+    try {
+      await CookieManager.instance().deleteAllCookies(); // чтобы в следующий раз Google спросил аккаунт заново
+    } catch (_) {}
+  }
+
   /// Выбрать канал: если их несколько — спросить пользователя.
   static Future<void> chooseIdentity(BuildContext context, {bool force = false}) async {
     List<CtYtIdentity> list;
@@ -291,6 +317,105 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
         onProgressChanged: (_, p) => setState(() => _progress = p / 100),
         onLoadStop: (_, url) => _check(url),
         onUpdateVisitedHistory: (_, url, __) => _check(url),
+      ),
+    );
+  }
+}
+
+
+class _CtAccountSheet extends StatefulWidget {
+  const _CtAccountSheet();
+
+  @override
+  State<_CtAccountSheet> createState() => _CtAccountSheetState();
+}
+
+class _CtAccountSheetState extends State<_CtAccountSheet> {
+  List<CtYtIdentity>? list;
+  String? err;
+
+  @override
+  void initState() {
+    super.initState();
+    CtYtCookies.accounts().then((l) {
+      if (mounted) setState(() => list = l);
+    }).catchError((e) {
+      if (mounted) setState(() => err = '$e');
+    });
+  }
+
+  bool _isCurrent(CtYtIdentity a) {
+    final cur = CtYtCookies.identity;
+    if (cur == null) return a.selected;
+    return cur.pageId == a.pageId && cur.authUser == a.authUser;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+        child: ListView(shrinkWrap: true, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Text('Аккаунт для комментариев', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text('Нажмите на канал, чтобы писать от его имени.',
+                style: TextStyle(color: colors.onSurfaceVariant)),
+          ),
+          if (list == null && err == null)
+            const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
+          if (err != null)
+            Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text('Не удалось получить список каналов: $err', style: TextStyle(color: colors.error))),
+          for (final a in list ?? const <CtYtIdentity>[])
+            ListTile(
+              leading: CircleAvatar(
+                backgroundImage: a.photo.isNotEmpty ? NetworkImage(a.photo) : null,
+                child: a.photo.isEmpty ? Text(a.name.isNotEmpty ? a.name[0] : '?') : null,
+              ),
+              title: Text(a.name),
+              subtitle: Text([a.handle, if (a.authUser > 0) 'аккаунт Google №${a.authUser + 1}']
+                  .where((e) => e.isNotEmpty)
+                  .join(' · ')),
+              trailing: _isCurrent(a) ? Icon(Icons.check_circle, color: colors.primary) : null,
+              onTap: () async {
+                await CtYtCookies.setIdentity(a);
+                if (context.mounted) Navigator.of(context).pop(true);
+              },
+            ),
+          if (list != null && list!.length <= 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Text(
+                  'Найден один канал. Если у этой почты есть ещё каналы YouTube, они появятся здесь; '
+                  'другую почту добавьте кнопкой ниже.',
+                  style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+            ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.person_add_alt),
+            title: const Text('Добавить другой аккаунт Google'),
+            onTap: () async {
+              final ok = await Navigator.of(context)
+                  .push<bool>(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen(addAccount: true)));
+              if (context.mounted) Navigator.of(context).pop(ok == true);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.logout, color: colors.error),
+            title: Text('Выйти (не писать комментарии)', style: TextStyle(color: colors.error)),
+            subtitle: const Text('Вход через сайт будет удалён с устройства'),
+            onTap: () async {
+              await CtYtCookies.signOut();
+              if (context.mounted) Navigator.of(context).pop(true);
+            },
+          ),
+        ]),
       ),
     );
   }

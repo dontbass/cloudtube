@@ -127,7 +127,8 @@ class CtComments {
   /// 1) Invidious /api/v1/comments, 2) если пусто/ошибка — сервер CloudTube /ct-api/comments (yt-dlp).
   static Future<CtCommentsPage> load(String videoId,
       {String sort = 'top', String? continuation, bool invidiousOnly = false}) async {
-    final key = '$videoId|$sort|${continuation ?? ''}';
+    // кэш зависит и от выбранного канала: от него зависят пункты «изменить/удалить»
+    final key = '$videoId|$sort|${continuation ?? ''}|${CtYtCookies.active}|${CtYtCookies.identity?.pageId}|${CtYtCookies.identity?.authUser}';
     final hit = _cache[key];
     if (hit != null) return hit;
     CtCommentsPage? page;
@@ -200,6 +201,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       final p = widget.scroll.position;
       if (p.pixels > p.maxScrollExtent - 400) _more();
     });
+  }
+
+  void _reload() {
+    _replies.clear();
+    _load();
   }
 
   Future<void> _load() async {
@@ -332,6 +338,38 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   Widget _composer(ColorScheme colors) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () async {
+              final changed = await CtYtCookies.manage(context);
+              if (changed && mounted) {
+                setState(() {});
+                _reload(); // параметры «ответить/изменить» зависят от выбранного канала
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                if ((CtYtCookies.identity?.photo ?? '').isNotEmpty)
+                  CircleAvatar(radius: 10, backgroundImage: NetworkImage(CtYtCookies.identity!.photo))
+                else
+                  Icon(Icons.account_circle, size: 20, color: colors.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    CtYtCookies.active
+                        ? 'Вы пишете как ${CtYtCookies.identity?.name ?? 'основной канал'}'
+                        : 'Чтобы писать, войдите через сайт YouTube',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(CtYtCookies.active ? 'Сменить' : 'Войти',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: colors.primary)),
+              ]),
+            ),
+          ),
          Row(children: [
           Expanded(
             child: TextField(

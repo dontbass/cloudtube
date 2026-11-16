@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'direct.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/utils/models/paginated_list.dart';
@@ -30,24 +31,41 @@ const ctSections = <CtSection>[
 
 /// [fill] — догружать первую страницу до ~24 роликов (для сетки; рядам ТВ не нужно — быстрее старт).
 /// [delay] — отложить первую загрузку (ряды разделов ТВ не мешают главной ленте).
+/// Первая страница «Главной» загружена (или не удалась).
+final ctHomeReady = Completer<void>();
+
 PaginatedList<Video> ctSectionList(String id, {bool fill = true, Duration delay = Duration.zero}) {
   // «Главная»: на сервере с дополнениями /api/v1/popular — персональная лента;
   // на обычном Invidious «популярное» часто выключено — тогда тренды.
   if (id.isEmpty && ctDirectActive) {
     // без сервера: «Главная» — бесконечная подборка поиском
-    return CtPagedList<Video>((page) => service.search('ct:home', page: page).then((r) => r.videos), fill: fill);
+    return CtPagedList<Video>((page) async {
+      try {
+        return await service.search('ct:home', page: page).then((r) => r.videos);
+      } finally {
+        if (page == 1 && !ctHomeReady.isCompleted) ctHomeReady.complete();
+      }
+    }, fill: fill);
   }
   if (id.isEmpty) {
     return SingleEndpointList<Video>(() async {
       try {
         final l = await service.getPopular();
         if (l.isNotEmpty) return l;
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        if (!ctHomeReady.isCompleted) ctHomeReady.complete();
+      }
       return service.getTrending();
     });
   }
   return CtPagedList<Video>((page) async {
-    if (page == 1 && delay > Duration.zero) await Future.delayed(delay);
+    if (page == 1 && delay > Duration.zero) {
+      // ряды разделов ТВ ждут «Главную» (не больше 4 с) — она появляется первой и быстро,
+      // без борьбы за сеть с шестью рядами сразу
+      await ctHomeReady.future.timeout(const Duration(seconds: 4), onTimeout: () {});
+      await Future.delayed(delay);
+    }
     final addons = await CtServer.hasAddons();
     return addons || ctDirectActive
         ? service.search('ct:$id', page: page).then((r) => r.videos)

@@ -78,7 +78,7 @@ class TvGridScreen extends StatelessWidget {
                     controller: cubit.scrollController,
                     padding: const EdgeInsets.fromLTRB(4, 12, 4, 24),
                     clipBehavior: Clip.none,
-                    cacheExtent: w * 3,
+                    cacheExtent: w * 1.5,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: cols,
                       crossAxisSpacing: gap,

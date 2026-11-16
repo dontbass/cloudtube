@@ -1,5 +1,6 @@
 import '../../../../cloudtube/sponsor_toast.dart';
 import '../../../../cloudtube/up_next.dart';
+import '../../../../cloudtube/theme.dart';
 import 'package:clipious/player/states/tv_player_controls.dart';
 import 'package:clipious/player/views/tv/components/player_settings.dart';
 import 'package:clipious/utils/views/components/thumbnail.dart';
@@ -356,37 +357,74 @@ class TvPlayerControls extends StatelessWidget {
                                         ),
                                       )
                                     : Expanded(
-                                        child: player.progress >= 0
-                                            ? Container(
-                                                decoration: BoxDecoration(
-                                                    color: Colors.black
-                                                        .withValues(alpha: 0.5),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5)),
-                                                child:
-                                                    AnimatedFractionallySizedBox(
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  duration: animationDuration,
-                                                  widthFactor: player.progress,
-                                                  child: Container(
-                                                    height: 8,
-                                                    decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(5)),
-                                                  ),
-                                                ))
-                                            : const SizedBox.shrink()),
+                                        // полоса перемотки: при перемотке стрелками — толще, с меткой
+                                        child: ValueListenableBuilder<Duration?>(
+                                          valueListenable: cubit.ctSeek,
+                                          builder: (context, seek, _) {
+                                            final total = player.duration.inMilliseconds;
+                                            final f = seek != null && total > 0
+                                                ? (seek.inMilliseconds / total).clamp(0.0, 1.0)
+                                                : player.progress;
+                                            if (f < 0) return const SizedBox.shrink();
+                                            final accent = ctAccent(Theme.of(context).colorScheme);
+                                            final h = seek != null ? 12.0 : 8.0;
+                                            return LayoutBuilder(builder: (context, c) {
+                                              return SizedBox(
+                                                height: 28,
+                                                child: Stack(
+                                                  alignment: Alignment.centerLeft,
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    Container(
+                                                      height: h,
+                                                      decoration: BoxDecoration(
+                                                          color: Colors.white.withValues(alpha: 0.25),
+                                                          borderRadius: BorderRadius.circular(6)),
+                                                    ),
+                                                    // сколько уже просмотрено (реальная позиция)
+                                                    if (seek != null && player.progress > 0)
+                                                      Container(
+                                                        width: c.maxWidth * player.progress.clamp(0.0, 1.0),
+                                                        height: h,
+                                                        decoration: BoxDecoration(
+                                                            color: Colors.white.withValues(alpha: 0.45),
+                                                            borderRadius: BorderRadius.circular(6)),
+                                                      ),
+                                                    Container(
+                                                      width: c.maxWidth * f,
+                                                      height: h,
+                                                      decoration: BoxDecoration(
+                                                          color: seek != null ? accent : Colors.white,
+                                                          borderRadius: BorderRadius.circular(6)),
+                                                    ),
+                                                    if (seek != null)
+                                                      Positioned(
+                                                        left: (c.maxWidth * f - 12).clamp(0.0, c.maxWidth - 24),
+                                                        child: Container(
+                                                          width: 24,
+                                                          height: 24,
+                                                          decoration: BoxDecoration(
+                                                              color: Colors.white,
+                                                              shape: BoxShape.circle,
+                                                              border: Border.all(color: accent, width: 4)),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              );
+                                            });
+                                          },
+                                        )),
                                 if (!(currentlyPlaying?.liveNow ?? false))
                                   Padding(
                                     padding: const EdgeInsets.only(left: 16.0),
-                                    child: Text(
-                                      '${prettyDurationCustom(position)} / ${prettyDurationCustom(player.duration)}',
-                                      style: textTheme.titleLarge
-                                          ?.copyWith(color: Colors.white),
+                                    child: ValueListenableBuilder<Duration?>(
+                                      valueListenable: cubit.ctSeek,
+                                      builder: (context, seek, _) => Text(
+                                        '${prettyDurationCustom(seek ?? position)} / ${prettyDurationCustom(player.duration)}',
+                                        style: textTheme.titleLarge
+                                            ?.copyWith(color: seek != null ? const Color(0xFF8AB4F8) : Colors.white),
+                                      ),
                                     ),
                                   )
                               ],

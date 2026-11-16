@@ -54,8 +54,9 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         clipBehavior: Clip.none,
-                        // карточки за краем готовим заранее — при быстром движении картинки уже на месте
-                        cacheExtent: w * 4,
+                        // одну-две карточки за краем готовим заранее (больше — на старте приставка
+                        // грузит десятки лишних картинок и ряды появляются медленнее)
+                        cacheExtent: w * 1.5,
                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                         controller: cubit.scrollController,
                         itemCount: items.length + (state.loading ? 10 : 0),

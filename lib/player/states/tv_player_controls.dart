@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:easy_debounce/easy_debounce.dart';
-import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -58,6 +58,22 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
         return KeyEventResult.handled;
       }
     }
+    // полоса перемотки (как в SmartTube): стрелки влево/вправо двигают метку, при удержании —
+    // всё быстрее; видео перематывается, когда кнопку отпустили
+    if (ctSeekMode) return _ctSeekKey(event);
+    if (timeLineControl || state.displayControls) {
+      final k = event.logicalKey;
+      final arrows = k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight;
+      if (timeLineControl && arrows && event is KeyDownEvent) {
+        _ctEnterSeek();
+        return _ctSeekKey(event);
+      }
+      if (k == LogicalKeyboardKey.arrowDown && (timeLineControl || state.displayControls)) {
+        // вниз — к полосе перемотки (из панели кнопок тоже)
+        if (event is KeyUpEvent) _ctEnterSeek();
+        return KeyEventResult.handled;
+      }
+    }
     showUi();
 
     // looks like back is activate on pressdown and not press up
@@ -99,32 +115,97 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
           break;
       }
 
-      if (timeLineControl) {
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          fastForward();
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          fastRewind();
-        } else if (isOk(event.logicalKey) || event.logicalKey == LogicalKeyboardKey.arrowUp) {
-          emit(state.copyWith(displayControls: true));
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-          // как в SmartTube: стрелка вниз — сразу настройки (качество, звук, скорость…)
-          displaySettings();
-        }
-      } else {}
-    }
-    if (event is KeyRepeatEvent) {
-      if (timeLineControl) {
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          EasyThrottle.throttle(
-              'hold-seek-forward', throttleDuration, fastForward);
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          EasyThrottle.throttle(
-              'hold-seek-backward', throttleDuration, fastRewind);
-        }
+      // влево/вправо в режиме просмотра — полоса перемотки (см. выше)
+      if (timeLineControl &&
+          (isOk(event.logicalKey) || event.logicalKey == LogicalKeyboardKey.arrowUp)) {
+        emit(state.copyWith(displayControls: true));
       }
     }
     return KeyEventResult.ignored;
+  }
+
+  // ——— полоса перемотки ———
+  /// Метка перемотки (куда перемотаем); не null — открыта полоса перемотки.
+  final ctSeek = ValueNotifier<Duration?>(null);
+  bool get ctSeekMode => ctSeek.value != null;
+  int _ctHold = 0;
+  Timer? _ctCommit;
+  Timer? _ctIdle;
+
+  void _ctEnterSeek() {
+    _ctCommit?.cancel();
+    ctSeek.value = player.state.position;
+    emit(state.copyWith(controlsOpacity: 1, displayControls: false, showSettings: false, showQueue: false));
+    _ctArmIdle();
+  }
+
+  void _ctExitSeek({bool commit = true}) {
+    _ctCommit?.cancel();
+    _ctIdle?.cancel();
+    final p = ctSeek.value;
+    if (commit && p != null && (p - player.state.position).abs() > const Duration(milliseconds: 900)) player.seek(p);
+    ctSeek.value = null;
+    hideControls();
+  }
+
+  void _ctArmIdle() {
+    _ctIdle?.cancel();
+    _ctIdle = Timer(const Duration(seconds: 4), () {
+      if (!isClosed) _ctExitSeek();
+    });
+  }
+
+  KeyEventResult _ctSeekKey(KeyEvent event) {
+    final k = event.logicalKey;
+    final right = k == LogicalKeyboardKey.arrowRight, left = k == LogicalKeyboardKey.arrowLeft;
+    if (right || left) {
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        _ctHold = event is KeyDownEvent ? 0 : _ctHold + 1;
+        final len = player.duration;
+        // шаг растёт при удержании; у длинных роликов — крупнее
+        final base = _ctHold < 4 ? 5 : (_ctHold < 12 ? 15 : (_ctHold < 25 ? 30 : 60));
+        final scale = len.inMinutes > 60 ? 3 : (len.inMinutes > 20 ? 2 : 1);
+        final step = Duration(seconds: _ctHold < 4 ? base : base * scale);
+        var p = (ctSeek.value ?? player.state.position) + (right ? step : -step);
+        if (p < Duration.zero) p = Duration.zero;
+        if (len > Duration.zero && p > len - const Duration(seconds: 1)) p = len - const Duration(seconds: 1);
+        ctSeek.value = p;
+        _ctCommit?.cancel();
+        _ctArmIdle();
+      } else if (event is KeyUpEvent) {
+        // отпустили — перематываем через мгновение (если не нажмут снова)
+        _ctCommit?.cancel();
+        _ctCommit = Timer(const Duration(milliseconds: 450), () {
+          final p = ctSeek.value;
+          if (!isClosed && p != null) player.seek(p);
+        });
+      }
+      return KeyEventResult.handled;
+    }
+    if (event is! KeyUpEvent) return KeyEventResult.handled;
+    if (isOk(k)) {
+      _ctExitSeek();
+      player.play();
+    } else if (k == LogicalKeyboardKey.arrowUp) {
+      _ctExitSeek();
+      emit(state.copyWith(controlsOpacity: 1, displayControls: true));
+    } else if (k == LogicalKeyboardKey.arrowDown) {
+      _ctExitSeek();
+      displaySettings();
+    } else if (k == LogicalKeyboardKey.goBack || k == LogicalKeyboardKey.escape || k == LogicalKeyboardKey.browserBack) {
+      _ctExitSeek(commit: false);
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Future<void> close() {
+    _ctCommit?.cancel();
+    _ctIdle?.cancel();
+    ctSeek.dispose();
+    return super.close();
   }
 
   hideSettings() {
@@ -137,8 +218,8 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
 
   hideControls() {
     EasyDebounce.debounce('tv-controls', controlFadeOut, () {
-      // открытые настройки/очередь не прячем сами — пользователь выбирает, закрываются кнопкой «Назад»
-      if (!isClosed && !state.showSettings && !state.showQueue) {
+      // открытые настройки/очередь/полосу перемотки не прячем сами
+      if (!isClosed && !state.showSettings && !state.showQueue && !ctSeekMode) {
         emit(state.copyWith(
             controlsOpacity: 0,
             showSettings: false,

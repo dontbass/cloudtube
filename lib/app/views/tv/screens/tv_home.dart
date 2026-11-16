@@ -66,7 +66,7 @@ List<Widget> _ctSectionRows(BuildContext context) {
           ),
           TvHorizontalVideoList(
             // разделы грузятся после главной и подписок, по очереди
-            paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 300 + 150 * i)),
+            paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 100 + 250 * i)),
             autoFocusedIndex: -1,
             onItemFocus: (video, index, focus) {
               if (focus) ctTvScrollToRow(_ctRowKeys[c.id]);

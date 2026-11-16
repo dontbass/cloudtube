@@ -74,7 +74,7 @@ class CtYtCookies {
         if (au == 0) rethrow;
         break;
       }
-      final fresh = part.where((a) => seen.add('${a.name}|${a.handle}|${a.pageId}')).toList();
+      final fresh = part.where((a) => seen.add('${a.pageId ?? a.name}|${a.authUser}')).toList();
       if (fresh.isEmpty) break;
       out.addAll(fresh);
     }
@@ -108,21 +108,26 @@ class CtYtCookies {
         final item = n['accountItem'];
         if (item is Map) {
           String? pageId;
+          var au = authUser;
           final tokens = ((item['serviceEndpoint'] as Map?)?['selectActiveIdentityEndpoint'] as Map?)?['supportedTokens'];
-          var other = false;
           if (tokens is List) {
             for (final t in tokens) {
               if (t is! Map) continue;
               final pid = (t['pageIdToken'] as Map?)?['pageId'];
               if (pid is String) pageId = pid;
-              if (t['accountSigninToken'] != null) other = true; // канал другого Google-аккаунта — его покажет свой authuser
+              // ссылка переключения канала: …&authuser=N&pageid=… (есть и у каналов-брендов этой же почты)
+              final url = (t['accountSigninToken'] as Map?)?['signinUrl'];
+              if (url is String) {
+                final m = RegExp(r'authuser=(\d+)').firstMatch(url);
+                if (m != null) au = int.parse(m.group(1)!);
+                final pm = RegExp(r'pageid=(\d+)').firstMatch(url);
+                if (pm != null) pageId ??= pm.group(1);
+              }
             }
           }
-          if (!other) {
-            final photo = ((item['accountPhoto'] as Map?)?['thumbnails'] as List?)?.lastOrNull;
-            out.add(CtYtIdentity(text(item['accountName']), text(item['channelHandle']),
-                '${photo is Map ? photo['url'] ?? '' : ''}', pageId, authUser, item['isSelected'] == true));
-          }
+          final photo = ((item['accountPhoto'] as Map?)?['thumbnails'] as List?)?.lastOrNull;
+          out.add(CtYtIdentity(text(item['accountName']), text(item['channelHandle']),
+              '${photo is Map ? photo['url'] ?? '' : ''}', pageId, au, item['isSelected'] == true));
           return;
         }
         n.values.forEach(walk);
@@ -253,7 +258,10 @@ class CtYtWebLoginScreen extends StatefulWidget {
   /// true — открыть выбор/добавление Google-аккаунта (для второго аккаунта)
   final bool addAccount;
 
-  const CtYtWebLoginScreen({super.key, this.addAccount = false});
+  /// true — открыть переключатель каналов на сайте YouTube (выбор как на сайте/ТВ)
+  final bool switcher;
+
+  const CtYtWebLoginScreen({super.key, this.addAccount = false, this.switcher = false});
 
   @override
   State<CtYtWebLoginScreen> createState() => _CtYtWebLoginScreenState();
@@ -270,6 +278,8 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
   Future<void> _check(WebUri? url) async {
     if (_done || url == null) return;
     if (!url.host.endsWith('youtube.com')) return;
+    // в переключателе ждём, пока пользователь выберет канал и сайт уйдёт со страницы выбора
+    if (widget.switcher && (url.path.contains('channel_switcher') || url.path.contains('signin'))) return;
     final all = <String, String>{};
     for (final u in ['https://www.youtube.com', 'https://m.youtube.com', 'https://youtube.com']) {
       try {
@@ -285,7 +295,16 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
     final cookie = all.entries.map((e) => '${e.key}=${e.value}').join('; ');
     await CtYtCookies.save(cookie);
     if (!mounted) return;
-    await CtYtCookies.chooseIdentity(context, force: widget.addAccount);
+    if (widget.switcher) {
+      // канал выбран на самом сайте — дальше действуем от того канала, который сайт сделал активным
+      await CtYtCookies.setIdentity(null);
+      try {
+        final cur = (await CtYtCookies.accounts()).where((a) => a.selected).firstOrNull;
+        if (cur != null) await CtYtCookies.setIdentity(cur);
+      } catch (_) {}
+    } else {
+      await CtYtCookies.chooseIdentity(context, force: widget.addAccount);
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Готово: теперь можно комментировать от своего имени')));
@@ -296,7 +315,7 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Вход через сайт YouTube'),
+        title: Text(widget.switcher ? 'Выберите канал' : 'Вход через сайт YouTube'),
         bottom: _progress < 1
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(2), child: LinearProgressIndicator(value: _progress, minHeight: 2))
@@ -305,11 +324,16 @@ class _CtYtWebLoginScreenState extends State<CtYtWebLoginScreen> {
       body: InAppWebView(
         initialUrlRequest: URLRequest(
             url: WebUri(
-                widget.addAccount
+                widget.switcher
+                    ? 'https://www.youtube.com/channel_switcher?next=%2F'
+                    : widget.addAccount
                     ? 'https://accounts.google.com/AddSession?service=youtube&hl=ru&continue=${Uri.encodeComponent('https://m.youtube.com/')}'
                     : 'https://accounts.google.com/ServiceLogin?service=youtube&hl=ru&continue=${Uri.encodeComponent('https://m.youtube.com/')}')),
         initialSettings: InAppWebViewSettings(
-          userAgent: _ua,
+          // переключатель каналов есть только в полной версии сайта
+          userAgent: widget.switcher
+              ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+              : _ua,
           javaScriptEnabled: true,
           thirdPartyCookiesEnabled: true,
           clearCache: false,
@@ -397,6 +421,16 @@ class _CtAccountSheetState extends State<_CtAccountSheet> {
                   style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
             ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.switch_account),
+            title: const Text('Выбрать канал на сайте YouTube'),
+            subtitle: const Text('Если нужного канала нет в списке — выбор как на сайте'),
+            onTap: () async {
+              final ok = await Navigator.of(context)
+                  .push<bool>(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen(switcher: true)));
+              if (context.mounted) Navigator.of(context).pop(ok == true);
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.person_add_alt),
             title: const Text('Добавить другой аккаунт Google'),

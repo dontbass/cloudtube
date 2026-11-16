@@ -116,12 +116,23 @@ class CtYtFast {
       _log.info('vr $id: $e');
       return null;
     });
+    // третий клиент — ANDROID: если VR откажет (бывает на отдельных роликах), поток со звуком возьмём у него
+    final anF = player(id, yt.YoutubeApiClient.androidSdkless).catchError((e) {
+      _log.info('android $id: $e');
+      return null;
+    });
+    unawaited(anF.then((_) {}, onError: (_) {}));
     final nextF = next(id);
     unawaited(nextF.then((_) {}, onError: (_) {}));
     final ios = await iosF;
     CtTrace.mark('адаптер: player iOS ${ios != null ? 'ok' : 'нет'}');
-    final vr = await vrF;
+    var vr = await vrF;
     CtTrace.mark('адаптер: player VR ${vr != null ? 'ok' : 'нет'}');
+    if (vr == null || ((vr['streamingData'] as Map?)?['formats'] as List?)?.isEmpty != false) {
+      final an = await anF;
+      CtTrace.mark('адаптер: player ANDROID ${an != null ? 'ok' : 'нет'}');
+      if (an != null) vr = an;
+    }
     final base = ios ?? vr;
     if (base == null) return null;
     final d = (base['videoDetails'] as Map?) ?? const {};
@@ -188,7 +199,10 @@ class CtYtFast {
             if (f['audioQuality'] != null) 'audioQuality': '${f['audioQuality']}',
           }
     ];
-    if (j['hlsUrl'] == null && (j['formatStreams'] as List).isEmpty) return null;
+    if (j['hlsUrl'] == null && (j['formatStreams'] as List).isEmpty) {
+      CtTrace.mark('адаптер: нет ни HLS, ни потока со звуком → запасной путь');
+      return null;
+    }
     final streamsMs = sw.elapsedMilliseconds;
 
     // «next» ждём не дольше 0,7 с после готовности потоков — видео важнее
@@ -198,9 +212,11 @@ class CtYtFast {
       _applyNext(j, n);
       CtTrace.mark('адаптер: next разобран');
     } catch (_) {
+      CtTrace.mark('адаптер: next не успел — догрузится в фоне');
       // догрузим в фоне — при следующем открытии будет полностью
       unawaited(nextF.then((n) => _applyNext(j, n), onError: (_) {}));
     }
+    CtTrace.mark('адаптер: готово (hls=${j['hlsUrl'] != null}, 360p=${(j['formatStreams'] as List).isNotEmpty})');
     _log.info('fast $id: потоки ${streamsMs}мс, всего ${sw.elapsedMilliseconds}мс, '
         'hls=${j['hlsUrl'] != null} muxed=${(j['formatStreams'] as List).length} rec=${(j['recommendedVideos'] as List).length}');
     return j;

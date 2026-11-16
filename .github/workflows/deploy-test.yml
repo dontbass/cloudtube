@@ -1,0 +1,40 @@
+name: Deploy test
+# Прогон server/deploy.sh на чистой машине (без домена и сертификата) и снимки сайта.
+on:
+  workflow_dispatch:
+  push:
+    branches: [deploytest]
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: deploy.sh
+        run: |
+          sudo -E env CT_SKIP_TLS=1 CT_DOMAIN=ct.test CT_USER=admin CT_PASS=testpass123 \
+            CT_REPO=https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }} \
+            bash server/deploy.sh 2>&1 | grep -E '^##' ; echo "exit=${PIPESTATUS[0]}"
+          echo "---- debug (хвост)"; sudo tail -40 /var/log/ct-deploy.debug || true
+      - name: Проверки
+        run: |
+          H=(-H "Host: ct.test" -u admin:testpass123)
+          echo "главная:"; curl -s "${H[@]}" http://127.0.0.1/ | grep -o '<title>[^<]*</title>\|/custom/yt.css[^"]*\|/custom/brand.js[^"]*' | head
+          for u in /custom/yt.css /custom/brand.js /logo.svg /manifest.webmanifest /ct-pwa/icon-192.png /api/v1/stats /ct-api/caps /login /ctadmin/whoami /ctadmin/; do
+            echo "$u → $(curl -s -o /dev/null -w '%{http_code} %{size_download}b' "${H[@]}" http://127.0.0.1$u)"
+          done
+          echo "страница входа Invidious:"; curl -s "${H[@]}" http://127.0.0.1/login | grep -o '/custom/inv.css[^"]*' | head -1
+          echo "без пароля: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/)"
+          echo "приглашение без пароля сайта: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/invite/nonexistent)"
+          echo "ctinvite: $(sudo ctinvite new -n test 2>&1 | head -2 | tr '\n' ' ')"
+          sudo systemctl is-active cloudtube-feed cloudtube-live cloudtube-invite nginx docker
+          sudo docker ps --format '{{.Names}} {{.Status}}'
+      - name: Снимки
+        run: |
+          for p in "/" "/login" "/ctadmin/"; do
+            n=$(echo "$p" | tr -c 'a-z' '_')
+            google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
+              --host-resolver-rules="MAP ct.test 127.0.0.1" --window-size=1366,860 \
+              --virtual-time-budget=15000 --screenshot=/tmp/shot$n.png "http://admin:testpass123@ct.test$p" 2>/dev/null || true
+            ls -la /tmp/shot$n.png 2>/dev/null && { echo "SHOT$n:"; base64 -w0 /tmp/shot$n.png; echo; }
+          done

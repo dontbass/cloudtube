@@ -1,0 +1,73 @@
+/* ===== CloudTube skin for Invidious service pages (login, authorize, preferences, import…) ===== */
+html{--bg:#0f0f0f;--card:#1f1f1f;--tx:#f1f1f1;--tx2:#aaa;--tx3:#888;--bd:#3f3f3f;--bd2:#2c2c2c;--in:#121212;--hv:#272727;--hv3:#3a3a3a;--sh:rgba(0,0,0,.5);--link:#3ea6ff;--logo:url("/custom/logo-dark.svg")}
+html.ct-light{--bg:#f2f2f2;--card:#fff;--tx:#0f0f0f;--tx2:#606060;--tx3:#777;--bd:#d3d3d3;--bd2:#e5e5e5;--in:#fff;--hv:#f2f2f2;--hv3:#e5e5e5;--sh:rgba(0,0,0,.08);--link:#065fd4;--logo:url("/custom/logo-light.svg")}
+html,body,body.dark-theme,body.light-theme,body.no-theme{background:var(--bg)!important;color:var(--tx)!important}
+body,body *:not(i):not([class*="ion-"]){font-family:Roboto,Arial,"Helvetica Neue",sans-serif!important}
+body{font-size:15px;line-height:1.5}
+a,a:visited{color:var(--link)!important;text-decoration:none!important}
+#contents{float:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;padding:0 16px 40px!important;display:block!important}
+#contents+div,.pure-u-xl-2-24:empty{display:none!important}
+footer{display:none!important}
+
+/* top bar */
+.navbar{display:flex!important;align-items:center!important;height:64px;margin:0!important;padding:0!important;background:transparent!important;box-shadow:none!important;border:0!important}
+.navbar>div{width:auto!important}
+.navbar>div:first-child{flex:1}
+.navbar .index-link{display:block!important;width:150px;height:34px;padding:0!important;font-size:0!important;color:transparent!important;
+  background:var(--logo) left center/contain no-repeat!important}
+.navbar .searchbar{display:none!important}
+.navbar .user-field{display:flex!important;align-items:center;gap:4px;justify-content:flex-end}
+.navbar .user-field>div{width:auto!important}
+.navbar .pure-menu-heading,.navbar .user-field a,.navbar #user_name,.navbar input[type=submit]{color:var(--tx)!important;font-size:14px!important;font-weight:500!important;
+  text-transform:none!important;padding:8px 10px!important;border-radius:18px;display:inline-flex;align-items:center;gap:4px}
+.navbar .user-field a:hover{background:var(--hv)}
+.navbar i.icon{font-size:20px!important}
+#notification_count{font-size:12px;color:var(--tx2)}
+
+/* content cards */
+#contents>.h-box:not(.navbar),#contents>.pure-g:not(.navbar),#contents>div:not(.navbar)>div>.h-box{
+  background:var(--card)!important;border-radius:16px!important;padding:24px 28px!important;margin:12px 0 16px!important;box-shadow:0 8px 40px var(--sh)!important}
+#contents>.pure-g:not(.navbar)>div:empty{display:none!important}
+#contents>.pure-g:not(.navbar)>.pure-u-lg-3-5{width:100%!important}
+#contents>.pure-g:not(.navbar) .h-box{background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important}
+legend,h1,h2,h3{color:var(--tx)!important;border:0!important;font-weight:600!important}
+legend{font-size:20px!important;margin:0 0 14px!important;padding:0!important;width:100%}
+h3{font-size:17px!important}
+hr{border:0!important;border-top:1px solid var(--bd2)!important}
+p,span,li,td,th{color:inherit}
+
+/* authorize: scopes as chips */
+form[action^="/authorize_token"] ul{list-style:none!important;padding:0!important;margin:4px 0 20px!important;display:flex;flex-wrap:wrap;gap:8px}
+form[action^="/authorize_token"] li{background:var(--hv);color:var(--tx2);border-radius:14px;padding:4px 12px;font-size:13px;font-family:ui-monospace,Consolas,monospace!important}
+form[action^="/authorize_token"] .pure-g:last-of-type{display:flex!important;gap:12px}
+form[action^="/authorize_token"] .pure-g:last-of-type>div{width:auto!important}
+
+/* forms */
+label{color:var(--tx2)!important;font-size:13px!important}
+.pure-form input:not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=hidden]),.pure-form select,.pure-form textarea,input[type=text],input[type=password],input[type=search],select,textarea{
+  background:var(--in)!important;color:var(--tx)!important;border:1px solid var(--bd)!important;border-radius:10px!important;box-shadow:none!important;
+  min-height:40px;padding:8px 12px!important;font-size:15px!important}
+.pure-form input:focus,.pure-form select:focus,textarea:focus{border-color:var(--link)!important;outline:none!important}
+.pure-form-stacked input,.pure-form-stacked label{margin-bottom:6px!important}
+.pure-form-stacked label{margin-top:12px!important}
+.pure-form-aligned .pure-control-group{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:0 0 10px!important}
+.pure-form-aligned .pure-control-group label{width:auto!important;min-width:230px;text-align:left!important;margin:0!important;color:var(--tx)!important;font-size:14px!important}
+input[type=checkbox]{accent-color:var(--tx);width:18px;height:18px}
+fieldset{border:0!important;padding:0!important;margin:0!important}
+
+/* buttons */
+.pure-button,button.pure-button,a.pure-button,input[type=submit].pure-button{
+  display:inline-flex!important;align-items:center;justify-content:center;height:38px;padding:0 20px!important;margin:16px 0 0!important;
+  border:0!important;border-radius:19px!important;background:var(--hv)!important;color:var(--tx)!important;font-size:14px!important;font-weight:600!important;
+  box-shadow:none!important;text-shadow:none!important;background-image:none!important;cursor:pointer}
+.pure-button:hover{background:var(--hv3)!important}
+.pure-button-primary,button.pure-button-primary{background:var(--tx)!important;color:var(--bg)!important}
+.pure-button-primary:hover{opacity:.85}
+
+/* tables (token manager, subscription manager) */
+table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid var(--bd2)!important;padding:10px 8px!important;background:transparent!important}
+.pure-table,.pure-table td,.pure-table th{border-color:var(--bd2)!important}
+code{background:var(--hv);border-radius:6px;padding:2px 6px;color:var(--tx)}
+@media (max-width:600px){.navbar .index-link{width:120px}#contents>.h-box:not(.navbar),#contents>.pure-g:not(.navbar){padding:18px!important}}
+.navbar a.index-link.pure-menu-heading{font-size:0!important;color:transparent!important;padding:0!important}
+.navbar i.icon,.navbar .user-field i{color:var(--tx)!important}

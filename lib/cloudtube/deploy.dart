@@ -324,8 +324,9 @@ class _CtDeployScreenState extends State<CtDeployScreen> {
         Text('Свой Invidious за 10–15 минут', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 6),
         Text(
-            'Приложение само подключится к VPS, поставит Invidious, сайт с паролем, сертификат HTTPS '
-            'и дополнения CloudTube. В конце сервер сразу появится в приложении.',
+            'Приложение само подключится к VPS, поставит Invidious, сайт CloudTube в виде YouTube '
+            '(с паролем и HTTPS), дополнения CloudTube и приглашения для друзей. '
+            'В конце сервер сразу появится в приложении.',
             style: muted),
         const SizedBox(height: 16),
         _section(context, '1. Что понадобится', [

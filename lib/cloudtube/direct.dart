@@ -470,11 +470,21 @@ class _CtDirect {
     }
     if (t == 'shorts') {
       // Shorts: чередуем запросы, чтобы лента не кончалась; длительность в выдаче часто пустая (0) — пропускаем
-      const qs = ['#shorts', 'shorts смешные', 'shorts животные', 'shorts музыка', 'shorts спорт', 'shorts лайфхак'];
-      final q = qs[(page - 1) % qs.length];
-      final sub = (page - 1) ~/ qs.length + 1;
-      final r = await _videoSearchPage(q, yt.DurationFilters.short, sub);
-      return r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 180 && v['liveNow'] != true).toList();
+      const qs = ['shorts смешные', 'shorts животные', 'shorts музыка', 'shorts спорт', 'shorts лайфхак', 'shorts авто'];
+      // если запрос не удался — пробуем следующий, а не роняем всю ленту
+      for (var k = 0; k < qs.length; k++) {
+        final n = page - 1 + k;
+        final q = qs[n % qs.length];
+        final sub = n ~/ qs.length + 1;
+        try {
+          final r = await _videoSearchPage(q, yt.DurationFilters.short, sub);
+          final out = r.where((v) => (v['lengthSeconds'] as int? ?? 0) <= 180 && v['liveNow'] != true).toList();
+          if (out.isNotEmpty) return out;
+        } catch (e) {
+          _log.info('shorts "$q": $e');
+        }
+      }
+      return [];
     }
     final query = _sections[t] ?? t;
     final f = t == 'live'

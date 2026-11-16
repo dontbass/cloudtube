@@ -3,6 +3,7 @@ import 'package:clipious/videos/models/video.dart';
 import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/yt_account.dart';
+import 'package:clipious/cloudtube/yt_cookies.dart';
 import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
@@ -104,6 +105,7 @@ Future<void> main() async {
   try {
     final cur = await db.getCurrentlySelectedServer();
     ctDirectActive = ctIsDirectUrl(cur.url);
+    CtYtCookies.load();
     ctYtRefreshToken = ctDirectActive && (cur.authToken?.isNotEmpty ?? false) ? cur.authToken : null;
     hasServer = true;
   } catch (err) {

@@ -2,6 +2,7 @@ import 'server_caps.dart';
 import 'direct.dart';
 import 'yt_account.dart';
 import 'yt_comments.dart';
+import 'yt_cookies.dart';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -281,7 +282,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           sortChip('new', 'Сначала новые'),
         ]),
       ),
-      if (ctDirectActive && ctYtRefreshToken != null) _composer(colors),
+      if (ctDirectActive && (ctYtRefreshToken != null || CtYtCookies.active)) _composer(colors),
       Divider(height: 1, color: colors.outlineVariant),
     ]);
 
@@ -364,6 +365,14 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       final c = CtComment.fromJson(j) ?? CtComment('Вы', '', text, 'только что', 0, 0, false, false, false);
       if (mounted) setState(() => items.insert(0, c));
       messenger.showSnackBar(const SnackBar(content: Text('Комментарий опубликован')));
+    } on CtNeedWebLogin {
+      // один раз: вход в Google на странице Google, затем отправляем снова
+      if (!mounted) return;
+      setState(() => _sending = false);
+      final ok = await Navigator.of(context)
+          .push<bool>(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen()));
+      if (ok == true && mounted) return _send();
+      if (mounted) setState(() => _err = 'Чтобы комментировать, войдите через сайт YouTube');
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     } finally {

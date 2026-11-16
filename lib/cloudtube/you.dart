@@ -14,7 +14,10 @@ import 'connect_screen.dart';
 import 'deploy.dart';
 import 'onboarding.dart';
 import 'yt_login.dart';
+import 'yt_cookies.dart';
 import 'speed_test.dart';
+import 'platform.dart';
+import '../main.dart' show isTv;
 
 /// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
 class CtYouPage extends StatelessWidget {
@@ -158,6 +161,24 @@ class CtYouPage extends StatelessWidget {
               () => AutoRouter.of(context).push(const ManageSubscriptionsRoute()),
               subtitle: 'Список каналов, отписаться'),
         ],
+        if (direct && !isTv && !ctDesktop)
+          tile(Icons.forum_outlined, 'Комментарии от своего имени',
+              () async {
+                if (CtYtCookies.active) {
+                  await CtYtCookies.save(null);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('Вход через сайт YouTube отключён')));
+                  }
+                } else {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const CtYtWebLoginScreen()));
+                }
+                (context as Element).markNeedsBuild();
+              },
+              subtitle: CtYtCookies.active
+                  ? 'Включено (вход через сайт). Нажмите, чтобы отключить'
+                  : 'Вход через сайт Google — нужен, чтобы писать комментарии'),
         tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute()),
             subtitle: 'Видео, сохранённые для просмотра без интернета'),
         section('Как смотреть'),

@@ -108,9 +108,6 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         break;
 
       case BetterPlayerEventType.progress:
-        if (CtTrace.marks.isNotEmpty && !CtTrace.marks.last.$2.startsWith('плеер: пошло')) {
-          CtTrace.mark('плеер: пошло воспроизведение');
-        }
         EasyThrottle.throttle(
             'video-player-progress', const Duration(seconds: 1), () {
           player.setEvent(MediaEvent(
@@ -145,11 +142,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       case BetterPlayerEventType.openFullscreen:
         break;
       case BetterPlayerEventType.initialized:
-        CtTrace.mark('плеер: поток открыт (initialized), кадр ${videoController?.videoPlayerController?.value.size?.height.toInt() ?? '?'}p');
-        Future.delayed(const Duration(seconds: 6), () {
-          final h = videoController?.videoPlayerController?.value.size?.height.toInt();
-          if (h != null) CtTrace.mark('плеер: через 6 с кадр ${h}p');
-        });
+        CtTrace.mark('плеер: поток открыт');
         player.setEvent(MediaEvent<double>(
             state: MediaState.ready,
             type: MediaEventType.aspectRatioChanged,

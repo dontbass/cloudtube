@@ -1,6 +1,5 @@
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/globals.dart';
 import 'package:clipious/utils.dart';
 
 class TvButton extends StatelessWidget {
@@ -38,21 +37,33 @@ class TvButton extends StatelessWidget {
         builder: (ctx) {
           bool hasFocus = Focus.of(ctx).hasFocus;
 
+          final light = brightness != Brightness.dark;
+          // светлая и мягкая темы: раньше фон в фокусе был тёмным (primary), а текст тоже тёмным —
+          // пункт почти не читался. Теперь светлая подсветка акцентом и текст цветом акцента.
+          final fg = hasFocus && focusedColor == null
+              ? (light ? ctAccent(colors) : colors.onPrimaryContainer)
+              : null;
+          Widget content = builder != null ? builder!(ctx, hasFocus) : (child ?? const SizedBox.shrink());
+          if (fg != null) {
+            content = IconTheme.merge(
+                data: IconThemeData(color: fg),
+                child: DefaultTextStyle.merge(style: TextStyle(color: fg), child: content));
+          }
           return Align(
             alignment: Alignment.centerLeft,
             child: AnimatedContainer(
-              duration: animationDuration,
+              // короткая анимация — подсветка успевает за быстрым переключением
+              duration: const Duration(milliseconds: 110),
+              curve: Curves.easeOut,
               decoration: BoxDecoration(
                 color: hasFocus
                     ? focusedColor ??
-                        (brightness == Brightness.dark
-                            ? colors.primaryContainer
-                            : colors.primary)
+                        (light ? ctAccent(colors).withValues(alpha: 0.14) : colors.primaryContainer)
                     : unfocusedColor ?? colors.secondaryContainer,
                 border: ctFocusBorder(colors, hasFocus),
                 borderRadius: BorderRadius.circular(borderRadius ?? 2000),
               ),
-              child: builder != null ? builder!(ctx, hasFocus) : child,
+              child: content,
             ),
           );
         },

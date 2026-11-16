@@ -91,7 +91,8 @@ class TvVideoItem extends StatelessWidget {
                                 ? colors.primaryContainer
                                 : (compact ? colors.surfaceContainerHigh : colors.primaryContainer.withValues(alpha: 0)),
                           ),
-                          duration: animationDuration,
+                          // быстрая подсветка — не отстаёт от быстрого перемещения по плиткам
+                          duration: compact ? const Duration(milliseconds: 90) : animationDuration,
                           child: _CtAspect(
                             compact: compact,
                             child: Column(

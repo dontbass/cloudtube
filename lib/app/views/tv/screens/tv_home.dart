@@ -40,10 +40,11 @@ void ctTvScrollToRow(GlobalKey? key) {
   final ctx = key.currentContext;
   if (ctx == null) return;
   _ctCurRow = key;
+  // как в SmartTube: выбранный ряд всегда встаёт вверху экрана, плавно
   Scrollable.ensureVisible(ctx,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
+      alignment: 0.0,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic);
 }
 
 final _ctRowKeys = {for (final c in ctSections.skip(1)) c.id: GlobalKey(debugLabel: 'row ${c.id}')};
@@ -166,75 +167,9 @@ class TvHomeScreen extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       // CloudTube: стрелка влево у левого края открывает боковое меню
-                      child: Focus(
-                      focusNode: ctTvContentArea,
-                      canRequestFocus: false,
-                      skipTraversal: true,
-                      child: CtTvLeftEdge(
-                      popRoute: false,
-                      // terrible work around to be able to scroll to all the global keys
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                              top: TvOverscan.vertical,
-                              bottom: TvOverscan.vertical,
-                              right: TvOverscan.horizontal,
-                              left: TvOverscan.horizontal),
-                          child: ListView(
-                            controller: homeCubit.scrollController,
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            // crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [...allowedPages
-                                .where((e) =>
-                                    e == HomeDataSource.subscription ||
-                                    e == HomeDataSource.trending ||
-                                    e == HomeDataSource.popular)
-                                .map((e) {
-                              GlobalKey? key = switch (e) {
-                                (HomeDataSource.popular) => popularTitle,
-                                (HomeDataSource.subscription) =>
-                                  subscriptionTitle,
-                                (HomeDataSource.trending) => trendingTitle,
-                                (_) => null,
-                              };
-
-                              focusFunction(video, index, focus) {
-                                if (focus) ctTvScrollToRow(key);
-                              }
-
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    key: key,
-                                    padding: const EdgeInsets.only(top: 10.0, bottom: 6, left: 4),
-                                    child: Text(e.getLabel(locals),
-                                        style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
-                                  ),
-                                  switch (e) {
-                                    (HomeDataSource.popular) => Popular(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.subscription) =>
-                                      Subscriptions(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.trending) => Trending(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (_) => const SizedBox.shrink(),
-                                  }
-                                ],
-                              );
-                            }),
-                              // ещё ленты разделов, как в SmartTube: экран заполнен, вниз — новые ряды
-                              ..._ctSectionRows(context),
-                            ],
-                          ),
-                        ),
-                      ))),
+                      // ленты — отдельный виджет: открытие меню и переходы по нему больше не
+                      // перерисовывают все ряды с картинками (раньше это давало подтормаживания)
+                      child: const _CtTvRows(),
                     ),
                     Positioned(
                       left: 0, top: 0, bottom: 0,
@@ -409,6 +344,92 @@ class TvHomeScreen extends StatelessWidget {
   }
 }
 
+/// Ряды стартового экрана ТВ (перерисовываются только при смене раскладки, входа или сервера).
+class _CtTvRows extends StatelessWidget {
+  const _CtTvRows();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final locals = AppLocalizations.of(context)!;
+    final homeCubit = context.read<TvHomeCubit>();
+    final appLayout = context.select((SettingsCubit value) => value.state.appLayout);
+    final isLoggedIn = context.select((AppCubit value) => value.isLoggedIn);
+    context.select((AppCubit value) => value.state.server);
+    final allowedPages = appLayout.where((element) => element.isPermitted(context, isLoggedIn)).toList();
+    return Focus(
+                      focusNode: ctTvContentArea,
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      child: CtTvLeftEdge(
+                      popRoute: false,
+                      // terrible work around to be able to scroll to all the global keys
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              top: TvOverscan.vertical,
+                              bottom: TvOverscan.vertical,
+                              right: TvOverscan.horizontal,
+                              left: TvOverscan.horizontal),
+                          child: ListView(
+                            controller: homeCubit.scrollController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            // crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [...allowedPages
+                                .where((e) =>
+                                    e == HomeDataSource.subscription ||
+                                    e == HomeDataSource.trending ||
+                                    e == HomeDataSource.popular)
+                                .map((e) {
+                              GlobalKey? key = switch (e) {
+                                (HomeDataSource.popular) => popularTitle,
+                                (HomeDataSource.subscription) =>
+                                  subscriptionTitle,
+                                (HomeDataSource.trending) => trendingTitle,
+                                (_) => null,
+                              };
+
+                              focusFunction(video, index, focus) {
+                                if (focus) ctTvScrollToRow(key);
+                              }
+
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    key: key,
+                                    padding: const EdgeInsets.only(top: 10.0, bottom: 6, left: 4),
+                                    child: Text(e.getLabel(locals),
+                                        style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
+                                  ),
+                                  switch (e) {
+                                    (HomeDataSource.popular) => Popular(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (HomeDataSource.subscription) =>
+                                      Subscriptions(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (HomeDataSource.trending) => Trending(
+                                        onItemFocus: focusFunction,
+                                      ),
+                                    (_) => const SizedBox.shrink(),
+                                  }
+                                ],
+                              );
+                            }),
+                              // ещё ленты разделов, как в SmartTube: экран заполнен, вниз — новые ряды
+                              ..._ctSectionRows(context),
+                            ],
+                          ),
+                        ),
+                      )));
+  }
+}
+
 class MenuItemText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -426,8 +447,8 @@ class MenuItemText extends StatelessWidget {
       overflow: TextOverflow.fade,
     )
         .animate()
-        .fadeIn(delay: animationDuration ~/ 2, duration: animationDuration ~/ 2)
-        .slideX(curve: Curves.easeInOutQuad);
+        .fadeIn(delay: const Duration(milliseconds: 50), duration: const Duration(milliseconds: 110))
+        .slideX(curve: Curves.easeOutCubic, duration: const Duration(milliseconds: 160));
   }
 }
 

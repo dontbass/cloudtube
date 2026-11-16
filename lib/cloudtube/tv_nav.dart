@@ -15,7 +15,13 @@ bool ctTvAtLeftEdge(FocusNode area) {
   }
   if (ctx != null) {
     final sc = Scrollable.maybeOf(ctx);
-    if (sc != null && sc.axisDirection == AxisDirection.right && sc.position.pixels > 1) return false;
+    // у ряда есть отступы (чтобы рамка фокуса не обрезалась): после возврата влево он встаёт
+    // не на 0, а на несколько пикселей — раньше из-за этого меню больше не открывалось
+    if (sc != null &&
+        sc.axisDirection == AxisDirection.right &&
+        sc.position.pixels > sc.position.minScrollExtent + 32) {
+      return false;
+    }
   }
   final r = cur.rect;
   for (final n in area.descendants) {
@@ -60,4 +66,31 @@ class CtTvLeftEdge extends StatelessWidget {
       child: child,
     );
   }
+}
+
+
+/// Переход фокуса стрелками с плавной прокруткой. Во Flutter по умолчанию ряд/список при
+/// переходе на плитку за краем экрана перескакивает без анимации — отсюда рывки.
+/// Здесь — короткая плавная прокрутка; при зажатой стрелке новая подхватывает текущую.
+void ctTvRequestFocus(FocusNode node,
+    {ScrollPositionAlignmentPolicy? alignmentPolicy, double? alignment, Duration? duration, Curve? curve}) {
+  node.requestFocus();
+  final ctx = node.context;
+  if (ctx == null) return;
+  Scrollable.ensureVisible(ctx,
+      alignment: alignment ?? 1.0,
+      alignmentPolicy: alignmentPolicy ?? ScrollPositionAlignmentPolicy.explicit,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic);
+}
+
+/// Обёртка всего приложения на ТВ: плавные переходы стрелками на всех экранах.
+class CtTvSmoothTraversal extends StatelessWidget {
+  final Widget child;
+
+  const CtTvSmoothTraversal({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) =>
+      FocusTraversalGroup(policy: ReadingOrderTraversalPolicy(requestFocusCallback: ctTvRequestFocus), child: child);
 }

@@ -1,7 +1,6 @@
 import 'package:clipious/cloudtube/tv_link.dart';
 import 'package:clipious/cloudtube/connect.dart';
 import 'package:clipious/cloudtube/direct.dart';
-import 'package:clipious/cloudtube/speed_test.dart';
 import 'package:clipious/cloudtube/updater.dart';
 import 'package:clipious/cloudtube/tv_scale.dart';
 import 'package:clipious/settings/models/db/settings.dart';
@@ -429,14 +428,6 @@ class TVSettingsScreen extends StatelessWidget {
                   trailing:
                       Switch(onChanged: (value) {}, value: state.forceTvUi),
                 ),
-                if (ctDirectActive)
-                  SettingsTile(
-                    title: 'Проверка скорости YouTube',
-                    leading: const Icon(Icons.speed),
-                    description: 'Время каждого шага и качество последнего видео',
-                    onSelected: (context) => Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (_) => const CtSpeedTestScreen())),
-                  ),
                 SettingsTitle(title: locals.about),
                 SettingsTile(
                   title: '${locals.name}: ${state.packageInfo.appName}',

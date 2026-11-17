@@ -22,6 +22,8 @@ import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
 import '../../cloudtube/hls_local.dart';
+import '../core/recovery.dart';
+import '../core/watchdog.dart';
 import '../../cloudtube/tv_scale.dart';
 import '../../cloudtube/up_next.dart';
 import 'interfaces/media_player.dart';
@@ -36,28 +38,27 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   BetterPlayerController? videoController;
   final SettingsCubit settings;
 
-  /// CloudTube: автоповтор при ошибке воспроизведения (ссылки протухли, прокси Invidious моргнул):
-  /// 1-я ошибка — заново запрашиваем видео и продолжаем с той же секунды,
-  /// 2-я — пробуем обычный поток вместо DASH (только для этого видео).
-  String? _recoverFor;
-  int _recoverTries = 0;
+  /// CloudTube: восстановление после сбоев (правила — lib/player/core/recovery.dart)
+  /// и один сторож воспроизведения (lib/player/core/watchdog.dart).
+  final _recovery = CtRecoveryPolicy();
   bool _forceProgressive = false;
-
-  /// Сторож: если поток не стартовал за 25 с — считаем это ошибкой и восстанавливаемся (идея из Videre)
-  Timer? _stallTimer;
-
-  void _armStallWatch() {
-    _stallTimer?.cancel();
-    final id = state.video?.videoId;
-    if (id == null || state.offlineVideo != null) return;
-    _stallTimer = Timer(const Duration(seconds: 25), () {
-      if (isClosed || state.video?.videoId != id) return;
+  late final _watch = CtPlaybackWatchdog(
+    read: () {
       final v = videoController?.videoPlayerController?.value;
-      if (v == null || !v.initialized) {
-        log.warning('playback of $id did not start in 25s');
-        _recover();
-      }
-    });
+      if (v == null) return null;
+      return PlaybackSnapshot(
+          initialized: v.initialized,
+          playing: videoController?.isPlaying() == true,
+          buffering: v.isBuffering,
+          position: v.position);
+    },
+    nudgePlay: () => videoController?.play(),
+    onFail: (why) => _recover(why),
+  );
+
+  void _startWatch() {
+    if (state.video == null || state.offlineVideo != null) return;
+    _watch.start();
   }
 
   VideoPlayerCubit(super.initialState, super.player, this.settings) {
@@ -71,9 +72,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   close() async {
-    _stallTimer?.cancel();
-    _ctWatch?.cancel();
-    _autoplayTimer?.cancel();
+    _watch.stop();
     disposeControllers();
     super.close();
   }
@@ -177,42 +176,56 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     player.setEvent(MediaEvent(state: mediaState, type: type));
   }
 
-  Future<void> _recover() async {
+  /// Сбой воспроизведения (ошибка плеера, не открылось, зависло) — одно место для всех режимов.
+  Future<void> _recover(String why) async {
     final v = state.video;
     if (v == null || state.offlineVideo != null || isClosed) return;
-    if (_recoverFor != v.videoId) {
-      _recoverFor = v.videoId;
-      _recoverTries = 0;
+    final id = v.videoId;
+    _watch.stop();
+    final tvDirect = _ctCurHeight != null && isTv && ctDirectActive;
+    final action = _recovery.onFailure(id,
+        tvDirect: tvDirect,
+        ownDash: _ctDashHeight != null,
+        usingDash: isUsingDash(),
+        canLower: [2160, 1440, 1080, 720, 480, 360].any((h) => h < (_ctCurHeight ?? 0)));
+    final n = _recovery.fails;
+    log.warning('playback problem on $id: $why → $action (#$n)');
+    switch (action) {
+      case CtRecovery.giveUp:
+        CtTrace.mark('плеер: $why — сбой №$n, больше не пробуем');
+        return;
+      case CtRecovery.retrySame:
+        CtTrace.mark('плеер: $why — сбой №$n, перезапуск с той же секунды');
+      case CtRecovery.switchToHls:
+        _ctNoDashFor = id;
+        CtTrace.mark('плеер: $why — сбой №$n, переход на HLS того же качества');
+      case CtRecovery.lowerQuality:
+        final lower = [2160, 1440, 1080, 720, 480, 360].firstWhere((h) => h < (_ctCurHeight ?? 99999));
+        _ctCapFor = id;
+        _ctCapOverride = lower;
+        _ctItagFor = null;
+        CtTrace.mark('плеер: $why — сбой №$n, качество до ${lower}p');
+      case CtRecovery.progressive:
+        _forceProgressive = true;
+        CtTrace.mark('плеер: $why — сбой №$n, обычный поток вместо DASH');
     }
-    if (_ctCurHeight != null && isTv && ctDirectActive) {
-      await _ctRecoverDash(v.videoId, 'ошибка плеера');
-      return;
-    }
-    if (_recoverTries >= 2) return;
-    _recoverTries++;
     final pos = videoController?.videoPlayerController?.value.position;
-    log.warning('playback error on ${v.videoId}, recovery #$_recoverTries');
-    if (_recoverTries == 2 && isUsingDash()) _forceProgressive = true;
+    if (ctDirectActive) ctDirectForget(id);
     try {
-      final fresh = await service.getVideo(v.videoId);
-      if (isClosed || state.video?.videoId != v.videoId) return;
+      final fresh = await service.getVideo(id);
+      if (isClosed || state.video?.videoId != id) return;
       emit(state.copyWith(video: fresh));
     } catch (e) {
       log.warning('recovery fetch failed: $e');
     }
-    if (isClosed) return;
-    playVideo(false,
-        startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);
+    if (isClosed || state.video?.videoId != id) return;
+    playVideo(false, startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);
   }
 
   onVideoListener(BetterPlayerEvent event) {
     forwardEvent(event);
     if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
-      _stallTimer?.cancel();
-      _recover();
-    } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
-      _stallTimer?.cancel();
-      if (_recoverFor != state.video?.videoId) _recoverTries = 0;
+      _recover('ошибка плеера');
     }
 
     switch (event.betterPlayerEventType) {
@@ -270,8 +283,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   switchVideo(Video video, {Duration? startAt}) {
     if (video.videoId != state.video?.videoId) {
       _forceProgressive = false;
-      _recoverFor = null;
-      _recoverTries = 0;
+      _recovery.reset(video.videoId);
     }
     emit(state.copyWith(startAt: startAt, video: video));
     playVideo(false, startAt: startAt);
@@ -280,7 +292,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   @override
   togglePlaying() {
     if (videoController != null) {
-      _userPaused = videoController?.isPlaying() ?? false;
+      _watch.userPaused = videoController?.isPlaying() ?? false;
       (videoController?.isPlaying() ?? false)
           ? videoController?.pause()
           : videoController?.play();
@@ -386,7 +398,6 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
             _ctDashHeight = d.$2;
             _ctCurHeight = d.$2;
             _ctCurItag = d.$4;
-            _ctArmPlaybackWatch(id);
             _ctFiltered = true;
             streamHeaders = {...ctDirectStreamHeaders(d.$3)};
             videoUrl = d.$1;
@@ -405,7 +416,6 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
             videoUrl = local.$1;
             _ctCurHeight = local.$2;
             ctNowQuality.value = '${local.$2}p';
-            _ctArmPlaybackWatch(newState.video!.videoId);
           }
         } else if (!ctDash) {
           CtTrace.mark(isHls ? 'плеер: HLS' : (isUsingDash() ? 'плеер: DASH' : 'плеер: обычный поток ${formatStream?.resolution ?? ''}'));
@@ -510,8 +520,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         videoController!.addEventsListener(onVideoListener);
         videoController!.setBetterPlayerGlobalKey(newState.key);
         // isPipSupported = await videoController?.isPictureInPictureSupported() ?? false;
-        _armStallWatch();
-        _armAutoplay();
+        _startWatch();
       } else {
         try {
           // подвисшая подготовка прошлого потока не должна блокировать следующее видео
@@ -526,8 +535,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           return;
         }
         seek(startAt ?? Duration.zero);
-        _armStallWatch();
-        _armAutoplay();
+        _startWatch();
       }
 
       emit(newState);
@@ -551,43 +559,14 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   void pause() {
-    _userPaused = true;
+    _watch.userPaused = true;
     videoController?.pause();
   }
 
   @override
   void play() {
-    _userPaused = false;
+    _watch.userPaused = false;
     videoController?.play();
-  }
-
-  /// Пользователь сам поставил паузу — сторож автозапуска не вмешивается.
-  bool _userPaused = false;
-  Timer? _autoplayTimer;
-
-  /// Сторож автозапуска: первые 20 с после открытия видео, если плеер готов, но стоит,
-  /// а пользователь паузу не нажимал — запускаем. Лечит «открылось, но не играет»
-  /// (ТВ-приставки, медленные устройства, пауза «по видимости» во время открытия экрана).
-  void _armAutoplay() {
-    _autoplayTimer?.cancel();
-    _userPaused = false;
-    final id = state.video?.videoId;
-    var ticks = 0;
-    _autoplayTimer = Timer.periodic(const Duration(milliseconds: 500), (t) {
-      ticks++;
-      final c = videoController;
-      if (isClosed || ticks > 40 || _userPaused || state.video?.videoId != id || c == null) {
-        t.cancel();
-        return;
-      }
-      final v = c.videoPlayerController?.value;
-      if (v == null || !v.initialized) return;
-      if (c.isPlaying() == true) {
-        if (ticks > 6) t.cancel(); // играет устойчиво — дальше не следим
-        return;
-      }
-      c.play();
-    });
   }
 
   @override
@@ -638,75 +617,6 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   // временное понижение качества после повторных сбоев (для этого ролика)
   String? _ctCapFor;
   int? _ctCapOverride;
-  // сбои подряд (сбрасываются через 3 минуты нормального показа)
-  String? _ctFailsFor;
-  int _ctFails = 0;
-  DateTime _ctLastFail = DateTime(2000);
-  Timer? _ctWatch;
-
-  /// Сторож показа (как в SmartTube): если картинка стоит дольше 12 с, хотя должно играть, —
-  /// перезапуск с той же секунды со свежими ссылками.
-  void _ctArmPlaybackWatch(String id) {
-    _ctWatch?.cancel();
-    Duration? last;
-    var still = 0;
-    _ctWatch = Timer.periodic(const Duration(seconds: 3), (t) {
-      if (isClosed || state.video?.videoId != id || _ctCurHeight == null) {
-        t.cancel();
-        return;
-      }
-      final v = videoController?.videoPlayerController?.value;
-      if (v == null || !v.initialized) return;
-      final wantsPlay = videoController?.isPlaying() == true || v.isBuffering;
-      if (!wantsPlay || v.position != last) {
-        still = 0;
-        last = v.position;
-        return;
-      }
-      still += 3;
-      if (still >= 12) {
-        still = 0;
-        t.cancel();
-        _ctRecoverDash(id, 'зависание ${v.position.inSeconds} с');
-      }
-    });
-  }
-
-  Future<void> _ctRecoverDash(String id, String why) async {
-    final now = DateTime.now();
-    if (_ctFailsFor != id || now.difference(_ctLastFail) > const Duration(minutes: 3)) _ctFails = 0;
-    _ctFailsFor = id;
-    _ctLastFail = now;
-    _ctFails++;
-    final pos = videoController?.videoPlayerController?.value.position;
-    // 1-й сбой — тот же поток со свежими ссылками; 2-й на своём DASH — HLS того же качества;
-    // дальше — ступенью ниже (только для этого ролика)
-    if (_ctFails == 1) {
-      CtTrace.mark('плеер: $why — сбой №1, перезапуск с той же секунды');
-    } else if (_ctFails == 2 && _ctDashHeight != null) {
-      _ctNoDashFor = id;
-      CtTrace.mark('плеер: $why — сбой №2, переход на HLS того же качества');
-    } else {
-      final lower = [2160, 1440, 1080, 720, 480, 360].where((h) => h < (_ctCurHeight ?? 99999)).firstOrNull;
-      if (lower != null) {
-        _ctCapFor = id;
-        _ctCapOverride = lower;
-        _ctItagFor = null;
-      }
-      CtTrace.mark('плеер: $why — сбой №$_ctFails, качество до ${lower ?? _ctCurHeight}p');
-    }
-    log.warning('ct dash recover $id: $why (#$_ctFails)');
-    ctDirectForget(id);
-    try {
-      final fresh = await service.getVideo(id);
-      if (isClosed || state.video?.videoId != id) return;
-      emit(state.copyWith(video: fresh));
-    } catch (e) {
-      log.warning('recovery fetch failed: $e');
-    }
-    if (isClosed || state.video?.videoId != id) return;
-    playVideo(false, startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);
-  }
 
   /// Сейчас играет свой DASH ТВ (качество выбирается перезапуском с нужным потолком).
   bool get ctDashActive => _ctMenu;
@@ -855,7 +765,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       _ctItag = '${f['itag']}';
       _ctCapFor = null;
       _ctNoDashFor = null;
-      _ctFails = 0;
+      _recovery.reset(id);
       ctSetTvQuality((f['height'] as num?)?.toInt() ?? 2160);
       CtTrace.mark('плеер: выбран формат ${CtDashLocal.label(f)}');
       playVideo(false, startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);

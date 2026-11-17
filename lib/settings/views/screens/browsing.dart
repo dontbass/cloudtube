@@ -109,7 +109,7 @@ class BrowsingSettingsScreen extends StatelessWidget {
     var localsList = AppLocalizations.supportedLocales;
     var localsStrings =
         localsList.map((e) {
-          final n = e.nativeDisplayLanguageScript ?? e.languageCode;
+          final n = e.nativeDisplayLanguageScript;
           return n.isEmpty ? n : n[0].toUpperCase() + n.substring(1); // «Русский», а не «русский»
         }).toList();
     var locals = AppLocalizations.of(context)!;

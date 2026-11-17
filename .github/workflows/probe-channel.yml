@@ -1,0 +1,11 @@
+name: Probe channel
+on:
+  push:
+    branches: [probe-channel]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - run: cd tools/probe_channel && dart pub get && dart run bin/main.dart

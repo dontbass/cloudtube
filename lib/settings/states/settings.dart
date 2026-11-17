@@ -10,7 +10,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:clipious/app/states/app.dart';
 import 'package:clipious/workmanager.dart';
 import 'package:locale_names/locale_names.dart';
-import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../globals.dart';
@@ -33,7 +32,6 @@ enum EnableBackGroundNotificationResponse {
   needBatteryOptimization;
 }
 
-var _log = Logger('SettingsController');
 
 class SettingsCubit extends Cubit<SettingsState> {
   final AppCubit appCubit;

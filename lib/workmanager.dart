@@ -4,7 +4,8 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:intl/intl.dart';
+import 'cloudtube/direct.dart';
+import 'cloudtube/yt_account.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/notifications/models/db/subscription_notifications.dart';
 import 'package:clipious/settings/states/settings.dart';
@@ -67,6 +68,13 @@ _backgroundCheck() async {
           '[${record.level.name}] [${record.loggerName}] ${record.message}');
     });
     db = FileDB();
+    // CloudTube: фоновая задача работает в отдельном изоляте — режим «без сервера» и вход
+    // в YouTube нужно поднять заново, иначе уведомления работали только со своим сервером
+    try {
+      final cur = await db.getCurrentlySelectedServer();
+      ctDirectActive = ctIsDirectUrl(cur.url);
+      ctYtRefreshToken = ctDirectActive && (cur.authToken?.isNotEmpty ?? false) ? cur.authToken : null;
+    } catch (_) {}
     await _handleSubscriptionsNotifications();
     await _handleChannelNotifications();
     await _handlePlaylistNotifications();
@@ -78,14 +86,13 @@ _backgroundCheck() async {
 
 Future<AppLocalizations> getLocalization() async {
   List<String>? localeString;
-  String dbLocale = await fileDb.getLocale() ?? Intl.getCurrentLocale();
+  String dbLocale = await fileDb.getLocale() ?? PlatformDispatcher.instance.locale.languageCode;
   localeString = dbLocale.split('_');
-
-  Locale locale = Locale.fromSubtags(
-      languageCode: localeString[0],
-      scriptCode: localeString.length >= 2 ? localeString[1] : null);
-
-  return await AppLocalizations.delegate.load(locale);
+  // переводы есть только для русского и английского
+  final lang = AppLocalizations.supportedLocales.any((l) => l.languageCode == localeString![0])
+      ? localeString[0]
+      : 'en';
+  return await AppLocalizations.delegate.load(Locale(lang));
 }
 
 _handlePlaylistNotifications() async {
@@ -175,8 +182,10 @@ _handleSubscriptionsNotifications() async {
     if (videos.isNotEmpty) {
       // we don't send notification for the first run ever to avoid weird behavior
       if (lastNotification == null) {
+        // запоминаем самое свежее видео (раньше — самое старое, и следующая проверка
+        // сообщала обо всей ленте как о новых)
         var toSave = SubscriptionNotification(
-            videos.last.videoId, DateTime.now().millisecondsSinceEpoch);
+            videos.first.videoId, DateTime.now().millisecondsSinceEpoch);
         await fileDb.setLastSubscriptionNotification(toSave);
       } else {
         late int videosToNotifyAbout;

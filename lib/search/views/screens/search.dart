@@ -26,17 +26,32 @@ const searchPageSize = 20;
 /// Поиск: поле-«пилюля» сверху, пока печатаешь — подсказки и история,
 /// после поиска — вкладки Видео / Каналы / Плейлисты (свайпом).
 @RoutePage()
-class SearchScreen extends StatefulWidget {
+class SearchScreen extends StatelessWidget {
   final String? query;
   final bool? searchNow;
 
   const SearchScreen({super.key, this.query, this.searchNow});
 
+  // провайдер — над экраном: иначе обработчики State не видят SearchCubit
+  // (в 1.1.66 из-за этого «Поиск» на клавиатуре и нажатие на подсказку ничего не делали)
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  Widget build(BuildContext context) => BlocProvider(
+        create: (_) =>
+            SearchCubit(context.read<SettingsCubit>(), query: query, searchNow: searchNow ?? false),
+        child: _SearchView(query: query),
+      );
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchView extends StatefulWidget {
+  final String? query;
+
+  const _SearchView({this.query});
+
+  @override
+  State<_SearchView> createState() => _SearchViewState();
+}
+
+class _SearchViewState extends State<_SearchView> {
   late final _controller = TextEditingController(text: widget.query ?? '');
   final _focus = FocusNode();
 
@@ -61,10 +76,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SearchCubit(context.read<SettingsCubit>(),
-          query: widget.query, searchNow: widget.searchNow ?? false),
-      child: BlocBuilder<SearchCubit, SearchState>(builder: (context, s) {
+    return BlocBuilder<SearchCubit, SearchState>(builder: (context, s) {
         final cubit = context.read<SearchCubit>();
         final colors = Theme.of(context).colorScheme;
         return Scaffold(
@@ -107,8 +119,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
           ),
         );
-      }),
-    );
+    });
   }
 }
 

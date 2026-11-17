@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/videos/states/add_to_playlist.dart';
 
-import '../../utils/server.dart';
+import '../../test/utils/server.dart';
 
 void main() {
   setUp(() async => setUpTestsForTestServer());

@@ -8,6 +8,9 @@ analyzer:
     - "**/*.gr.dart"
     - "lib/l10n/generated/**"
     - "third_party/**"
+  errors:
+    # @JsonKey в моделях freezed — так и задумано генератором
+    invalid_annotation_target: ignore
   language:
     # без неявных приведений типов: ошибки вида «ожидали число, пришла строка»
     # ловятся при сборке, а не у пользователя

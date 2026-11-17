@@ -6,8 +6,8 @@ import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/settings/states/server_settings.dart';
 import 'package:clipious/utils/sembast_sqflite_database.dart';
 
-import '../../globals.dart';
-import '../../test_app_cubit.dart';
+import '../../test/globals.dart';
+import '../../test/test_app_cubit.dart';
 
 main() {
   // Setting a customer override that'll use an unmocked HTTP client

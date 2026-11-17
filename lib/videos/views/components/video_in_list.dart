@@ -341,9 +341,9 @@ class VideoListItem extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 12, top: 2),
                         child: CtChannelAvatar(
                           channelId: video!.authorId ?? '',
+                          videoId: video!.videoId,
                           author: author,
-                          onTap: () => AutoRouter.of(context).push(
-                              ChannelRoute(channelId: video!.authorId ?? '')),
+                          onTap: () => ctOpenChannelOf(context, video!),
                         ),
                       ),
                     Expanded(
@@ -368,12 +368,9 @@ class VideoListItem extends StatelessWidget {
                                     .copyWith(color: colorScheme.onSurface),
                           ),
                           InkWell(
-                            onTap: () {
-                              AutoRouter.of(context).push(ChannelRoute(
-                                  channelId: video?.authorId ??
-                                      offlineVideo?.authorUrl ??
-                                      ''));
-                            },
+                            onTap: video != null
+                                ? () => ctOpenChannelOf(context, video!)
+                                : null,
                             child: Text(
                               small || video == null
                                   ? author
@@ -423,4 +420,19 @@ class VideoListItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Открыть канал ролика. Если у плитки нет id канала (лента аккаунта YouTube напрямую) —
+/// сначала узнаём его по ролику.
+Future<void> ctOpenChannelOf(BuildContext context, Video v) async {
+  var id = v.authorId ?? '';
+  if (id.isEmpty) {
+    final messenger = ScaffoldMessenger.of(context);
+    id = await CtVideoChannel.of(v.videoId) ?? '';
+    if (id.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Не удалось определить канал')));
+      return;
+    }
+  }
+  if (context.mounted) await AutoRouter.of(context).push(ChannelRoute(channelId: id));
 }

@@ -11,19 +11,27 @@ final ctTvScale = ValueNotifier<double>(0.8);
 void ctLoadTvScale() {
   final v = double.tryParse(db.getSettings(ctTvScaleKey)?.value ?? '');
   if (v != null && v >= 0.5 && v <= 1.0) ctTvScale.value = v;
-  final q = int.tryParse(db.getSettings(ctTvQualityKey)?.value ?? '');
-  if (q != null && q >= 144 && q <= 2160) ctTvQualityCap = q;
 }
 
 const ctTvQualityKey = 'ct-tv-quality';
+const ctPhoneQualityKey = 'ct-phone-quality';
 
-/// ТВ без сервера: потолок качества видео (как профиль в SmartTube). По умолчанию 4K —
-/// берётся лучшее, что есть у ролика. Меняется выбором качества в плеере и запоминается.
+/// Без сервера: потолок качества видео (как профиль в SmartTube). На ТВ по умолчанию 4K,
+/// на телефоне — 1080p (экран меньше, экономия трафика и батареи). Меняется выбором качества
+/// в плеере и запоминается — отдельно для ТВ и телефона.
 int ctTvQualityCap = 2160;
+bool _ctTv = false;
+
+void ctLoadQuality({required bool tv}) {
+  _ctTv = tv;
+  ctTvQualityCap = tv ? 2160 : 1080;
+  final q = int.tryParse(db.getSettings(tv ? ctTvQualityKey : ctPhoneQualityKey)?.value ?? '');
+  if (q != null && q >= 144 && q <= 2160) ctTvQualityCap = q;
+}
 
 Future<void> ctSetTvQuality(int h) async {
   ctTvQualityCap = h;
-  await db.saveSetting(SettingsValue(ctTvQualityKey, '$h'));
+  await db.saveSetting(SettingsValue(_ctTv ? ctTvQualityKey : ctPhoneQualityKey, '$h'));
 }
 
 Future<void> ctSetTvScale(double v) async {

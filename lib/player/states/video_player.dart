@@ -182,7 +182,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     if (v == null || state.offlineVideo != null || isClosed) return;
     final id = v.videoId;
     _watch.stop();
-    final tvDirect = _ctCurHeight != null && isTv && ctDirectActive;
+    final tvDirect = _ctCurHeight != null && ctDirectActive;
     final action = _recovery.onFailure(id,
         tvDirect: tvDirect,
         ownDash: _ctDashHeight != null,
@@ -362,7 +362,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           serverHeaders: server.headersForUrl,
           useProxy: service.useProxy(),
           useServerDash: isUsingDash(),
-          tvDirect: isTv && ctDirectActive,
+          tvDirect: ctDirectActive,
           noOwnDash: _ctNoDashFor == id,
           cap: _ctCapFor == id ? _ctCapOverride! : ctTvQualityCap,
           itag: _ctItagFor == id ? _ctItag : null,

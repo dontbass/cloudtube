@@ -133,8 +133,11 @@ Future<void> main() async {
     }
   }
 
-  CtYtFast.wantAdaptive = isTv;
+  // без сервера и на ТВ, и на телефоне играем своим DASH с выбранным качеством: HLS от YouTube
+  // ExoPlayer держит на 360p и выбрать качество в нём нельзя
+  CtYtFast.wantAdaptive = !ctDesktop;
   if (isTv) ctLoadTvScale();
+  ctLoadQuality(tv: isTv);
   await ctSponsorDefaults();
   WidgetsBinding.instance.addPostFrameCallback((_) => CtPerf.firstFrame());
   // уборка разросшихся записей базы — после запуска, чтобы не задерживать его

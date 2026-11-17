@@ -108,7 +108,10 @@ class BrowsingSettingsScreen extends StatelessWidget {
   showSelectLanguage(BuildContext context, SettingsState controller) {
     var localsList = AppLocalizations.supportedLocales;
     var localsStrings =
-        localsList.map((e) => e.nativeDisplayLanguageScript).toList();
+        localsList.map((e) {
+          final n = e.nativeDisplayLanguageScript ?? e.languageCode;
+          return n.isEmpty ? n : n[0].toUpperCase() + n.substring(1); // «Русский», а не «русский»
+        }).toList();
     var locals = AppLocalizations.of(context)!;
     var cubit = context.read<SettingsCubit>();
     var colors = Theme.of(context).colorScheme;
@@ -122,7 +125,9 @@ class BrowsingSettingsScreen extends StatelessWidget {
 
     SelectList.show<String>(context,
         values: [locals.followSystem, ...localsStrings],
-        value: selected?.nativeDisplayLanguageScript ?? locals.followSystem,
+        value: selected == null
+            ? locals.followSystem
+            : localsStrings[localsList.indexWhere((l) => l.languageCode == selected.languageCode).clamp(0, localsStrings.length - 1)],
         itemBuilder: (value, selected) => Text(
               value,
               style: TextStyle(color: selected ? colors.primary : null),

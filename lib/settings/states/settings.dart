@@ -258,7 +258,8 @@ class SettingsCubit extends Cubit<SettingsState> {
             scriptCode: localeString.length >= 2 ? localeString[1] : null)
         : null;
 
-    return l?.nativeDisplayLanguageScript;
+    final n = l?.nativeDisplayLanguageScript;
+    return n == null || n.isEmpty ? n : n[0].toUpperCase() + n.substring(1);
   }
 
   Future<EnableBackGroundNotificationResponse> setBackgroundNotifications(

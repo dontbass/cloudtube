@@ -50,48 +50,64 @@ class SelectList<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var textTheme = Theme.of(context).textTheme;
-    var locals = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
+    final locals = AppLocalizations.of(context)!;
+    final searchable = searchFilter != null || asyncSearch != null;
+    // высота по содержимому (раньше окно всегда было во весь экран, даже для 3 пунктов),
+    // но не больше 70% экрана; со строкой поиска — постоянная, чтобы окно не прыгало
+    final maxH = MediaQuery.sizeOf(context).height * 0.7;
 
     return AlertDialog(
-      title: Text(
-        title,
-        style: textTheme.titleLarge,
-      ),
+      title: Text(title, style: textTheme.titleLarge),
+      contentPadding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
       content: SizedBox(
-        width: 300,
+        width: 340,
+        height: searchable ? maxH : null,
         child: BlocProvider(
-          create: (BuildContext context) => SelectListCubit<T>(
-              SelectListState<T>(filteredItems: values ?? [])),
-          child: BlocBuilder<SelectListCubit<T>, SelectListState<T>>(
-              builder: (context, state) {
-            var cubit = context.read<SelectListCubit<T>>();
-            return Column(
-              children: [
-                if (searchFilter != null || asyncSearch != null)
-                  TextField(
-                    decoration: InputDecoration(hintText: locals.search),
-                    onChanged: (searchQuery) async {
-                      cubit.filterItems(
-                          asyncSearch, searchFilter, values, searchQuery);
-                    },
+          create: (BuildContext context) =>
+              SelectListCubit<T>(SelectListState<T>(filteredItems: values ?? [])),
+          child: BlocBuilder<SelectListCubit<T>, SelectListState<T>>(builder: (context, state) {
+            final cubit = context.read<SelectListCubit<T>>();
+            final list = ListView.builder(
+              shrinkWrap: !searchable,
+              itemCount: state.filteredItems.length,
+              itemBuilder: (context, index) {
+                final item = state.filteredItems[index];
+                final selected = item == value;
+                // вся строка нажимается (раньше — только сам текст)
+                return InkWell(
+                  key: ValueKey(item),
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    onSelect(item);
+                    Navigator.of(context).pop();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(children: [
+                      Expanded(child: itemBuilder(item, selected)),
+                      if (selected) Icon(Icons.check, color: colors.primary, size: 22),
+                    ]),
                   ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: state.filteredItems.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: GestureDetector(
-                          key: ValueKey(state.filteredItems[index]),
-                          onTap: () {
-                            onSelect(state.filteredItems[index]);
-                            Navigator.of(context).pop();
-                          },
-                          child: itemBuilder(state.filteredItems[index],
-                              state.filteredItems[index] == value)),
+                );
+              },
+            );
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (searchable)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      decoration: InputDecoration(hintText: locals.search, prefixIcon: const Icon(Icons.search)),
+                      onChanged: (q) => cubit.filterItems(asyncSearch, searchFilter, values, q),
                     ),
                   ),
-                )
+                if (searchable)
+                  Expanded(child: list)
+                else
+                  ConstrainedBox(constraints: BoxConstraints(maxHeight: maxH), child: list),
               ],
             );
           }),

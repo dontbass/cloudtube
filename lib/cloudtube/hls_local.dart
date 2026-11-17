@@ -210,7 +210,7 @@ class CtDashLocal {
           : 'audioSamplingRate="${f['audioSampleRate'] ?? 44100}"';
       return '<Representation id="${f['itag']}" codecs="${codecs(f)}" bandwidth="${_br(f)}" $attrs>'
           '${video ? '' : '<AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="${f['audioChannels'] ?? 2}"/>'}'
-          '<BaseURL>${esc(f['url'])}</BaseURL>'
+          '<BaseURL>${esc('${f['url']}')}</BaseURL>'
           '<SegmentBase indexRange="${xr['start']}-${xr['end']}"><Initialization range="${ir['start']}-${ir['end']}"/></SegmentBase>'
           '</Representation>';
     }

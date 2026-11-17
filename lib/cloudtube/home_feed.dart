@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'perf.dart';
 import 'direct.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/utils/models/paginated_list.dart';
@@ -43,7 +45,10 @@ PaginatedList<Video> ctSectionList(String id, {bool fill = true, Duration delay 
       try {
         return await service.search('ct:home', page: page).then((r) => r.videos);
       } finally {
-        if (page == 1 && !ctHomeReady.isCompleted) ctHomeReady.complete();
+        if (page == 1 && !ctHomeReady.isCompleted) {
+          ctHomeReady.complete();
+          CtPerf.firstVideos();
+        }
       }
     }, fill: fill);
   }
@@ -54,7 +59,10 @@ PaginatedList<Video> ctSectionList(String id, {bool fill = true, Duration delay 
         if (l.isNotEmpty) return l;
       } catch (_) {
       } finally {
-        if (!ctHomeReady.isCompleted) ctHomeReady.complete();
+        if (!ctHomeReady.isCompleted) {
+          ctHomeReady.complete();
+          CtPerf.firstVideos();
+        }
       }
       return service.getTrending();
     });

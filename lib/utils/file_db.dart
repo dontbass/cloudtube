@@ -101,7 +101,7 @@ class FileDB extends IDbClient {
   Future<List<ChannelNotification>> getAllChannelNotifications() async {
     File f = await _openAppFile(_channelNotifFile);
     var contents = await _readFileAsMap(f);
-    return contents.values.map((e) => ChannelNotification.fromJson(e)).toList();
+    return contents.values.map((e) => ChannelNotification.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<void> deleteChannelNotification(ChannelNotification notif) async {
@@ -137,7 +137,7 @@ class FileDB extends IDbClient {
     File f = await _openAppFile(_playlistNotifsFile);
     var contents = await _readFileAsMap(f);
     return contents.values
-        .map((e) => PlaylistNotification.fromJson(e))
+        .map((e) => PlaylistNotification.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -215,7 +215,7 @@ class FileDB extends IDbClient {
     try {
       final contents = await f.readAsString();
 
-      return jsonDecode(contents);
+      return jsonDecode(contents) as Map<String, dynamic>;
     } catch (e) {
       return {};
     }

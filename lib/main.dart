@@ -13,6 +13,7 @@ import 'cloudtube/sponsor_toast.dart';
 import 'cloudtube/yt_fast.dart';
 import 'cloudtube/tv_nav.dart';
 import 'cloudtube/tv_mouse.dart';
+import 'cloudtube/perf.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/cloudtube/theme.dart';
@@ -49,6 +50,8 @@ late MediaHandler mediaHandler;
 final Logger log = Logger('main');
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  CtPerf.appStarted();
   Logger.root.level =
       kDebugMode ? Level.FINEST : Level.INFO; // defaults to Level.INFO
   Logger.root.onRecord.listen((record) async {
@@ -67,7 +70,6 @@ Future<void> main() async {
 
   HttpOverrides.global = MyHttpOverrides();
 
-  WidgetsFlutterBinding.ensureInitialized();
   if (ctDesktop) CtDesktopPlayer.ensureInitialized();
   await ctInitDesktopCerts();
 
@@ -134,6 +136,7 @@ Future<void> main() async {
   CtYtFast.wantAdaptive = isTv;
   if (isTv) ctLoadTvScale();
   await ctSponsorDefaults();
+  WidgetsBinding.instance.addPostFrameCallback((_) => CtPerf.firstFrame());
   runApp(MultiBlocProvider(providers: [
       BlocProvider(
         create: (context) {

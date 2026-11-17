@@ -16,7 +16,7 @@ import 'package:clipious/cloudtube/settings_ui.dart';
 import '../../states/settings.dart';
 
 /// Оформление вложенных экранов настроек (плеер, просмотр, внешний вид…) в цветах CloudTube.
-settingsTheme(ColorScheme colorScheme) => SettingsThemeData(
+SettingsThemeData settingsTheme(ColorScheme colorScheme) => SettingsThemeData(
     settingsSectionBackground: colorScheme.surface,
     settingsListBackground: colorScheme.surface,
     titleTextColor: ctAccent(colorScheme),

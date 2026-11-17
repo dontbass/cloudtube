@@ -51,7 +51,7 @@ class ItemListCubit<T> extends Cubit<ItemListState<T>> {
     }
   }
 
-  refreshItems() async {
+  Future<void> refreshItems() async {
     loadItems(state.itemList.refresh);
   }
 

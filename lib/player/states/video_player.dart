@@ -17,6 +17,7 @@ import '../../globals.dart';
 import '../../main.dart';
 import '../../utils/pretty_bytes.dart';
 import '../../videos/models/video.dart';
+import '../../videos/models/format_stream.dart';
 import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
@@ -218,7 +219,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       case BetterPlayerEventType.bufferingUpdate:
         EasyThrottle.throttle('video-buffering', const Duration(seconds: 1),
             () {
-          List<DurationRange> durations = event.parameters?['buffered'] ?? [];
+          final durations = (event.parameters?['buffered'] as List<DurationRange>?) ?? <DurationRange>[];
           emit(state.copyWith(
               bufferPosition:
                   durations.sortBy((e) => e.end).map((e) => e.end).last));
@@ -241,7 +242,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         break;
       case BetterPlayerEventType.setSpeed:
         if (event.parameters?.containsKey("speed") ?? false) {
-          settings.setLastSpeed(event.parameters?["speed"]);
+          settings.setLastSpeed((event.parameters?["speed"] as num).toDouble());
         }
         break;
       default:
@@ -422,7 +423,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
                 : BetterPlayerVideoFormat.other;
 
         if (format == BetterPlayerVideoFormat.other) {
-          for (var value in (newState.video!.formatStreams ?? [])) {
+          for (final value in (newState.video!.formatStreams ?? const <FormatStream>[])) {
             resolutions[value.qualityLabel] = value.url;
           }
         }

@@ -11,10 +11,10 @@ import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/videos/models/dislike.dart';
 import 'package:clipious/videos/states/video.dart';
 
-import '../../test_app_cubit.dart';
-import '../../test_player_cubit.dart';
-import '../../test_settings_cubit.dart';
-import '../../utils/server.dart';
+import '../../test/test_app_cubit.dart';
+import '../../test/test_player_cubit.dart';
+import '../../test/test_settings_cubit.dart';
+import '../../test/utils/server.dart';
 
 class FakeService extends Service {
   @override

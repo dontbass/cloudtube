@@ -206,6 +206,6 @@ sealed class VideoFilterEditState with _$VideoFilterEditState {
     @Default(1) int searchPage,
     Channel? channel,
     @Default([]) List<Channel> channelResults,
-    @Default(false) showDateSettings,
+    @Default(false) bool showDateSettings,
   }) = _VideoFilterEditState;
 }

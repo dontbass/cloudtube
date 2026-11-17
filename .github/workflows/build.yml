@@ -76,8 +76,11 @@ jobs:
       - name: Localizations
         run: flutter gen-l10n
 
-      - name: Analyze (errors only)
-        run: dart analyze --no-fatal-warnings lib
+      - name: Analyze (ошибки и предупреждения останавливают сборку)
+        run: dart analyze --fatal-warnings lib test
+
+      - name: Tests
+        run: flutter test
 
       - name: Splash
         run: dart run flutter_native_splash:create

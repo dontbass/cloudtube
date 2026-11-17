@@ -44,7 +44,7 @@ class PlaylistListCubit extends Cubit<PlaylistListState> {
     }
   }
 
-  refreshPlaylists() async {
+  Future<void> refreshPlaylists() async {
     loadPlaylist(state.paginatedList.refresh);
   }
 

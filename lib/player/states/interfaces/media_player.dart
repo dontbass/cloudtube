@@ -50,18 +50,18 @@ abstract class MediaPlayerCubit<T extends MediaPlayerState> extends Cubit<T> {
   void handleCommand(MediaCommand command) {
     switch (command.type) {
       case MediaCommandType.speed:
-        setSpeed(command.value);
+        setSpeed(command.value as double);
         player.setEvent(MediaEvent(
             state: MediaState.playing,
             type: MediaEventType.speedChanged,
             value: command.value));
         break;
       case MediaCommandType.switchVideo:
-        SwitchVideoValue val = command.value;
+        final val = command.value as SwitchVideoValue;
         switchVideo(val.video, startAt: val.startAt);
         break;
       case MediaCommandType.switchToOfflineVideo:
-        DownloadedVideo offlineVideo = command.value;
+        final offlineVideo = command.value as DownloadedVideo;
         switchToOfflineVideo(offlineVideo);
         break;
       case MediaCommandType.play:
@@ -89,7 +89,7 @@ abstract class MediaPlayerCubit<T extends MediaPlayerState> extends Cubit<T> {
             value: true));
         break;
       case MediaCommandType.seek:
-        seek(command.value);
+        seek(command.value as Duration);
         player.setEvent(MediaEvent(
             state: MediaState.playing,
             type: MediaEventType.seek,

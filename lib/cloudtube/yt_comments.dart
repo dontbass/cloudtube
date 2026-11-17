@@ -217,7 +217,7 @@ class CtYtComments {
         if (t.isNotEmpty && label.hasMatch(t)) {
           final ep = _findKey(x, 'performCommentActionEndpoint');
           if (ep is Map && ep['action'] is String) {
-            found = ep['action'];
+            found = ep['action'] as String;
             return;
           }
         }
@@ -242,10 +242,10 @@ class CtYtComments {
         for (final m in v) {
           final pl = (m as Map?)?['payload'];
           if (m != null && m['entityKey'] != null) payloads['${m['entityKey']}'] = pl;
-          if (pl is Map && pl['commentEntityPayload'] is Map) entities['${m!['entityKey']}'] = pl['commentEntityPayload'];
+          if (pl is Map && pl['commentEntityPayload'] is Map) entities['${m!['entityKey']}'] = pl['commentEntityPayload'] as Map;
           if (pl is Map && pl['commentEntityPayload'] is Map) {
             final key = (pl['commentEntityPayload'] as Map)['key'];
-            if (key != null) entities['$key'] = pl['commentEntityPayload'];
+            if (key != null) entities['$key'] = pl['commentEntityPayload'] as Map;
           }
         }
       }
@@ -273,17 +273,17 @@ class CtYtComments {
         continue;
       }
       final thread = it['commentThreadRenderer'];
-      Map? vm = it['commentViewModel'] is Map ? it['commentViewModel'] : null;
-      Map? old = it['commentRenderer'] is Map ? it['commentRenderer'] : null;
+      Map? vm = it['commentViewModel'] is Map ? it['commentViewModel'] as Map : null;
+      Map? old = it['commentRenderer'] is Map ? it['commentRenderer'] as Map : null;
       String? repliesToken;
       if (thread is Map) {
         final cvm = thread['commentViewModel'];
-        vm = cvm is Map ? (cvm['commentViewModel'] is Map ? cvm['commentViewModel'] : cvm) : null;
+        vm = cvm is Map ? (cvm['commentViewModel'] is Map ? cvm['commentViewModel'] as Map : cvm) : null;
         old = (thread['comment'] as Map?)?['commentRenderer'] as Map?;
         final rep = thread['replies'];
         if (rep != null) repliesToken = _findToken(rep);
       }
-      if (vm != null && vm['commentViewModel'] is Map) vm = vm['commentViewModel'];
+      if (vm != null && vm['commentViewModel'] is Map) vm = vm['commentViewModel'] as Map;
       final cont = it['continuationItemRenderer'];
       if (cont is Map) {
         p.next = _findToken(cont);
@@ -368,8 +368,8 @@ class CtYtComments {
 
   static String _text(dynamic t) {
     if (t is! Map) return '';
-    if (t['simpleText'] is String) return t['simpleText'];
-    if (t['content'] is String) return t['content'];
+    if (t['simpleText'] is String) return t['simpleText'] as String;
+    if (t['content'] is String) return t['content'] as String;
     final runs = t['runs'];
     if (runs is List) return runs.map((r) => (r as Map?)?['text'] ?? '').join();
     return '';
@@ -377,9 +377,9 @@ class CtYtComments {
 
   static String? _findToken(dynamic n) {
     final c = _findKey(n, 'continuationCommand');
-    if (c is Map && c['token'] is String) return c['token'];
+    if (c is Map && c['token'] is String) return c['token'] as String;
     final d = _findKey(n, 'nextContinuationData');
-    if (d is Map && d['continuation'] is String) return d['continuation'];
+    if (d is Map && d['continuation'] is String) return d['continuation'] as String;
     return null;
   }
 

@@ -72,7 +72,7 @@ class CtYtAccount {
           {'client_id': id, 'device_id': _deviceId(), 'model_name': 'ytlr::', 'scope': _scope});
     }
     if (j['device_code'] == null) throw 'YouTube не выдал код: ${j['error'] ?? j['_status']}';
-    return CtDeviceCode(j['device_code'], j['user_code'], (j['verification_url'] as String?) ?? 'https://www.youtube.com/activate',
+    return CtDeviceCode(j['device_code'] as String, j['user_code'] as String, (j['verification_url'] as String?) ?? 'https://www.youtube.com/activate',
         (j['interval'] as num?)?.toInt() ?? 5, (j['expires_in'] as num?)?.toInt() ?? 1800);
   }
 
@@ -91,10 +91,10 @@ class CtYtAccount {
         'grant_type': 'http://oauth.net/grant_type/device/1.0',
       });
       if (j['refresh_token'] != null) {
-        _access = j['access_token'];
-        _accessFor = j['refresh_token'];
+        _access = j['access_token'] as String?;
+        _accessFor = j['refresh_token'] as String?;
         _accessUntil = DateTime.now().add(Duration(seconds: ((j['expires_in'] as num?)?.toInt() ?? 3600) - 120));
-        return j['refresh_token'];
+        return j['refresh_token'] as String;
       }
       final err = j['error'];
       if (err == 'slow_down') interval += 2;
@@ -111,7 +111,7 @@ class CtYtAccount {
     final j = await _post('https://www.youtube.com/o/oauth2/token',
         {'refresh_token': refresh, 'client_id': id, 'client_secret': secret, 'grant_type': 'refresh_token'});
     if (j['access_token'] == null) throw CtYtAuthError('Вход в YouTube устарел — войдите заново (${j['error'] ?? j['_status']})');
-    _access = j['access_token'];
+    _access = j['access_token'] as String?;
     _accessFor = refresh;
     _accessUntil = DateTime.now().add(Duration(seconds: ((j['expires_in'] as num?)?.toInt() ?? 3600) - 120));
     return _access!;
@@ -201,12 +201,12 @@ class CtTvPage {
         final tile = n['tileRenderer'];
         if (tile is Map) {
           final v = _tile(tile);
-          if (v != null && seenV.add(v['videoId'])) p.videos.add(v);
+          if (v != null && seenV.add('${v['videoId']}')) p.videos.add(v);
         }
         final next = n['nextContinuationData'] ?? n['reloadContinuationData'];
-        if (p.continuation == null && next is Map && next['continuation'] is String) p.continuation = next['continuation'];
+        if (p.continuation == null && next is Map && next['continuation'] is String) p.continuation = next['continuation'] as String;
         final cmd = n['continuationCommand'];
-        if (p.continuation == null && cmd is Map && cmd['token'] is String) p.continuation = cmd['token'];
+        if (p.continuation == null && cmd is Map && cmd['token'] is String) p.continuation = cmd['token'] as String;
         // канал в левой колонке «Подписок» (вкладка с аватаром)
         final tab = n['tabRenderer'];
         if (tab is Map) {
@@ -292,7 +292,7 @@ class CtTvPage {
 
   static String _text(dynamic t) {
     if (t is! Map) return '';
-    if (t['simpleText'] is String) return t['simpleText'];
+    if (t['simpleText'] is String) return t['simpleText'] as String;
     final runs = t['runs'];
     if (runs is List) return runs.map((r) => (r as Map?)?['text'] ?? '').join();
     return '';

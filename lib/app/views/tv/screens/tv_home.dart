@@ -1,4 +1,5 @@
 import '../../../../cloudtube/updater.dart';
+import 'package:clipious/videos/models/video.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -397,7 +398,7 @@ class _CtTvRows extends StatelessWidget {
                                 (_) => null,
                               };
 
-                              focusFunction(video, index, focus) {
+                              void focusFunction(Video video, int index, bool focus) {
                                 if (focus) ctTvScrollToRow(key);
                               }
 

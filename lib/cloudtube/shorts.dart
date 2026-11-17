@@ -250,7 +250,7 @@ Future<Video> _getVideo(String id) {
     return hit.$2;
   }
   if (_videoCache.length > 60) _videoCache.remove(_videoCache.keys.first);
-  final f = service.getVideo(id).catchError((e) {
+  final f = service.getVideo(id).catchError((Object e) {
     _videoCache.remove(id);
     throw e;
   });

@@ -184,7 +184,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         _setPip(false);
         break;
       case MediaEventType.progress:
-        onProgress(event.value);
+        onProgress(event.value as Duration?);
         break;
       case MediaEventType.play:
         _setPlaying(true);
@@ -193,10 +193,10 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         _setPlaying(false);
         break;
       case MediaEventType.volumeChanged:
-        _setMuted(!event.value);
+        _setMuted(!(event.value as bool));
         break;
       case MediaEventType.aspectRatioChanged:
-        emit(state.copyWith(aspectRatio: event.value));
+        emit(state.copyWith(aspectRatio: event.value as double));
         break;
       default:
         break;
@@ -1165,9 +1165,9 @@ sealed class PlayerState with _$PlayerState {
 
       // step in seconds when fast forawrd or fast rewind
       @Default(defaultStep) int forwardStep,
-      @Default(defaultStep) rewindStep,
+      @Default(defaultStep) int rewindStep,
       @Default(0) int totalFastForward,
-      @Default(0) totalRewind,
+      @Default(0) int totalRewind,
       @Default(Orientation.portrait) Orientation orientation}) = _PlayerState;
 
   bool get hasVideo =>

@@ -503,7 +503,7 @@ class AdjustmentSettingTile extends StatelessWidget {
       : assert(step == null || possibleValues == null,
             'Can\' have both step and possible values');
 
-  onKeyEvent(FocusNode node, KeyEvent event, BuildContext ctx) {
+  KeyEventResult onKeyEvent(FocusNode node, KeyEvent event, BuildContext ctx) {
     if (event is KeyUpEvent) {
       log.fine('onTvSelect, ${event.logicalKey}, $event');
       if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
@@ -593,7 +593,7 @@ class SettingsTile extends StatelessWidget {
   final Function(BuildContext context)? onSelected;
   final Widget? trailing;
   final Widget? leading;
-  final Function(FocusNode, KeyEvent, BuildContext)? onKeyEvent;
+  final KeyEventResult Function(FocusNode, KeyEvent, BuildContext)? onKeyEvent;
 
   const SettingsTile(
       {super.key,

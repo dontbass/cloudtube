@@ -1,4 +1,5 @@
 import '../../../../cloudtube/sponsor_toast.dart';
+import '../../../../cloudtube/tv_channels.dart';
 import '../../../../cloudtube/up_next.dart';
 import '../../../../cloudtube/tv_mouse.dart';
 import 'package:flutter/gestures.dart';
@@ -41,6 +42,7 @@ class TvPlayerControls extends StatelessWidget {
           var cubit = context.read<TvPlayerControlsCubit>();
           var currentlyPlaying = context
               .select((PlayerCubit value) => value.state.currentlyPlaying);
+          final ctAuthorId = currentlyPlaying?.authorId ?? '';
           var videos =
               context.select((PlayerCubit value) => value.state.videos);
           var isPlaying =
@@ -291,6 +293,25 @@ class TvPlayerControls extends StatelessWidget {
                                             ),
                                           ),
                                           Expanded(child: Container()),
+                                          // канал автора и подписка — прямо из плеера
+                                          if (ctAuthorId.isNotEmpty) ...[
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 16.0),
+                                              child: CtTvChip(
+                                                icon: const Icon(Icons.account_circle_outlined, size: 26),
+                                                label: 'Канал',
+                                                onPressed: (ctx) {
+                                                  player.pause();
+                                                  ctOpenTvChannel(ctx, ctAuthorId);
+                                                },
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 16.0),
+                                              child: CtTvSubscribeChip(
+                                                  key: ValueKey('sub-$ctAuthorId'), channelId: ctAuthorId),
+                                            ),
+                                          ],
                                           Padding(
                                             padding: const EdgeInsets.only(
                                                 right: 16.0),

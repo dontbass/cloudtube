@@ -1,4 +1,7 @@
 import 'server_caps.dart';
+import 'direct.dart';
+import '../utils/models/image_object.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import 'dart:async';
 import 'dart:convert';
 
@@ -31,6 +34,29 @@ class CtAvatars {
     return c.future;
   }
 
+  static final _yt = yt.YoutubeExplode();
+
+  /// Без дополнений CloudTube: напрямую — из YouTube (1 лёгкий запрос), со своего
+  /// Invidious — из карточки канала. Не больше 4 запросов одновременно.
+  Future<Map<String, dynamic>> _oneByOne(List<String> ids) async {
+    final out = <String, dynamic>{};
+    Future<void> one(String id) async {
+      try {
+        if (ctDirectActive) {
+          out[id] = (await _yt.channels.get(id).timeout(const Duration(seconds: 8))).logoUrl;
+        } else {
+          final c = await service.getChannel(id).timeout(const Duration(seconds: 8));
+          out[id] = ImageObject.getBestThumbnail(c.authorThumbnails)?.url;
+        }
+      } catch (_) {}
+    }
+
+    for (var i = 0; i < ids.length; i += 4) {
+      await Future.wait(ids.skip(i).take(4).map(one));
+    }
+    return out;
+  }
+
   Future<void> _flush() async {
     _timer = null;
     final ids = _queue.take(40).toList();
@@ -38,11 +64,14 @@ class CtAvatars {
     if (_queue.isNotEmpty) _timer = Timer(const Duration(milliseconds: 50), _flush);
     Map<String, dynamic> res = {};
     try {
-      if (!await CtServer.hasAddons()) throw 'нет дополнений';
-      final req = await service.buildRequest('/ct-api/avatars', query: {'ids': ids.join(',')});
-      final r = await service.httpClient.get(req.uri, headers: req.headers);
-      if (r.statusCode == 200) {
-        res = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+      if (ctDirectActive || !await CtServer.hasAddons()) {
+        res = await _oneByOne(ids);
+      } else {
+        final req = await service.buildRequest('/ct-api/avatars', query: {'ids': ids.join(',')});
+        final r = await service.httpClient.get(req.uri, headers: req.headers);
+        if (r.statusCode == 200) {
+          res = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        }
       }
     } catch (e) {
       _log.fine('avatars failed: $e');
@@ -78,18 +107,17 @@ class CtChannelAvatar extends StatelessWidget {
     );
     return GestureDetector(
       onTap: onTap,
-      child: FutureBuilder<List<Object?>>(
-        future: Future.wait([CtAvatars.instance.get(channelId), db.getCurrentlySelectedServer()]),
+      child: FutureBuilder<(String, Map<String, String>?)?>(
+        future: _resolve(),
         builder: (context, snap) {
-          final url = snap.data?[0] as String?;
-          final server = snap.data?[1] as Server?;
-          if (url == null || url.isEmpty || server == null) return letter;
-          final full = url.startsWith('/') ? server.url + url : url;
+          final r = snap.data;
+          if (r == null) return letter;
+          final (full, headers) = r;
           return ClipOval(
             child: CachedNetworkImage(
               imageUrl: full,
               cacheKey: full,
-              httpHeaders: server.headersForUrl(full),
+              httpHeaders: headers,
               width: size,
               height: size,
               fit: BoxFit.cover,
@@ -100,5 +128,21 @@ class CtChannelAvatar extends StatelessWidget {
         },
       ),
     );
+  }
+
+  /// Полный адрес картинки и заголовки (для относительного пути — через свой сервер).
+  Future<(String, Map<String, String>?)?> _resolve() async {
+    final url = await CtAvatars.instance.get(channelId);
+    if (url == null || url.isEmpty) return null;
+    Server? server;
+    try {
+      server = await db.getCurrentlySelectedServer();
+    } catch (_) {}
+    if (url.startsWith('/')) {
+      if (server == null) return null;
+      final full = server.url + url;
+      return (full, server.headersForUrl(full));
+    }
+    return (url, server?.headersForUrl(url));
   }
 }

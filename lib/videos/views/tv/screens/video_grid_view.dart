@@ -8,6 +8,7 @@ import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
 import 'package:clipious/videos/views/tv/components/video_item.dart';
 
 import '../../../../cloudtube/tv_nav.dart';
+import '../../../../cloudtube/tv_channels.dart';
 import '../../../../utils/states/item_list.dart';
 
 @RoutePage()
@@ -16,11 +17,15 @@ class TvGridScreen extends StatelessWidget {
   final String? tags;
   final String title;
 
+  /// Экран «Подписки»: сверху ряд подписанных каналов.
+  final bool showChannels;
+
   const TvGridScreen(
       {super.key,
       required this.paginatedVideoList,
       this.tags,
-      required this.title});
+      required this.title,
+      this.showChannels = false});
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +69,7 @@ class TvGridScreen extends StatelessWidget {
                         : const SizedBox.shrink()
                   ],
                 ),
+                if (showChannels) const CtTvChannelsRow(),
                 // плотная сетка: 6 роликов в ряд (раньше 3), меньше промежутки
                 Expanded(child: LayoutBuilder(builder: (context, c) {
                   const cols = 5, gap = 14.0;

@@ -49,7 +49,6 @@ class _CtYtLoginScreenState extends State<CtYtLoginScreen> {
       var s = await db.getCurrentlySelectedServer();
       s = s.copyWith(authToken: refresh, sidCookie: null);
       await db.upsertServer(s);
-      if (s.inUse) await fileDb.useServer(s);
       app.setServer(s);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

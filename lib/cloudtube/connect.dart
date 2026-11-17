@@ -63,7 +63,6 @@ Future<Server> ctConnectServer({
   }
   await db.upsertServer(s);
   await db.useServer(s);
-  await fileDb.useServer(s);
   app.setServer(s);
   return s;
 }
@@ -74,7 +73,6 @@ Future<Server> ctConnectDirect(AppCubit app) async {
   final s = (existing ?? const Server(url: kCtDirectUrl)).copyWith(inUse: true);
   await db.upsertServer(s);
   await db.useServer(s);
-  await fileDb.useServer(s);
   app.setServer(s);
   return s;
 }

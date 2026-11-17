@@ -137,6 +137,17 @@ Future<void> main() async {
   if (isTv) ctLoadTvScale();
   await ctSponsorDefaults();
   WidgetsBinding.instance.addPostFrameCallback((_) => CtPerf.firstFrame());
+  // уборка разросшихся записей базы — после запуска, чтобы не задерживать его
+  Future.delayed(const Duration(seconds: 20), () async {
+    final d = db;
+    if (d is SembastSqfDb) {
+      try {
+        await d.trimCaches();
+      } catch (e) {
+        log.info('уборка базы: $e');
+      }
+    }
+  });
   runApp(MultiBlocProvider(providers: [
       BlocProvider(
         create: (context) {

@@ -1,4 +1,5 @@
 import 'package:clipious/cloudtube/platform.dart';
+import 'package:clipious/globals.dart' show fileDb;
 import 'package:sembast/sembast_io.dart';
 import 'dart:async';
 import 'dart:io';
@@ -92,6 +93,31 @@ class SembastSqfDb extends IDbClient {
   @override
   Future<void> deleteFromSearchHistory(String search) async {
     await searchHistoryStore.record(search).delete(db);
+  }
+
+  /// Ограничение роста базы. sembast при запуске читает базу в память целиком, поэтому
+  /// записи о позиции просмотра, кэш истории и DeArrow, копившиеся годами без предела,
+  /// замедляли запуск. Оставляем самые свежие.
+  Future<void> trimCaches() async {
+    Future<void> trim(StoreRef<String, Map<String, Object?>> store, int keep, String? timeField) async {
+      final all = await store.find(db);
+      if (all.length <= keep) return;
+      int t(RecordSnapshot<String, Map<String, Object?>> r) {
+        final v = timeField == null ? null : r.value[timeField];
+        if (v is int) return v;
+        if (v is String) return DateTime.tryParse(v)?.millisecondsSinceEpoch ?? 0;
+        return 0;
+      }
+
+      final sorted = List.of(all)..sort((a, b) => t(a).compareTo(t(b)));
+      final drop = sorted.take(all.length - keep).map((r) => r.key).toList();
+      await store.records(drop).delete(db);
+      log.info('База: ${store.name} — удалено ${drop.length} старых записей из ${all.length}');
+    }
+
+    await trim(progressStore, 3000, 't');
+    await trim(historyVideoCacheStore, 1000, 'created');
+    await trim(deArrowCacheStore, 1000, null);
   }
 
   @override
@@ -271,7 +297,10 @@ class SembastSqfDb extends IDbClient {
 
   @override
   saveProgress(Progress progress) async {
-    await progressStore.record(progress.videoId).put(db, progress.toJson());
+    // 't' — когда смотрели: по нему чистим самые старые записи (см. trimCaches)
+    await progressStore
+        .record(progress.videoId)
+        .put(db, {...progress.toJson(), 't': DateTime.now().millisecondsSinceEpoch});
   }
 
   @override
@@ -300,9 +329,12 @@ class SembastSqfDb extends IDbClient {
   }
 
   @override
-  upsertServer(Server server) async {
+  Future<void> upsertServer(Server server) async {
     await serversStore.record(server.url).put(db, server.toJson());
     await super.upsertServer(server);
+    // копия текущего сервера для фоновой проверки уведомлений — теперь всегда здесь,
+    // а не вручную в десятке мест (где её легко было забыть)
+    if (server.inUse) await _mirror(server);
   }
 
   @override
@@ -316,6 +348,15 @@ class SembastSqfDb extends IDbClient {
     await serversStore
         .record(server.url)
         .put(db, server.copyWith(inUse: true).toJson());
+    await _mirror(server.copyWith(inUse: true));
+  }
+
+  Future<void> _mirror(Server s) async {
+    try {
+      await fileDb.useServer(s);
+    } catch (e) {
+      log.fine('файловая копия сервера: $e');
+    }
   }
 
   @override

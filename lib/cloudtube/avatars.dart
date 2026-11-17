@@ -25,38 +25,70 @@ class CtAvatars {
   final Set<String> _queue = {};
   Timer? _timer;
 
-  Future<String?> get(String channelId) {
+  /// [slow] — можно взять картинку по одному каналу (без дополнений сервера).
+  /// Только для коротких списков (ряд подписок на ТВ): в лентах это сотни запросов
+  /// к YouTube — тормоза и ограничение по IP (так было в 1.1.60–1.1.63).
+  Future<String?> get(String channelId, {bool slow = false}) {
     if (channelId.isEmpty) return Future.value(null);
-    if (_cache.containsKey(channelId)) return Future.value(_cache[channelId]);
+    if (_cache.containsKey(channelId) && (_cache[channelId] != null || !slow)) {
+      return Future.value(_cache[channelId]);
+    }
     final c = _waiting.putIfAbsent(channelId, () => Completer<String?>());
-    _queue.add(channelId);
-    _timer ??= Timer(const Duration(milliseconds: 150), _flush);
+    if (slow) {
+      _slowQueue.add(channelId);
+      _pumpSlow();
+    } else {
+      _queue.add(channelId);
+      _timer ??= Timer(const Duration(milliseconds: 150), _flush);
+    }
     return c.future;
   }
 
-  static final _yt = yt.YoutubeExplode();
-
-  /// Без дополнений CloudTube: напрямую — из YouTube (1 лёгкий запрос), со своего
-  /// Invidious — из карточки канала. Не больше 4 запросов одновременно.
-  Future<Map<String, dynamic>> _oneByOne(List<String> ids) async {
-    final out = <String, dynamic>{};
-    Future<void> one(String id) async {
-      try {
-        if (ctDirectActive) {
-          out[id] = (await _yt.channels.get(id).timeout(const Duration(seconds: 8))).logoUrl;
-        } else {
-          final c = await service.getChannel(id).timeout(const Duration(seconds: 8));
-          out[id] = ImageObject.getBestThumbnail(c.authorThumbnails)?.url;
-        }
-      } catch (_) {}
-    }
-
-    for (var i = 0; i < ids.length; i += 4) {
-      await Future.wait(ids.skip(i).take(4).map(one));
-    }
-    return out;
+  void _done(String id, String? url) {
+    _cache[id] = url;
+    _waiting.remove(id)?.complete(url);
   }
 
+  // ---------- медленный путь: по одному каналу, не больше 2 запросов сразу ----------
+  static final _yt = yt.YoutubeExplode();
+  final List<String> _slowQueue = [];
+  int _slowRunning = 0;
+  int _slowFails = 0;
+
+  void _pumpSlow() {
+    while (_slowRunning < 2 && _slowQueue.isNotEmpty) {
+      final id = _slowQueue.removeAt(0);
+      // 3 ошибки подряд — YouTube/сервер не отвечает, больше не дёргаем до перезапуска
+      if (_slowFails >= 3) {
+        _done(id, null);
+        continue;
+      }
+      _slowRunning++;
+      unawaited(_slowOne(id).whenComplete(() {
+        _slowRunning--;
+        _pumpSlow();
+      }));
+    }
+  }
+
+  Future<void> _slowOne(String id) async {
+    String? url;
+    try {
+      if (ctDirectActive) {
+        url = (await _yt.channels.get(id).timeout(const Duration(seconds: 8))).logoUrl;
+      } else {
+        final c = await service.getChannel(id).timeout(const Duration(seconds: 8));
+        url = ImageObject.getBestThumbnail(c.authorThumbnails)?.url;
+      }
+      _slowFails = 0;
+    } catch (e) {
+      _slowFails++;
+      _log.fine('avatar $id: $e');
+    }
+    _done(id, url);
+  }
+
+  // ---------- быстрый путь: пачкой с сервера CloudTube (если есть дополнения) ----------
   Future<void> _flush() async {
     _timer = null;
     final ids = _queue.take(40).toList();
@@ -64,11 +96,9 @@ class CtAvatars {
     if (_queue.isNotEmpty) _timer = Timer(const Duration(milliseconds: 50), _flush);
     Map<String, dynamic> res = {};
     try {
-      if (ctDirectActive || !await CtServer.hasAddons()) {
-        res = await _oneByOne(ids);
-      } else {
+      if (!ctDirectActive && await CtServer.hasAddons()) {
         final req = await service.buildRequest('/ct-api/avatars', query: {'ids': ids.join(',')});
-        final r = await service.httpClient.get(req.uri, headers: req.headers);
+        final r = await service.httpClient.get(req.uri, headers: req.headers).timeout(const Duration(seconds: 10));
         if (r.statusCode == 200) {
           res = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
         }
@@ -77,9 +107,7 @@ class CtAvatars {
       _log.fine('avatars failed: $e');
     }
     for (final id in ids) {
-      final u = res[id] as String?;
-      _cache[id] = u;
-      _waiting.remove(id)?.complete(u);
+      _done(id, res[id] as String?);
     }
   }
 }
@@ -91,8 +119,14 @@ class CtChannelAvatar extends StatelessWidget {
   final double size;
   final VoidCallback? onTap;
 
+  /// Картинка канала, если она уже пришла вместе с роликом — без лишних запросов.
+  final String? url;
+
+  /// Разрешить запрос по одному каналу (см. [CtAvatars.get]).
+  final bool slow;
+
   const CtChannelAvatar(
-      {super.key, required this.channelId, required this.author, this.size = 36, this.onTap});
+      {super.key, required this.channelId, required this.author, this.size = 36, this.onTap, this.url, this.slow = false});
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +166,7 @@ class CtChannelAvatar extends StatelessWidget {
 
   /// Полный адрес картинки и заголовки (для относительного пути — через свой сервер).
   Future<(String, Map<String, String>?)?> _resolve() async {
-    final url = await CtAvatars.instance.get(channelId);
+    final url = (this.url?.isNotEmpty ?? false) ? this.url : await CtAvatars.instance.get(channelId, slow: slow);
     if (url == null || url.isEmpty) return null;
     Server? server;
     try {

@@ -3,64 +3,118 @@ import 'direct.dart';
 import '../utils/models/image_object.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/settings/models/db/server.dart';
+import 'package:clipious/settings/models/db/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('CtAvatars');
 
-/// Аватарки каналов пачками с сервера CloudTube: GET /ct-api/avatars?ids=UC..,UC..
-/// Ответ: {"UC...": "/ggpht/..."}. Кэш в памяти на время работы приложения.
+/// Аватарки каналов.
+/// • свой сервер с дополнениями CloudTube — пачкой: GET /ct-api/avatars?ids=UC..,UC..
+/// • напрямую (и по просьбе [slow]) — по одному каналу у YouTube, бережно: не больше 2 запросов
+///   сразу, разбор страницы в отдельном изоляте, после 3 ошибок подряд — пауза 10 минут.
+/// Найденные адреса хранятся в базе 30 дней, так что каждый канал запрашивается редко.
 class CtAvatars {
   CtAvatars._();
 
   static final CtAvatars instance = CtAvatars._();
 
+  static const _key = 'ct-avatars';
+  static const _keepDays = 30;
+
   final Map<String, String?> _cache = {};
+  final Map<String, int> _savedDay = {};
   final Map<String, Completer<String?>> _waiting = {};
   final Set<String> _queue = {};
   Timer? _timer;
+  Timer? _saveTimer;
+  bool _loaded = false;
 
-  /// [slow] — можно взять картинку по одному каналу (без дополнений сервера).
-  /// Только для коротких списков (ряд подписок на ТВ): в лентах это сотни запросов
-  /// к YouTube — тормоза и ограничение по IP (так было в 1.1.60–1.1.63).
+  static int get _today => DateTime.now().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+
+  void _load() {
+    if (_loaded) return;
+    _loaded = true;
+    try {
+      final raw = db.getSettings(_key)?.value;
+      if (raw == null || raw.isEmpty) return;
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      final today = _today;
+      m.forEach((id, v) {
+        final l = v as List<dynamic>;
+        final day = (l[1] as num).toInt();
+        if (today - day <= _keepDays) {
+          _cache[id] = l[0] as String;
+          _savedDay[id] = day;
+        }
+      });
+    } catch (e) {
+      _log.fine('avatars cache: $e');
+    }
+  }
+
+  void _remember(String id, String url) {
+    _savedDay[id] = _today;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 5), () async {
+      // не больше 3000 каналов — самые свежие
+      final ids = _savedDay.keys.toList()..sort((a, b) => _savedDay[b]!.compareTo(_savedDay[a]!));
+      final m = <String, Object>{
+        for (final i in ids.take(3000))
+          if (_cache[i] != null) i: [_cache[i]!, _savedDay[i]!]
+      };
+      try {
+        await db.saveSetting(SettingsValue(_key, jsonEncode(m)));
+      } catch (_) {}
+    });
+  }
+
   Future<String?> get(String channelId, {bool slow = false}) {
     if (channelId.isEmpty) return Future.value(null);
-    if (_cache.containsKey(channelId) && (_cache[channelId] != null || !slow)) {
-      return Future.value(_cache[channelId]);
-    }
-    final c = _waiting.putIfAbsent(channelId, () => Completer<String?>());
-    if (slow) {
+    _load();
+    final hit = _cache[channelId];
+    if (hit != null) return Future.value(hit);
+    final useSlow = slow || ctDirectActive;
+    if (_cache.containsKey(channelId) && !useSlow) return Future.value(null);
+    final pending = _waiting[channelId];
+    if (pending != null) return pending.future;
+    final c = Completer<String?>();
+    _waiting[channelId] = c;
+    if (useSlow && ctDirectActive) {
       _slowQueue.add(channelId);
       _pumpSlow();
     } else {
       _queue.add(channelId);
-      _timer ??= Timer(const Duration(milliseconds: 150), _flush);
+      _timer ??= Timer(const Duration(milliseconds: 150), () => _flush(slowFallback: slow));
     }
     return c.future;
   }
 
   void _done(String id, String? url) {
     _cache[id] = url;
+    if (url != null && url.isNotEmpty) _remember(id, url);
     _waiting.remove(id)?.complete(url);
   }
 
-  // ---------- медленный путь: по одному каналу, не больше 2 запросов сразу ----------
-  static final _yt = yt.YoutubeExplode();
+  // ---------- по одному каналу ----------
   final List<String> _slowQueue = [];
   int _slowRunning = 0;
   int _slowFails = 0;
+  DateTime? _pausedUntil;
 
   void _pumpSlow() {
     while (_slowRunning < 2 && _slowQueue.isNotEmpty) {
-      final id = _slowQueue.removeAt(0);
-      // 3 ошибки подряд — YouTube/сервер не отвечает, больше не дёргаем до перезапуска
-      if (_slowFails >= 3) {
-        _done(id, null);
+      // последние запрошенные — первыми: это то, что сейчас на экране
+      final id = _slowQueue.removeLast();
+      final paused = _pausedUntil != null && DateTime.now().isBefore(_pausedUntil!);
+      if (paused) {
+        _waiting.remove(id)?.complete(null);
         continue;
       }
       _slowRunning++;
@@ -75,28 +129,38 @@ class CtAvatars {
     String? url;
     try {
       if (ctDirectActive) {
-        url = (await _yt.channels.get(id).timeout(const Duration(seconds: 8))).logoUrl;
+        url = await _ytLogoIsolated(id).timeout(const Duration(seconds: 10));
       } else {
         final c = await service.getChannel(id).timeout(const Duration(seconds: 8));
         url = ImageObject.getBestThumbnail(c.authorThumbnails)?.url;
       }
       _slowFails = 0;
     } catch (e) {
-      _slowFails++;
       _log.fine('avatar $id: $e');
+      if (++_slowFails >= 3) {
+        _pausedUntil = DateTime.now().add(const Duration(minutes: 10));
+        _slowFails = 0;
+      }
     }
-    _done(id, url);
+    if (url == null) {
+      // ошибку не запоминаем навсегда — попробуем при следующем показе
+      _waiting.remove(id)?.complete(null);
+    } else {
+      _done(id, url);
+    }
   }
 
-  // ---------- быстрый путь: пачкой с сервера CloudTube (если есть дополнения) ----------
-  Future<void> _flush() async {
+  // ---------- пачкой с сервера CloudTube ----------
+  Future<void> _flush({bool slowFallback = false}) async {
     _timer = null;
     final ids = _queue.take(40).toList();
     _queue.removeAll(ids);
     if (_queue.isNotEmpty) _timer = Timer(const Duration(milliseconds: 50), _flush);
     Map<String, dynamic> res = {};
+    var batch = false;
     try {
       if (!ctDirectActive && await CtServer.hasAddons()) {
+        batch = true;
         final req = await service.buildRequest('/ct-api/avatars', query: {'ids': ids.join(',')});
         final r = await service.httpClient.get(req.uri, headers: req.headers).timeout(const Duration(seconds: 10));
         if (r.statusCode == 200) {
@@ -107,8 +171,39 @@ class CtAvatars {
       _log.fine('avatars failed: $e');
     }
     for (final id in ids) {
-      _done(id, res[id] as String?);
+      final u = res[id] as String?;
+      if (u == null && !batch && slowFallback) {
+        // свой Invidious без дополнений и короткий список (ТВ) — по одному
+        unawaited(_slowOneServer(id));
+      } else {
+        _done(id, u);
+      }
     }
+  }
+
+  Future<void> _slowOneServer(String id) async {
+    while (_slowRunning >= 2) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    _slowRunning++;
+    try {
+      await _slowOne(id);
+    } finally {
+      _slowRunning--;
+    }
+  }
+}
+
+/// В отдельном изоляте: загрузка и разбор страницы канала не тормозят интерфейс.
+Future<String?> _ytLogoIsolated(String id) => Isolate.run(() => _ytLogo(id));
+
+Future<String?> _ytLogo(String id) async {
+  final y = yt.YoutubeExplode();
+  try {
+    final c = await y.channels.get(id);
+    return c.logoUrl.isEmpty ? null : c.logoUrl;
+  } finally {
+    y.close();
   }
 }
 

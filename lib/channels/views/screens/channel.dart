@@ -48,7 +48,8 @@ class ChannelScreen extends StatelessWidget {
                 : s.loading
                     ? const Center(child: CircularProgressIndicator())
                     : CtErrorView(
-                        message: 'Не удалось открыть канал', onRetry: context.read<ChannelCubit>().load),
+                        message: 'Не удалось открыть канал',
+                        details: s.error, onRetry: context.read<ChannelCubit>().load),
           ),
         );
       }),

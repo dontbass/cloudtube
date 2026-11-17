@@ -44,7 +44,8 @@ class TvChannelScreen extends StatelessWidget {
             if (channel != null) return _TvChannelBody(channel: channel);
             if (s.loading) return const Center(child: CircularProgressIndicator());
             return CtErrorView(
-                message: 'Не удалось открыть канал', autofocus: true, onRetry: context.read<ChannelCubit>().load);
+                message: 'Не удалось открыть канал',
+                        details: s.error, autofocus: true, onRetry: context.read<ChannelCubit>().load);
           }),
         ),
       ),

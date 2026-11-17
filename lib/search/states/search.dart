@@ -1,145 +1,127 @@
 import 'package:bloc/bloc.dart';
-import 'package:clipious/videos/models/video.dart';
 import 'package:easy_debounce/easy_debounce.dart';
-import 'package:flutter/material.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/search/models/db/search_history_item.dart';
+import 'package:clipious/search/models/search_date.dart';
+import 'package:clipious/search/models/search_duration.dart';
 import 'package:clipious/search/models/search_sort_by.dart';
-import 'package:clipious/search/states/search_filter.dart';
 
-import '../../channels/models/channel.dart';
-import '../../playlists/models/playlist.dart';
 import '../../settings/states/settings.dart';
 
-part 'search.freezed.dart';
+/// Фильтры поиска.
+class SearchFilters {
+  final SearchDate date;
+  final SearchDuration duration;
+  final SearchSortBy sortBy;
 
-class SearchCubit<T extends SearchState> extends Cubit<SearchState> {
+  const SearchFilters(
+      {this.date = SearchDate.any, this.duration = SearchDuration.any, this.sortBy = SearchSortBy.relevance});
+
+  bool get isDefault => date == SearchDate.any && duration == SearchDuration.any && sortBy == SearchSortBy.relevance;
+
+  SearchFilters copyWith({SearchDate? date, SearchDuration? duration, SearchSortBy? sortBy}) => SearchFilters(
+      date: date ?? this.date, duration: duration ?? this.duration, sortBy: sortBy ?? this.sortBy);
+
+  /// Ключ для пересоздания списков результатов при смене фильтров.
+  String get key => '${date.name}|${duration.name}|${sortBy.name}';
+}
+
+/// Состояние поиска. [text] — то, что сейчас в поле; [query] — то, что искали
+/// (результаты не перезагружаются, пока человек печатает).
+class SearchState {
+  final String text;
+  final String query;
+  final bool showResults;
+  final List<String> suggestions;
+  final List<String> history;
+  final SearchFilters filters;
+
+  const SearchState(
+      {this.text = '',
+      this.query = '',
+      this.showResults = false,
+      this.suggestions = const [],
+      this.history = const [],
+      this.filters = const SearchFilters()});
+
+  SearchState copyWith(
+          {String? text,
+          String? query,
+          bool? showResults,
+          List<String>? suggestions,
+          List<String>? history,
+          SearchFilters? filters}) =>
+      SearchState(
+          text: text ?? this.text,
+          query: query ?? this.query,
+          showResults: showResults ?? this.showResults,
+          suggestions: suggestions ?? this.suggestions,
+          history: history ?? this.history,
+          filters: filters ?? this.filters);
+}
+
+class SearchCubit extends Cubit<SearchState> {
   final SettingsCubit settings;
+  int _suggestSeq = 0;
 
-  SearchCubit(super.initialState, this.settings) {
-    onInit();
-  }
-
-  void onInit() {
-    state.queryController.addListener(getSuggestions);
-    getHistory();
-    if (state.searchNow) {
-      search(state.queryController.value.text);
-    }
+  SearchCubit(this.settings, {String? query, bool searchNow = false})
+      : super(SearchState(text: query ?? '')) {
+    _loadHistory();
+    if (searchNow && (query ?? '').trim().isNotEmpty) submit(query!);
   }
 
   @override
-  Future<void> close() async {
-    state.queryController.dispose();
-    super.close();
+  Future<void> close() {
+    EasyDebounce.cancel('search-suggestions');
+    return super.close();
   }
 
-  void onFiltersChanged(SearchFiltersState newValue) {
-    emit(state.copyWith(filters: newValue));
+  void _loadHistory() {
+    emit(state.copyWith(history: settings.state.useSearchHistory ? db.getSearchHistory() : const []));
   }
 
-  void sortChanged(SearchSortBy? value) {
-    emit(state.copyWith(sortBy: value ?? state.sortBy));
-    search(state.queryController.value.text);
+  /// Человек печатает: прячем результаты и показываем подсказки.
+  void onTextChanged(String t) {
+    if (t == state.text && !state.showResults) return;
+    emit(state.copyWith(text: t, showResults: false, suggestions: t.trim().isEmpty ? const [] : null));
+    if (t.trim().isEmpty || settings.state.distractionFreeMode) return;
+    final seq = ++_suggestSeq;
+    EasyDebounce.debounce('search-suggestions', const Duration(milliseconds: 300), () async {
+      try {
+        final s = (await service.getSearchSuggestion(t)).suggestions;
+        // ответ на старый текст не показываем
+        if (!isClosed && seq == _suggestSeq) emit(state.copyWith(suggestions: s));
+      } catch (_) {}
+    });
   }
 
-  // returns true search is already cleared
-  bool searchCleared() {
-    if (state.queryController.value.text.isEmpty) {
-      return true;
-    } else {
-      state.queryController.clear();
-      emit(state.copyWith(showResults: false));
-      return false;
+  Future<void> submit(String q) async {
+    final query = q.trim();
+    if (query.isEmpty) return;
+    _suggestSeq++;
+    emit(state.copyWith(text: query, query: query, showResults: true));
+    if (settings.state.useSearchHistory) {
+      await db.addToSearchHistory(SearchHistoryItem(query, DateTime.now().millisecondsSinceEpoch ~/ 1000));
+      if (!isClosed) _loadHistory();
     }
   }
 
-  clearSearch() {
-    emit(state.copyWith(showResults: false));
+  /// Вернуться к результатам (например, после того как стёрли и не стали искать).
+  void showResults() {
+    if (state.query.isNotEmpty) emit(state.copyWith(text: state.query, showResults: true));
   }
 
-  void getSuggestions({bool hideResult = true}) {
-    emit(state.copyWith(showResults: !hideResult));
-    if (!settings.state.distractionFreeMode) {
-      EasyDebounce.debounce(
-          'search-suggestions', const Duration(milliseconds: 500), () async {
-        var suggestions = (await service
-                .getSearchSuggestion(state.queryController.value.text))
-            .suggestions;
-        emit(state.copyWith(suggestions: suggestions));
-      });
-    }
-  }
+  void setFilters(SearchFilters f) => emit(state.copyWith(filters: f));
 
-  void getHistory() {
-    emit(state.copyWith(
-        searchHistory:
-            settings.state.useSearchHistory ? db.getSearchHistory() : []));
-  }
-
-  search(String value) async {
-    emit(state.copyWith(showResults: true));
-
-    final query = state.queryController.text;
-    if (query.isNotEmpty && settings.state.useSearchHistory) {
-      await db.addToSearchHistory(SearchHistoryItem(
-          query, (DateTime.now().millisecondsSinceEpoch / 1000).round()));
-    }
-    getHistory();
-  }
-
-  setSearchQuery(String e) {
-    state.queryController.text = e;
-    search(e);
-  }
-
-  removeFromHistory(String e) async {
+  Future<void> removeFromHistory(String e) async {
     await db.deleteFromSearchHistory(e);
-    getHistory();
+    if (!isClosed) _loadHistory();
   }
-}
 
-@freezed
-sealed class SearchState with _$SearchState {
-  const factory SearchState(
-          {required TextEditingController queryController,
-          @Default(false) bool searchNow,
-          @Default([]) List<String> suggestions,
-          @Default(SearchSortBy.relevance) SearchSortBy sortBy,
-          @Default(false) bool showResults,
-          @Default(1) int videoPage,
-          @Default(1) int channelPage,
-          @Default(1) int playlistPage,
-          @Default([]) List<String> searchHistory,
-          @Default(SearchFiltersState()) SearchFiltersState filters}) =
-      _SearchState;
-
-  static SearchState init(
-      {TextEditingController? queryController,
-      int? selectedIndex,
-      List<Video>? videos,
-      List<Channel>? channels,
-      List<Playlist>? playlists,
-      bool? useHistory,
-      bool? searchNow,
-      List<String>? suggestions,
-      SearchSortBy? sortBy,
-      bool? showResults,
-      bool? loading,
-      int? videoPage,
-      int? channelPage,
-      int? playlistPage,
-      String? query}) {
-    return SearchState(
-        queryController:
-            queryController ?? TextEditingController(text: query ?? ''),
-        searchNow: searchNow ?? false,
-        suggestions: suggestions ?? [],
-        sortBy: sortBy ?? SearchSortBy.relevance,
-        showResults: showResults ?? false,
-        videoPage: videoPage ?? 1,
-        channelPage: channelPage ?? 1,
-        playlistPage: playlistPage ?? 1);
+  Future<void> clearHistory() async {
+    for (final e in [...state.history]) {
+      await db.deleteFromSearchHistory(e);
+    }
+    if (!isClosed) _loadHistory();
   }
 }

@@ -737,26 +737,6 @@ class RecommendedRouteArgs {
 }
 
 /// generated route for
-/// [SearchChannelTab]
-class SearchChannelRoute extends PageRouteInfo<void> {
-  const SearchChannelRoute({List<PageRouteInfo>? children})
-      : super(
-          SearchChannelRoute.name,
-          initialChildren: children,
-          argsEquality: false,
-        );
-
-  static const String name = 'SearchChannelRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const SearchChannelTab();
-    },
-  );
-}
-
-/// generated route for
 /// [SearchHistorySettingsScreen]
 class SearchHistorySettingsRoute extends PageRouteInfo<void> {
   const SearchHistorySettingsRoute({List<PageRouteInfo>? children})
@@ -792,26 +772,6 @@ class SearchHistoryRoute extends PageRouteInfo<void> {
     name,
     builder: (data) {
       return const SearchHistoryTab();
-    },
-  );
-}
-
-/// generated route for
-/// [SearchPlaylistTab]
-class SearchPlaylistRoute extends PageRouteInfo<void> {
-  const SearchPlaylistRoute({List<PageRouteInfo>? children})
-      : super(
-          SearchPlaylistRoute.name,
-          initialChildren: children,
-          argsEquality: false,
-        );
-
-  static const String name = 'SearchPlaylistRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const SearchPlaylistTab();
     },
   );
 }
@@ -861,26 +821,6 @@ class SearchRouteArgs {
   String toString() {
     return 'SearchRouteArgs{key: $key, query: $query, searchNow: $searchNow}';
   }
-}
-
-/// generated route for
-/// [SearchVideoTab]
-class SearchVideoRoute extends PageRouteInfo<void> {
-  const SearchVideoRoute({List<PageRouteInfo>? children})
-      : super(
-          SearchVideoRoute.name,
-          initialChildren: children,
-          argsEquality: false,
-        );
-
-  static const String name = 'SearchVideoRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const SearchVideoTab();
-    },
-  );
 }
 
 /// generated route for

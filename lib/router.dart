@@ -11,10 +11,7 @@ import 'package:clipious/playlists/models/playlist.dart';
 import 'package:clipious/playlists/views/screens/playlist.dart';
 import 'package:clipious/playlists/views/tv/screens/playlist.dart';
 import 'package:clipious/playlists/views/tv/screens/playlist_grid.dart';
-import 'package:clipious/search/views/screens/channel_tab.dart';
-import 'package:clipious/search/views/screens/playlist_tab.dart';
 import 'package:clipious/search/views/screens/search.dart';
-import 'package:clipious/search/views/screens/video_tab.dart';
 import 'package:clipious/search/views/tv/screens/search.dart';
 import 'package:clipious/settings/models/db/server.dart';
 import 'package:clipious/settings/models/db/video_filter.dart';
@@ -177,11 +174,7 @@ class AppRouter extends RootStackRouter {
                 ]),
                 AutoRoute(page: ChannelRoute.page, path: channelPath),
                 AutoRoute(page: DownloadManagerRoute.page),
-                AutoRoute(page: SearchRoute.page, path: searchPath, children: [
-                  AutoRoute(page: SearchVideoRoute.page, path: videosPath),
-                  AutoRoute(page: SearchChannelRoute.page, path: channelPath),
-                  AutoRoute(page: SearchPlaylistRoute.page, path: playlistsPath)
-                ]),
+                AutoRoute(page: SearchRoute.page, path: searchPath),
                 AutoRoute(page: EditHomeLayoutRoute.page),
                 AutoRoute(page: SettingsRoute.page),
                 AutoRoute(page: BrowsingSettingsRoute.page),

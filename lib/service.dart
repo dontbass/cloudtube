@@ -803,3 +803,10 @@ class Service {
     return Dislike.fromJson(handleResponse(response));
   }
 }
+
+class ServerRequest {
+  final Uri uri;
+  final Map<String, String> headers;
+
+  ServerRequest({required this.uri, required this.headers});
+}

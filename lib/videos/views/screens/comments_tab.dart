@@ -1,9 +1,10 @@
 import 'package:auto_route/annotations.dart';
+import 'package:clipious/cloudtube/comments.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/comments/views/components/comments_container.dart';
 
 import '../../models/video.dart';
 
+/// Вкладка комментариев на странице ролика — комментарии CloudTube.
 @RoutePage()
 class CommentsTab extends StatelessWidget {
   final Video? video;
@@ -13,6 +14,6 @@ class CommentsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return video == null
         ? const SizedBox.shrink()
-        : SingleChildScrollView(child: CommentsContainer(video: video!));
+        : CtCommentsPanel(key: ValueKey('comms-${video!.videoId}'), videoId: video!.videoId);
   }
 }

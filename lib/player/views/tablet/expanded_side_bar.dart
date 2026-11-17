@@ -6,7 +6,7 @@ import 'package:clipious/player/states/interfaces/media_player.dart';
 import 'package:clipious/player/states/player.dart';
 import 'package:clipious/player/views/components/video_queue.dart';
 
-import '../../../comments/views/components/comments_container.dart';
+import '../../../cloudtube/comments.dart';
 import '../../../downloads/models/downloaded_video.dart';
 import '../../../settings/states/settings.dart';
 import '../../../videos/models/video.dart';
@@ -73,11 +73,9 @@ class ExpandedSideBar extends StatelessWidget {
                             ),
                           ),
                           if (!distractionFreeMode)
-                            SingleChildScrollView(
-                              child: CommentsContainer(
-                                video: video,
+                            CtCommentsPanel(
+                                videoId: video.videoId,
                                 key: ValueKey('comms-${video.videoId}'),
-                              ),
                             ),
                           if (!distractionFreeMode)
                             SingleChildScrollView(

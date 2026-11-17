@@ -5,7 +5,7 @@ import 'package:clipious/l10n/generated/app_localizations.dart';
 import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/settings/views/screens/settings.dart';
 import 'package:clipious/utils.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 @RoutePage()
 class DeArrowSettingsScreen extends StatelessWidget {

@@ -8,7 +8,7 @@ import 'package:clipious/settings/states/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 import '../../../utils.dart';
 import '../../models/db/server.dart';

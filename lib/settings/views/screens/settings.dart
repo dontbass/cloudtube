@@ -11,7 +11,7 @@ import 'package:clipious/l10n/generated/app_localizations.dart';
 import 'package:clipious/app/states/app.dart';
 import 'package:clipious/router.dart';
 import 'package:clipious/utils/views/components/app_icon.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 import '../../states/settings.dart';
 
@@ -69,7 +69,7 @@ class SettingsScreen extends StatelessWidget {
           CtCard(
             icon: Icons.palette_outlined,
             title: locals.appearance,
-            subtitle: 'Тема и панель навигации',
+            subtitle: 'Тема, чёрный фон, подписи вкладок',
             onTap: () => router.push(const AppearanceSettingsRoute()),
           ),
           CtCard(

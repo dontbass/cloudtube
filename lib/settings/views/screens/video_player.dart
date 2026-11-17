@@ -6,7 +6,7 @@ import 'package:clipious/router.dart';
 import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/settings/views/screens/settings.dart';
 import 'package:clipious/utils.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 @RoutePage()
 class VideoPlayerSettingsScreen extends StatelessWidget {

@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
 import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/settings/views/screens/settings.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 import '../../../utils/views/components/select_list_dialog.dart';
 
@@ -88,13 +88,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
             sections: [
               SettingsSection(
                 tiles: [
-                  SettingsTile.switchTile(
-                    leading: const Icon(Icons.palette),
-                    initialValue: state.useDynamicTheme,
-                    onToggle: cubit.toggleDynamicTheme,
-                    title: Text(locals.useDynamicTheme),
-                    description: Text(locals.useDynamicThemeDescription),
-                  ),
+                  // «Динамические цвета» Android убраны: у CloudTube свои темы
                   SettingsTile(
                     leading: const Icon(Icons.brightness_4_outlined),
                     title: Text(locals.themeBrightness),

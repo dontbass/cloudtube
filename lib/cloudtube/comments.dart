@@ -171,11 +171,37 @@ Future<void> ctShowComments(BuildContext context, String videoId) {
   );
 }
 
+/// Комментарии CloudTube внутри экрана (вкладка на странице ролика, боковая панель планшета) —
+/// вместо старых комментариев Clipious. Та же логика, что и в шторке, без кнопки «закрыть».
+class CtCommentsPanel extends StatefulWidget {
+  final String videoId;
+
+  const CtCommentsPanel({super.key, required this.videoId});
+
+  @override
+  State<CtCommentsPanel> createState() => _CtCommentsPanelState();
+}
+
+class _CtCommentsPanelState extends State<CtCommentsPanel> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _CommentsSheet(videoId: widget.videoId, scroll: _scroll, embedded: true);
+}
+
 class _CommentsSheet extends StatefulWidget {
   final String videoId;
   final ScrollController scroll;
+  final bool embedded;
 
-  const _CommentsSheet({required this.videoId, required this.scroll});
+  const _CommentsSheet({required this.videoId, required this.scroll, this.embedded = false});
 
   @override
   State<_CommentsSheet> createState() => _CommentsSheetState();
@@ -293,7 +319,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           if (count != null && count! > 0)
             Text(ctShortNumber(count!), style: TextStyle(fontSize: 15, color: colors.onSurfaceVariant)),
           const Spacer(),
-          IconButton(icon: const Icon(Icons.close, size: 28), onPressed: () => Navigator.of(context).pop()),
+          if (!widget.embedded)
+            IconButton(icon: const Icon(Icons.close, size: 28), onPressed: () => Navigator.of(context).pop()),
         ]),
       ),
       Padding(

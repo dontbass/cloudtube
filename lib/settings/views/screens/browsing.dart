@@ -7,7 +7,7 @@ import 'package:clipious/router.dart';
 import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/settings/views/screens/settings.dart';
 import 'package:locale_names/locale_names.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 import '../../../utils/views/components/select_list_dialog.dart';
 import '../components/app_customizer.dart';

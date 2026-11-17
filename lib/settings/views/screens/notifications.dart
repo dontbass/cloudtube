@@ -6,7 +6,7 @@ import 'package:clipious/settings/states/settings.dart';
 import 'package:clipious/settings/views/components/channel_notifications.dart';
 import 'package:clipious/settings/views/components/playlist_notifications.dart';
 import 'package:clipious/settings/views/screens/settings.dart';
-import 'package:settings_ui/settings_ui.dart';
+import 'package:clipious/cloudtube/settings_ui.dart';
 
 @RoutePage()
 class NotificationSettingsScreen extends StatelessWidget {

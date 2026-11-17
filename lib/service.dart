@@ -31,7 +31,6 @@ import 'package:logging/logging.dart';
 import 'channels/models/channel.dart';
 import 'channels/models/channel_playlists.dart';
 import 'channels/models/channel_videos.dart';
-import 'comments/models/video_comments.dart';
 import 'notifications/models/db/subscription_notifications.dart';
 import 'search/models/search_suggestion.dart';
 import 'settings/models/db/server.dart';
@@ -49,7 +48,6 @@ const urlSearch = '/api/v1/search';
 const urlStats = '/api/v1/stats';
 const urlGetSubscriptions = '/api/v1/auth/subscriptions';
 const urlAddDeleteSubscriptions = '/api/v1/auth/subscriptions/:ucid';
-const urlGetComments = '/api/v1/comments/:id';
 const urlGetChannel = '/api/v1/channels/:id';
 const urlGetChannelVideos = '/api/v1/channels/:id/videos';
 const urlGetChannelStreams = '/api/v1/channels/:id/streams';
@@ -495,21 +493,6 @@ class Service {
     Iterable i = handleResponse(response);
 
     return List<Subscription>.from(i.map((e) => Subscription.fromJson(e)));
-  }
-
-  Future<VideoComments> getComments(String videoId,
-      {String? continuation, String? sortBy, String? source}) async {
-    Map<String, String> queryStr = {};
-    if (continuation != null) {
-      queryStr.putIfAbsent('continuation', () => continuation);
-    }
-    if (sortBy != null) queryStr.putIfAbsent('sort_by', () => sortBy);
-    if (source != null) queryStr.putIfAbsent('source', () => source);
-
-    var req = await buildRequest(urlGetComments,
-        pathParams: {':id': videoId}, query: queryStr);
-    final response = await httpClient.get(req.uri, headers: req.headers);
-    return VideoComments.fromJson(handleResponse(response));
   }
 
   Future<Channel> getChannel(String channelId) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:clipious/downloads/models/downloaded_video.dart';
@@ -63,10 +64,7 @@ class VideoCubit extends Cubit<VideoState> {
 
   @override
   close() async {
-    var state = this.state.copyWith();
-    if (downloadManager.state.downloadProgresses.containsKey(state.videoId)) {
-      downloadManager.removeListener(state.videoId, onDownloadProgress);
-    }
+    await _dl?.cancel();
     super.close();
   }
 
@@ -88,10 +86,19 @@ class VideoCubit extends Cubit<VideoState> {
     }
   }
 
+  StreamSubscription<DownloadManagerState>? _dl;
+
+  /// Прогресс загрузки этого ролика — из общего состояния менеджера загрузок.
   initStreamListener() {
-    if (downloadManager.state.downloadProgresses.containsKey(state.videoId)) {
-      downloadManager.addListener(state.videoId, onDownloadProgress);
-    }
+    _dl ??= downloadManager.stream.listen((s) {
+      if (isClosed) return;
+      final p = s.downloadProgresses[state.videoId];
+      if (p != null) {
+        onDownloadProgress(p.value.clamp(0.0, 0.99));
+      } else if (state.downloading) {
+        onDownloadProgress(1);
+      }
+    });
   }
 
   togglePlayRecommendedNext(bool? value) {

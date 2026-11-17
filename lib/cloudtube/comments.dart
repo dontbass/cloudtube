@@ -1,4 +1,5 @@
 import 'server_caps.dart';
+import 'net.dart';
 import 'direct.dart';
 import 'yt_account.dart';
 import 'yt_comments.dart';
@@ -96,7 +97,8 @@ String ctShortNumber(int n) {
 }
 
 class CtComments {
-  static final Map<String, CtCommentsPage> _cache = {};
+  // раньше кэш рос без предела за всё время работы приложения
+  static final _cache = CtLru<String, CtCommentsPage>(60, ttl: const Duration(minutes: 10));
 
   static Future<Map<String, dynamic>?> _get(String path, Map<String, String> query) async {
     final req = await service.buildRequest(path, query: query);
@@ -105,7 +107,7 @@ class CtComments {
       _log.info('$path -> ${r.statusCode}');
       return null;
     }
-    final j = jsonDecode(utf8.decode(r.bodyBytes));
+    final j = await ctJsonDecodeBytes(r.bodyBytes);
     return j is Map<String, dynamic> ? j : null;
   }
 

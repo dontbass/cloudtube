@@ -1,4 +1,5 @@
 import 'direct.dart';
+import 'net.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -242,19 +243,16 @@ class CtShortItem extends StatefulWidget {
 
 /// Общий кэш данных видео: следующий ролик подгружается заранее.
 /// Ссылки на потоки живут несколько часов, поэтому запись старше 40 минут запрашивается заново.
-final Map<String, (DateTime, Future<Video>)> _videoCache = {};
+final _videoCache = CtLru<String, Future<Video>>(60, ttl: const Duration(minutes: 40));
 
 Future<Video> _getVideo(String id) {
   final hit = _videoCache[id];
-  if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 40)) {
-    return hit.$2;
-  }
-  if (_videoCache.length > 60) _videoCache.remove(_videoCache.keys.first);
+  if (hit != null) return hit;
   final f = service.getVideo(id).catchError((Object e) {
     _videoCache.remove(id);
     throw e;
   });
-  _videoCache[id] = (DateTime.now(), f);
+  _videoCache[id] = f;
   return f;
 }
 

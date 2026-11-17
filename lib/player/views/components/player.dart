@@ -1,3 +1,7 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:clipious/router.dart';
+import 'package:clipious/cloudtube/platform.dart';
+import 'package:clipious/videos/views/components/download_modal_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
@@ -164,6 +168,14 @@ class Player extends StatelessWidget {
                                                     currentlyPlaying == null
                                                 ? []
                                                 : [
+                                                    if (!ctDesktop && currentlyPlaying.liveNow != true)
+                                                      CtDownloadIconButton(
+                                                          video: currentlyPlaying,
+                                                          onOpenDownloads: () {
+                                                            cubit.showMiniPlayer();
+                                                            AutoRouter.of(context)
+                                                                .push(const DownloadManagerRoute());
+                                                          }),
                                                     VideoShareButton(
                                                       video: currentlyPlaying,
                                                       showTimestampOption: true,

@@ -7,12 +7,15 @@ import 'package:clipious/subscription_management/view/components/subscribe_butto
 import 'package:clipious/utils/views/components/text_linkified.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:clipious/videos/views/components/add_to_playlist_dialog.dart';
+import 'package:clipious/videos/views/components/download_modal_sheet.dart';
+import 'package:clipious/downloads/states/download_manager.dart';
 import 'package:clipious/videos/views/components/video_in_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'avatars.dart';
+import 'platform.dart';
 import 'comments.dart';
 
 /// Страница просмотра как в YouTube: под плеером одна лента —
@@ -182,6 +185,34 @@ class _CtWatchBodyState extends State<CtWatchBody> {
                     ],
                   ]),
                   null),
+              // скачать: состояние берём из менеджера загрузок (идёт / готово)
+              if (!ctDesktop && v.liveNow != true)
+                Builder(builder: (context) {
+                  final dm = context.watch<DownloadManagerCubit>().state;
+                  final p = dm.downloadProgresses[v.videoId];
+                  final saved = dm.videos.any((d) => d.videoId == v.videoId && d.downloadComplete);
+                  final IconData icon;
+                  final String label;
+                  if (p != null) {
+                    icon = Icons.downloading_rounded;
+                    label = '${(p.value * 100).floor()}%';
+                  } else if (saved) {
+                    icon = Icons.download_done_rounded;
+                    label = 'Скачано';
+                  } else {
+                    icon = Icons.download_rounded;
+                    label = 'Скачать';
+                  }
+                  return chip(
+                      Row(children: [Icon(icon, size: 18), const SizedBox(width: 6), Text(label)]),
+                      () {
+                        if (p != null || saved) {
+                          AutoRouter.of(context).push(const DownloadManagerRoute());
+                        } else {
+                          DownloadModalSheet.showVideoModalSheet(context, v);
+                        }
+                      });
+                }),
               chip(const Row(children: [Icon(Icons.shortcut, size: 18), SizedBox(width: 6), Text('Поделиться')]),
                   () => SharePlus.instance.share(ShareParams(text: 'https://youtu.be/${v.videoId}'))),
               chip(const Row(children: [Icon(Icons.bookmark_border, size: 18), SizedBox(width: 6), Text('Сохранить')]),

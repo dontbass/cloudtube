@@ -98,8 +98,10 @@ void main() {
     test('после 3 минут спокойного показа счёт с нуля; у другого ролика — свой счёт', () {
       final p = CtRecoveryPolicy();
       p.onFailure('a', tvDirect: false, now: t0);
-      expect(p.onFailure('a', tvDirect: false, now: t0.add(const Duration(seconds: 10))), isNot(CtRecovery.retrySame));
-      expect(p.onFailure('a', tvDirect: false, now: t0.add(const Duration(minutes: 4))), CtRecovery.retrySame);
+      p.onFailure('a', tvDirect: false, now: t0.add(const Duration(seconds: 10)));
+      expect(p.fails, 2);
+      p.onFailure('a', tvDirect: false, now: t0.add(const Duration(minutes: 4)));
+      expect(p.fails, 1);
       expect(p.onFailure('b', tvDirect: false, now: t0.add(const Duration(minutes: 4, seconds: 1))), CtRecovery.retrySame);
     });
 

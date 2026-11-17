@@ -45,6 +45,7 @@ class CtPlaybackWatchdog {
   Duration _playedFor = Duration.zero;
   Duration? _lastPos;
   bool _stable = false;
+  bool _failed = false;
 
   /// Пользователь сам поставил паузу — автозапуск не вмешивается.
   bool userPaused = false;
@@ -57,6 +58,7 @@ class CtPlaybackWatchdog {
     _elapsed = _still = _playedFor = Duration.zero;
     _lastPos = null;
     _stable = false;
+    _failed = false;
     userPaused = false;
     _timer = Timer.periodic(interval, (_) => tick(interval));
   }
@@ -68,11 +70,13 @@ class CtPlaybackWatchdog {
 
   /// Один шаг проверки ([dt] — сколько прошло с прошлого шага).
   void tick(Duration dt) {
+    if (_failed) return; // о сбое сообщаем один раз, до следующего start()
     _elapsed += dt;
     final s = read();
     if (s == null || !s.initialized) {
       if (_elapsed >= startTimeout) {
         stop();
+        _failed = true;
         onFail('поток не открылся за ${startTimeout.inSeconds} с');
       }
       return;
@@ -96,6 +100,7 @@ class CtPlaybackWatchdog {
     _still += dt;
     if (_still >= stallTimeout) {
       stop();
+      _failed = true;
       onFail('зависание на ${s.position.inSeconds} с');
     }
   }

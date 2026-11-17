@@ -52,9 +52,9 @@ class TvSubscribeButton extends StatelessWidget {
                         Icon(state.isSubscribed ? Icons.done : Icons.add),
                         Padding(
                           padding: const EdgeInsets.only(left: 8.0),
-                          child: Text(
-                            '${(state.isSubscribed ? locals.subscribed : locals.subscribe)} | $subCount',
-                          ),
+                          child: Text(subCount.isEmpty
+                              ? (state.isSubscribed ? locals.subscribed : locals.subscribe)
+                              : '${(state.isSubscribed ? locals.subscribed : locals.subscribe)} | $subCount'),
                         ),
                       ]
                     : [

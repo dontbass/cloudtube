@@ -76,36 +76,28 @@ class SubscribeButton extends StatelessWidget {
           child: BlocBuilder<SubscribeButtonCubit, SubscribeButtonState>(
             builder: (context, state) {
               var cubit = context.read<SubscribeButtonCubit>();
+              final label = state.isSubscribed ? locals.subscribed : locals.subscribe;
+              final text = subCount.isEmpty ? label : '$label · $subCount';
+              final icon = state.loading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(state.isSubscribed ? Icons.done_rounded : Icons.add_rounded, size: 20);
+              void tap() => state.isSubscribed ? cubit.unsubscribe() : showSubscriptionSheet(context);
+              const shape = StadiumBorder();
+              const pad = EdgeInsets.symmetric(horizontal: 16);
+              // подписан — спокойная кнопка, не подписан — акцентная
               return SizedBox(
-                  height: 25,
-                  child: FilledButton.tonal(
-                    onPressed: () {
-                      if (state.isSubscribed) {
-                        cubit.unsubscribe();
-                      } else {
-                        showSubscriptionSheet(context);
-                      }
-                    },
-                    child: Row(
-                      children: [
-                        state.loading
-                            ? const SizedBox(
-                                width: 15,
-                                height: 15,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1,
-                                ))
-                            : Icon(state.isSubscribed ? Icons.done : Icons.add),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: Text(
-                              subCount.isEmpty
-                                  ? (state.isSubscribed ? locals.subscribed : locals.subscribe)
-                                  : '${(state.isSubscribed ? locals.subscribed : locals.subscribe)} | $subCount'),
-                        ),
-                      ],
-                    ),
-                  ));
+                  height: 38,
+                  child: state.isSubscribed
+                      ? FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(shape: shape, padding: pad),
+                          onPressed: tap,
+                          icon: icon,
+                          label: Text(text))
+                      : FilledButton.icon(
+                          style: FilledButton.styleFrom(shape: shape, padding: pad),
+                          onPressed: tap,
+                          icon: icon,
+                          label: Text(text)));
             },
           ),
         ),

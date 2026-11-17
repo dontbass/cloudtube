@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:auto_route/annotations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/app/views/tv/screens/tv_home.dart';
@@ -18,12 +16,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/l10n/generated/app_localizations.dart';
 
+import '../../../../cloudtube/tv_nav.dart';
+import '../../../../cloudtube/ui_state.dart';
 import '../../../../playlists/models/playlist.dart';
 import '../../../../playlists/views/components/playlist_in_list.dart';
-import '../../../../utils.dart';
-import '../../../../cloudtube/tv_nav.dart';
-import '../../../states/tv_channel.dart';
+import '../../../models/channel.dart';
+import '../../../models/channel_videos.dart';
+import '../../screens/channel.dart' show ctSubscribers;
 
+/// Страница канала на ТВ: шапка (аватар, название, подписка, описание) и ряды
+/// Видео / Моменты / Стримы / Плейлисты. Выбранный ряд встаёт вверх, как на главной.
+/// Без размытия на весь экран — оно дорого для слабых ТВ-приставок.
 @RoutePage()
 class TvChannelScreen extends StatelessWidget {
   final String channelId;
@@ -32,292 +35,211 @@ class TvChannelScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var locals = AppLocalizations.of(context)!;
-    TextTheme textTheme = Theme.of(context).textTheme;
-    ColorScheme colors = Theme.of(context).colorScheme;
-
     return Scaffold(
-      body: CtTvLeftEdge(child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) =>
-                ChannelCubit(ChannelController(channelId: channelId)),
-          ),
-          BlocProvider(
-            create: (context) => TvChannelCubit(const TvChannelController()),
-          )
-        ],
-        child: BlocBuilder<ChannelCubit, ChannelController>(
-          builder: (context, channel) =>
-              BlocBuilder<TvChannelCubit, TvChannelController>(
-                  builder: (context, tv) {
-            var tvCubit = context.read<TvChannelCubit>();
-
-            return channel.loading
-                ? const Center(
-                    child: SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: CircularProgressIndicator()),
-                  )
-                : DefaultTextStyle(
-                    style: textTheme.bodyLarge!,
-                    child: Stack(
-                      children: [
-                        Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: CachedNetworkImage(
-                                imageUrl: ImageObject.getBestThumbnail(
-                                            channel.channel?.authorBanners)
-                                        ?.url ??
-                                    '')),
-                        TweenAnimationBuilder(
-                            tween: Tween<double>(
-                                begin: 0,
-                                end: tv.showBackground ? overlayBlur : 0),
-                            duration: animationDuration,
-                            curve: Curves.easeInOutQuad,
-                            builder: (context, value, child) {
-                              return BackdropFilter(
-                                filter: ImageFilter.blur(
-                                  sigmaX: value,
-                                  sigmaY: value,
-                                ),
-                                child: AnimatedContainer(
-                                  color: colors.surface.withValues(
-                                      alpha: tv.showBackground
-                                          ? overlayBackgroundOpacity
-                                          : 0),
-                                  duration: animationDuration,
-                                  child: TvOverscan(
-                                    child: SingleChildScrollView(
-                                      controller: tvCubit.scrollController,
-                                      child: ListView(
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          shrinkWrap: true,
-                                          children: [
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  top: 100.0),
-                                              child: Align(
-                                                alignment: Alignment.centerLeft,
-                                                child: AnimatedContainer(
-                                                  decoration: BoxDecoration(
-                                                      color: tv.showBackground
-                                                          ? colors.surface
-                                                              .withValues(
-                                                                  alpha: 0)
-                                                          : colors.surface
-                                                              .withValues(
-                                                                  alpha: 1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              35)),
-                                                  duration: animationDuration,
-                                                  child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Thumbnail(
-                                                          thumbnails: ImageObject
-                                                              .getThumbnailUrlsByPreferredOrder(
-                                                                  channel
-                                                                      .channel
-                                                                      ?.authorThumbnails),
-                                                          width: 70,
-                                                          height: 70,
-                                                          decoration: BoxDecoration(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          35)),
-                                                        ),
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .only(
-                                                                  left: 8.0,
-                                                                  right: 20),
-                                                          child: Text(
-                                                            channel.channel
-                                                                    ?.author ??
-                                                                '',
-                                                            style: textTheme
-                                                                .displaySmall,
-                                                          ),
-                                                        )
-                                                      ]),
-                                                ),
-                                              ),
-                                            ),
-                                            TvSubscribeButton(
-                                              autoFocus: true,
-                                              channelId: channelId,
-                                              subCount: compactCurrency.format(
-                                                  channel.channel!.subCount),
-                                              onFocusChanged:
-                                                  tvCubit.scrollToTop,
-                                            ),
-                                            TvExpandableText(
-                                              text: channel
-                                                      .channel?.description ??
-                                                  '',
-                                              maxLines: 3,
-                                            ),
-                                            tv.hasVideos
-                                                ? Padding(
-                                                    key: tvCubit.videosTitle,
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 20.0),
-                                                    child: Text(
-                                                      locals.videos,
-                                                      style:
-                                                          textTheme.titleLarge,
-                                                    ),
-                                                  )
-                                                : const SizedBox.shrink(),
-                                            TvHorizontalVideoList(
-                                                onItemFocus:
-                                                    (video, index, focus) =>
-                                                        tvCubit.scrollTo(
-                                                            tvCubit.videosTitle,
-                                                            focus),
-                                                paginatedVideoList: ContinuationList<
-                                                    Video>((continuation) => service
-                                                        .getChannelVideos(
-                                                            channel.channel
-                                                                    ?.authorId ??
-                                                                '',
-                                                            continuation)
-                                                        .then((value) {
-                                                      tvCubit.setHasVideos(value
-                                                          .videos.isNotEmpty);
-                                                      return value;
-                                                    }))),
-                                            tv.hasShorts
-                                                ? Padding(
-                                                    key: tvCubit.shortTitle,
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 20.0),
-                                                    child: Text(
-                                                      locals.shorts,
-                                                      style:
-                                                          textTheme.titleLarge,
-                                                    ),
-                                                  )
-                                                : const SizedBox.shrink(),
-                                            TvHorizontalVideoList(
-                                                onItemFocus:
-                                                    (video, index, focus) =>
-                                                        tvCubit.scrollTo(
-                                                            tvCubit.shortTitle,
-                                                            focus),
-                                                paginatedVideoList: ContinuationList<
-                                                    Video>((continuation) => service
-                                                        .getChannelShorts(
-                                                            channel.channel
-                                                                    ?.authorId ??
-                                                                '',
-                                                            continuation)
-                                                        .then((value) {
-                                                      tvCubit.setHasShorts(value
-                                                          .videos.isNotEmpty);
-                                                      return value;
-                                                    }))),
-                                            tv.hasStreams
-                                                ? Padding(
-                                                    key: tvCubit.streamTitle,
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 20.0),
-                                                    child: Text(
-                                                      locals.streams,
-                                                      style:
-                                                          textTheme.titleLarge,
-                                                    ),
-                                                  )
-                                                : const SizedBox.shrink(),
-                                            TvHorizontalVideoList(
-                                                onItemFocus: (video, index,
-                                                        focus) =>
-                                                    tvCubit
-                                                        .scrollTo(
-                                                            tvCubit.streamTitle,
-                                                            focus),
-                                                paginatedVideoList: ContinuationList<
-                                                        Video>(
-                                                    (continuation) => service
-                                                            .getChannelStreams(
-                                                                channel.channel
-                                                                        ?.authorId ??
-                                                                    '',
-                                                                continuation)
-                                                            .then((value) {
-                                                          tvCubit.setHasStreams(
-                                                              value.videos
-                                                                  .isNotEmpty);
-                                                          return value;
-                                                        }))),
-                                            tv.hasPlaylist
-                                                ? Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 20.0),
-                                                    child: Text(
-                                                      locals.playlists,
-                                                      style:
-                                                          textTheme.titleLarge,
-                                                    ),
-                                                  )
-                                                : const SizedBox.shrink(),
-                                            TvHorizontalItemList<Playlist>(
-                                              getPlaceholder: () =>
-                                                  const TvPlaylistPlaceHolder(),
-                                              paginatedList: ContinuationList<
-                                                      Playlist>(
-                                                  (continuation) => service
-                                                          .getChannelPlaylists(
-                                                              channel.channel
-                                                                      ?.authorId ??
-                                                                  '',
-                                                              continuation:
-                                                                  continuation)
-                                                          .then((value) {
-                                                        tvCubit.setHasPlaylists(
-                                                            value.playlists
-                                                                .isNotEmpty);
-                                                        return value;
-                                                      })),
-                                              buildItem: (context, index,
-                                                      item) =>
-                                                  Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8.0),
-                                                      child: PlaylistInList(
-                                                        playlist: item,
-                                                        canDeleteVideos: false,
-                                                        isTv: true,
-                                                        // cameFromSearch: true,
-                                                      )),
-                                            ),
-                                          ]),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                      ],
-                    ),
-                  );
+      body: CtTvLeftEdge(
+        child: BlocProvider(
+          create: (_) => ChannelCubit(channelId),
+          child: BlocBuilder<ChannelCubit, ChannelState>(builder: (context, s) {
+            final channel = s.channel;
+            if (channel != null) return _TvChannelBody(channel: channel);
+            if (s.loading) return const Center(child: CircularProgressIndicator());
+            return CtErrorView(
+                message: 'Не удалось открыть канал', autofocus: true, onRetry: context.read<ChannelCubit>().load);
           }),
         ),
-      )),
+      ),
     );
+  }
+}
+
+class _TvChannelBody extends StatefulWidget {
+  final Channel channel;
+
+  const _TvChannelBody({required this.channel});
+
+  @override
+  State<_TvChannelBody> createState() => _TvChannelBodyState();
+}
+
+class _TvChannelBodyState extends State<_TvChannelBody> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _toTop(bool focus) {
+    if (!focus || !_scroll.hasClients) return;
+    ctTvResetRow();
+    _scroll.animateTo(0, duration: const Duration(milliseconds: 180), curve: Curves.easeOutCubic);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locals = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final ch = widget.channel;
+    final id = ch.authorId;
+    final banner = ImageObject.getBestThumbnail(ch.authorBanners)?.url;
+
+    return Stack(children: [
+      if (banner != null)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 260,
+          child: ShaderMask(
+            // баннер плавно растворяется в фон
+            shaderCallback: (r) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white, Colors.transparent],
+            ).createShader(r),
+            blendMode: BlendMode.dstIn,
+            child: Opacity(
+              opacity: 0.45,
+              child: CachedNetworkImage(imageUrl: banner, fit: BoxFit.cover, fadeInDuration: Duration.zero),
+            ),
+          ),
+        ),
+      TvOverscan(
+        child: CtTvSmoothTraversal(
+          child: ListView(controller: _scroll, children: [
+            const SizedBox(height: 70),
+            Row(children: [
+              Thumbnail(
+                thumbnails: ImageObject.getThumbnailUrlsByPreferredOrder(ch.authorThumbnails),
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(color: colors.secondaryContainer, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 20),
+              Flexible(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(ch.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.displaySmall?.copyWith(fontWeight: FontWeight.w700)),
+                  if (ch.subCount > 0)
+                    Text(ctSubscribers(ch.subCount),
+                        style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
+                ]),
+              ),
+            ]),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TvSubscribeButton(autoFocus: true, channelId: id, subCount: '', onFocusChanged: _toTop),
+            ),
+            if (ch.description.trim().isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: TvExpandableText(text: ch.description.trim(), maxLines: 2),
+              ),
+            _TvVideoRow(title: locals.videos, load: (c) => service.getChannelVideos(id, c)),
+            _TvVideoRow(title: locals.shorts, load: (c) => service.getChannelShorts(id, c)),
+            _TvVideoRow(title: locals.streams, load: (c) => service.getChannelStreams(id, c)),
+            _TvPlaylistRow(title: locals.playlists, channelId: id),
+            const SizedBox(height: 40),
+          ]),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// Заголовок ряда показывается, только когда в ряду что-то нашлось.
+class _RowTitle extends StatelessWidget {
+  final String title;
+  final bool visible;
+
+  const _RowTitle({required this.title, required this.visible});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!visible) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 4),
+      child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+class _TvVideoRow extends StatefulWidget {
+  final String title;
+  final Future<VideosWithContinuation> Function(String? continuation) load;
+
+  const _TvVideoRow({required this.title, required this.load});
+
+  @override
+  State<_TvVideoRow> createState() => _TvVideoRowState();
+}
+
+class _TvVideoRowState extends State<_TvVideoRow> {
+  final _key = GlobalKey();
+  bool _has = false;
+  late final _list = ContinuationList<Video>((c) async {
+    final page = await widget.load(c);
+    if (!_has && page.videos.isNotEmpty && mounted) setState(() => _has = true);
+    return page;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(key: _key, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _RowTitle(title: widget.title, visible: _has),
+      TvHorizontalVideoList(
+        autoFocusedIndex: -1,
+        paginatedVideoList: _list,
+        onItemFocus: (v, i, focus) {
+          if (focus) ctTvScrollToRow(_key);
+        },
+      ),
+    ]);
+  }
+}
+
+class _TvPlaylistRow extends StatefulWidget {
+  final String title;
+  final String channelId;
+
+  const _TvPlaylistRow({required this.title, required this.channelId});
+
+  @override
+  State<_TvPlaylistRow> createState() => _TvPlaylistRowState();
+}
+
+class _TvPlaylistRowState extends State<_TvPlaylistRow> {
+  final _key = GlobalKey();
+  bool _has = false;
+  late final _list = ContinuationList<Playlist>((c) async {
+    final page = await service.getChannelPlaylists(widget.channelId, continuation: c);
+    if (!_has && page.playlists.isNotEmpty && mounted) setState(() => _has = true);
+    return page;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(key: _key, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _RowTitle(title: widget.title, visible: _has),
+      TvHorizontalItemList<Playlist>(
+        getPlaceholder: () => const TvPlaylistPlaceHolder(),
+        paginatedList: _list,
+        buildItem: (context, index, item) => Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: (f) {
+            if (f) ctTvScrollToRow(_key);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: PlaylistInList(playlist: item, canDeleteVideos: false, isTv: true),
+          ),
+        ),
+      ),
+    ]);
   }
 }

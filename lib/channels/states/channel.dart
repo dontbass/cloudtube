@@ -1,64 +1,49 @@
 import 'package:bloc/bloc.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/channels/models/channel_sort_by.dart';
+import 'package:logging/logging.dart';
 
 import '../../globals.dart';
 import '../models/channel.dart';
+import '../models/channel_sort_by.dart';
 
-part 'channel.freezed.dart';
+final _log = Logger('Канал');
 
-class ChannelCubit extends Cubit<ChannelController> {
-  ChannelCubit(super.initialState) {
-    onReady();
+/// Состояние страницы канала: загрузка → канал или ошибка (с повтором).
+class ChannelState {
+  final String channelId;
+  final Channel? channel;
+  final bool loading;
+  final String? error;
+  final ChannelSortBy sortBy;
+
+  const ChannelState(
+      {required this.channelId, this.channel, this.loading = true, this.error, this.sortBy = ChannelSortBy.newest});
+
+  ChannelState copyWith({Channel? channel, bool? loading, String? error, bool clearError = false, ChannelSortBy? sortBy}) =>
+      ChannelState(
+          channelId: channelId,
+          channel: channel ?? this.channel,
+          loading: loading ?? this.loading,
+          error: clearError ? null : error ?? this.error,
+          sortBy: sortBy ?? this.sortBy);
+}
+
+class ChannelCubit extends Cubit<ChannelState> {
+  ChannelCubit(String channelId) : super(ChannelState(channelId: channelId)) {
+    load();
   }
 
-  Future<void> onReady() async {
-    var state = this.state.copyWith();
-    bool isSubscribed = await service.isSubscribedToChannel(state.channelId);
-    Channel channel = await service.getChannel(state.channelId);
-
-    emit(state.copyWith(
-        channel: channel, loading: false, isSubscribed: isSubscribed));
-  }
-
-/*
-  @override
-  close() async {
-    state.controller?.dispose();
-    super.close();
-  }
-*/
-
-  toggleSubscription() async {
-    var state = this.state.copyWith();
-    if (state.channel != null) {
-      if (state.isSubscribed) {
-        await service.unSubscribe(state.channel!.authorId);
-      } else {
-        await service.subscribe(state.channel!.authorId);
-      }
-      bool isSubscribed =
-          await service.isSubscribedToChannel(state.channel!.authorId);
-
-      emit(state.copyWith(isSubscribed: isSubscribed));
+  Future<void> load() async {
+    emit(state.copyWith(loading: true, clearError: true));
+    try {
+      final channel = await service.getChannel(state.channelId);
+      if (!isClosed) emit(state.copyWith(channel: channel, loading: false));
+    } catch (e, st) {
+      _log.warning('Канал ${state.channelId} не загрузился', e, st);
+      if (!isClosed) emit(state.copyWith(loading: false, error: '$e'));
     }
   }
 
-  void onSortByChanged(ChannelSortBy newValue) {
-    emit(state.copyWith(sortBy: newValue));
+  void onSortByChanged(ChannelSortBy v) {
+    if (v != state.sortBy) emit(state.copyWith(sortBy: v));
   }
-}
-
-@freezed
-sealed class ChannelController with _$ChannelController {
-  const factory ChannelController(
-          {required String channelId,
-          @Default(false) bool isSubscribed,
-          Channel? channel,
-          @Default(true) bool loading,
-          @Default(false) bool smallHeader,
-          @Default(200) double barHeight,
-          @Default(1) double barOpacity,
-          @Default(ChannelSortBy.newest) ChannelSortBy sortBy}) =
-      _ChannelController;
 }

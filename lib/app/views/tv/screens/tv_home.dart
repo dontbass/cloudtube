@@ -35,6 +35,9 @@ GlobalKey subscriptionTitle = GlobalKey(debugLabel: 'subscription title');
 DateTime _ctLastBack = DateTime(2000);
 GlobalKey? _ctCurRow;
 
+/// Сбросить «текущий ряд» (после прокрутки к шапке экрана), чтобы следующий ряд снова встал вверх.
+void ctTvResetRow() => _ctCurRow = null;
+
 /// Вертикальная прокрутка к ряду — только при смене ряда. Раньше она запускалась на КАЖДОМ
 /// ролике при движении вправо-влево и спорила с горизонтальной прокруткой — отсюда рывки.
 void ctTvScrollToRow(GlobalKey? key) {

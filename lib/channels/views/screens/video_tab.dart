@@ -2,13 +2,14 @@ import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:clipious/channels/models/channel_sort_by.dart';
+import 'package:clipious/l10n/generated/app_localizations.dart';
 
 import '../../../globals.dart';
 import '../../models/channel.dart';
 import '../../states/channel.dart';
-import '../components/sort_dropdown_button.dart';
 import '../components/videos.dart';
 
+/// Вкладка «Видео»: сортировка чипами над списком.
 @RoutePage()
 class ChannelVideoTab extends StatelessWidget {
   final Channel? channel;
@@ -17,36 +18,38 @@ class ChannelVideoTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var cubit = context.read<ChannelCubit>();
-
-    return channel == null
-        ? const SizedBox.shrink()
-        : Builder(builder: (context) {
-            final sortBy = context.select((ChannelCubit c) => c.state.sortBy);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: innerHorizontalPadding),
-                  child: SortDropdownButton(
-                    selectedSortingOption: sortBy,
-                    onChanged: (ChannelSortBy newValue) =>
-                        cubit.onSortByChanged(newValue),
-                  ),
+    final c = channel;
+    if (c == null) return const SizedBox.shrink();
+    final locals = AppLocalizations.of(context)!;
+    final cubit = context.read<ChannelCubit>();
+    final sortBy = context.select((ChannelCubit x) => x.state.sortBy);
+    return Column(children: [
+      SizedBox(
+        height: 48,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          children: [
+            for (final v in ChannelSortBy.values)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(v.getLabel(locals)),
+                  selected: v == sortBy,
+                  showCheckmark: false,
+                  onSelected: (_) => cubit.onSortByChanged(v),
                 ),
-                Expanded(
-                  child: ChannelVideosView(
-                    key: ValueKey(sortBy),
-                    channel: channel!,
-                    getVideos: (String channelId, String? continuation) {
-                      return service.getChannelVideos(channelId, continuation,
-                          sortBy: sortBy);
-                    },
-                  ),
-                ),
-              ],
-            );
-          });
+              ),
+          ],
+        ),
+      ),
+      Expanded(
+        child: ChannelVideosView(
+          key: ValueKey(sortBy),
+          channel: c,
+          getVideos: (id, continuation) => service.getChannelVideos(id, continuation, sortBy: sortBy),
+        ),
+      ),
+    ]);
   }
 }

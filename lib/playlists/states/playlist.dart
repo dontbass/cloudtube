@@ -1,121 +1,94 @@
 import 'package:bloc/bloc.dart';
 import 'package:clipious/videos/models/video.dart';
-import 'package:flutter/material.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/player/states/player.dart';
 import 'package:logging/logging.dart';
 
 import '../../globals.dart';
 import '../models/playlist.dart';
 
-part 'playlist.freezed.dart';
+final _log = Logger('Плейлист');
 
-final log = Logger('PlaylistController');
+/// Состояние страницы плейлиста: ролики догружаются страницами, прогресс 0..1.
+class PlaylistState {
+  final Playlist playlist;
+  final bool loading;
+  final double progress;
+  final String? error;
 
-class PlaylistCubit extends Cubit<PlaylistState> {
-  ScrollController scrollController = ScrollController();
-  final PlayerCubit player;
+  const PlaylistState({required this.playlist, this.loading = true, this.progress = 0, this.error});
 
-  PlaylistCubit(super.initialState, this.player) {
-    onReady();
-  }
+  /// Ролики, которые можно показать (без скрытых фильтром).
+  List<Video> get visible => playlist.videos.where((v) => !v.filterHide).toList();
 
-  void onReady() {
-    getAllVideos();
-  }
-
-  void refreshPlaylist({required bool userPlaylist}) async {
-    if (userPlaylist) {
-      emit(state.copyWith(loading: true));
-      final playlist = await service.getUserPlaylist(state.playlist.playlistId);
-      emit(state.copyWith(loading: false, playlist: playlist));
-    }
-  }
-
-  deletePlaylist() async {
-    await service.deleteUserPlaylist(state.playlist.playlistId);
-  }
-
-  Future<bool> removeVideoFromPlayList(Video v) async {
-    emit(state.copyWith(loading: true));
-    await service.deleteUserPlaylistVideo(
-        state.playlist.playlistId, v.indexId ?? '');
-    var videos = List<Video>.from(state.playlist.videos);
-    videos.remove(v);
-    var playlist = state.playlist.copyWith(videos: videos);
-    emit(state.copyWith(playlist: playlist, loading: false));
-    return false;
-  }
-
-  play(bool? isAudio) {
-    player.playVideo(state.playlist.videos, audio: isAudio);
-  }
-
-  scrollToTop() {
-    scrollController.animateTo(0,
-        duration: animationDuration ~/ 2, curve: Curves.easeInOutQuad);
-  }
-
-  getAllVideos() async {
-    if (state.playlist.videoCount > 0 &&
-        state.playlist.videos.length < state.playlist.videoCount) {
-      int page = 1;
-      int totalFiltered = 0;
-      // something is not right, let's get the full playlist
-      Playlist pl;
-      do {
-        pl = await service.getPublicPlaylists(state.playlist.playlistId,
-            page: page);
-
-        var toAdd = pl.videos
-            .where((v) =>
-                state.playlist.videos
-                    .indexWhere((v2) => v2.videoId == v.videoId) ==
-                -1)
-            .toList();
-
-        var playlist = state.playlist;
-        List<Video> videos = List.from(playlist.videos);
-        videos.addAll(toAdd);
-        playlist = playlist.copyWith(videos: videos);
-
-        totalFiltered += pl.removedByFilter;
-        log.fine(
-            'filtered removed ${pl.removedByFilter} videos,adding ${pl.videos.length}');
-        page++;
-
-        var loadingProgress = (state.playlist.videos.length + totalFiltered) /
-            state.playlist.videoCount;
-        if (!isClosed) {
-          emit(state.copyWith(
-              loadingProgress: loadingProgress, playlist: playlist));
-        } else {
-          return;
-        }
-      } while (!isClosed && pl.videos.isNotEmpty || pl.removedByFilter > 0);
-    }
-    if (!isClosed) emit(state.copyWith(loading: false));
-  }
-
-  @override
-  close() async {
-    scrollController.dispose();
-    super.close();
-  }
-
-  void setShowImage(bool bool) {
-    scrollController.jumpTo(0);
-    emit(state.copyWith(showImage: bool));
-  }
+  PlaylistState copyWith({Playlist? playlist, bool? loading, double? progress, String? error, bool clearError = false}) =>
+      PlaylistState(
+          playlist: playlist ?? this.playlist,
+          loading: loading ?? this.loading,
+          progress: progress ?? this.progress,
+          error: clearError ? null : error ?? this.error);
 }
 
-@freezed
-sealed class PlaylistState with _$PlaylistState {
-  const factory PlaylistState({
-    @Default(0) double loadingProgress,
-    required Playlist playlist,
-    @Default(true) bool loading,
-    required double playlistItemHeight,
-    @Default(true) bool showImage,
-  }) = _PlaylistState;
+class PlaylistCubit extends Cubit<PlaylistState> {
+  /// Свой плейлист (аккаунт Invidious) — его можно править, и он перечитывается целиком.
+  final bool userPlaylist;
+
+  PlaylistCubit(Playlist playlist, {this.userPlaylist = false}) : super(PlaylistState(playlist: playlist)) {
+    load();
+  }
+
+  Future<void> load() async {
+    emit(state.copyWith(loading: true, clearError: true));
+    try {
+      if (userPlaylist) {
+        final pl = await service.getUserPlaylist(state.playlist.playlistId);
+        if (isClosed) return;
+        emit(state.copyWith(playlist: pl));
+      }
+      await _loadAllPages();
+      if (!isClosed) emit(state.copyWith(loading: false, progress: 1));
+    } catch (e, st) {
+      _log.warning('Плейлист ${state.playlist.playlistId} не загрузился', e, st);
+      if (!isClosed) emit(state.copyWith(loading: false, error: '$e'));
+    }
+  }
+
+  /// Публичный плейлист приходит страницами — догружаем, пока не наберём videoCount.
+  Future<void> _loadAllPages() async {
+    final total = state.playlist.videoCount;
+    if (total <= 0 || state.playlist.videos.length >= total) return;
+    final seen = {for (final v in state.playlist.videos) v.videoId};
+    var filtered = 0;
+    for (var page = 1; page < 200; page++) {
+      final pl = await service.getPublicPlaylists(state.playlist.playlistId, page: page);
+      if (isClosed) return;
+      final add = pl.videos.where((v) => seen.add(v.videoId)).toList();
+      filtered += pl.removedByFilter;
+      final videos = [...state.playlist.videos, ...add];
+      emit(state.copyWith(
+          playlist: state.playlist.copyWith(videos: videos),
+          progress: ((videos.length + filtered) / total).clamp(0, 1).toDouble()));
+      // пустая страница или ничего нового — конец (защита от зацикливания)
+      if (pl.videos.isEmpty && pl.removedByFilter == 0) break;
+      if (add.isEmpty && pl.removedByFilter == 0) break;
+      if (videos.length + filtered >= total) break;
+    }
+  }
+
+  Future<void> deletePlaylist() => service.deleteUserPlaylist(state.playlist.playlistId);
+
+  /// Убрать ролик из своего плейлиста. Ошибку пробрасываем — экран покажет её.
+  Future<void> removeVideo(Video v) async {
+    await service.deleteUserPlaylistVideo(state.playlist.playlistId, v.indexId ?? '');
+    final videos = [...state.playlist.videos]..remove(v);
+    if (!isClosed) {
+      emit(state.copyWith(playlist: state.playlist.copyWith(videos: videos, videoCount: videos.length)));
+    }
+  }
+
+  /// Очередь для плеера: с выбранного ролика, по порядку или вперемешку.
+  List<Video> queue({Video? start, bool shuffle = false}) {
+    final list = state.visible.where((v) => !v.filtered).toList();
+    if (shuffle) return list..shuffle();
+    final i = start == null ? 0 : list.indexWhere((v) => v.videoId == start.videoId);
+    return i <= 0 ? list : list.sublist(i);
+  }
 }

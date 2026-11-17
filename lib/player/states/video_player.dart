@@ -182,7 +182,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     if (v == null || state.offlineVideo != null || isClosed) return;
     final id = v.videoId;
     _watch.stop();
-    final tvDirect = _ctCurHeight != null && ctDirectActive;
+    final tvDirect = _ctCurHeight != null;
     final action = _recovery.onFailure(id,
         tvDirect: tvDirect,
         ownDash: _ctDashHeight != null,
@@ -352,6 +352,18 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         String baseUrl = (server).url;
         final v = newState.video!;
         final id = v.videoId;
+        // свой сервер: тоже одно качество своим DASH (как без сервера). DASH сервера и
+        // ExoPlayer сами держали 360p, а без DASH сервера у YouTube есть только 360p
+        final ownQuality = ctDirectActive || (v.liveNow != true && (v.adaptiveFormats ?? const []).isNotEmpty);
+        if (!ctDirectActive && ownQuality) {
+          final proxy = service.useProxy();
+          CtDashLocal.rememberInvidious(id, v.adaptiveFormats!, (v.lengthSeconds ?? 0) * 1000,
+              (f) => f.url.startsWith('/')
+                  ? '${server.url}${f.url}'
+                  : proxy && f.url.contains('googlevideo.com')
+                      ? '${server.url}/latest_version?id=$id&itag=${f.itag}&local=true'
+                      : f.url);
+        }
         // выбор потока — lib/player/core/stream_source.dart
         final choice = await ctPickStream(CtStreamRequest(
           videoId: id,
@@ -362,7 +374,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           serverHeaders: server.headersForUrl,
           useProxy: service.useProxy(),
           useServerDash: isUsingDash(),
-          tvDirect: ctDirectActive,
+          tvDirect: ownQuality,
+          hlsSingle: ctDirectActive,
           noOwnDash: _ctNoDashFor == id,
           cap: _ctCapFor == id ? _ctCapOverride! : ctTvQualityCap,
           itag: _ctItagFor == id ? _ctItag : null,

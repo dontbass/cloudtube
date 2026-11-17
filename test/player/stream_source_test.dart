@@ -1,5 +1,6 @@
 import 'package:clipious/cloudtube/hls_local.dart';
 import 'package:clipious/player/core/stream_source.dart';
+import 'package:clipious/videos/models/adaptive_format.dart';
 import 'package:clipious/videos/models/format_stream.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,5 +82,30 @@ void main() {
   test('ТВ без сервера, свой DASH уже давал сбой — не используется', () async {
     final c = await ctPickStream(req(id: 't1', tvDirect: true, noOwnDash: true));
     expect(c.kind, isNot(CtStreamKind.ownDash));
+  });
+
+  test('свой сервер: форматы Invidious → свой DASH с одним качеством, пароль сайта к потокам', () async {
+    AdaptiveFormat af(String itag, String type, String label, String res, String br) => AdaptiveFormat(
+        '701-2000', br, '0-700', '/videoplayback?itag=$itag', itag, type, '1000000', '1', 'RECTANGULAR', null, null,
+        label.isEmpty ? null : label, res.isEmpty ? null : res);
+    CtDashLocal.rememberInvidious(
+        's1',
+        [
+          af('137', 'video/mp4; codecs="avc1.640028"', '1080p', '1920x1080', '4000000'),
+          af('299', 'video/mp4; codecs="avc1.64002a"', '1080p60', '1920x1080', '6000000'),
+          af('136', 'video/mp4; codecs="avc1.4d401f"', '720p', '1280x720', '2000000'),
+          af('140', 'audio/mp4; codecs="mp4a.40.2"', '', '', '130000'),
+        ],
+        60000,
+        (f) => 'https://srv${f.url}');
+    expect(CtDashLocal.formats('s1').map((f) => f['itag']), [299, 137, 136]);
+    final c = await ctPickStream(req(id: 's1', tvDirect: true, serverDash: true));
+    expect(c.kind, CtStreamKind.ownDash);
+    expect(c.itag, '137', reason: '30 к/с важнее 60 при той же высоте');
+    expect(c.headers['Authorization'], 'Basic x');
+    final low = await ctPickStream(CtStreamRequest(
+        videoId: 's1', hlsUrl: null, dashUrl: null, formatStreams: const [], serverUrl: 'https://srv',
+        serverHeaders: (_) => null, tvDirect: true, cap: 720));
+    expect(low.height, 720);
   });
 }

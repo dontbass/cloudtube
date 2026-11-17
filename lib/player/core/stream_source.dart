@@ -36,11 +36,15 @@ class CtStreamRequest {
   final bool useProxy;
   final bool useServerDash;
 
-  /// ТВ без сервера: выбирать одно качество самим.
+  /// Выбирать одно качество самим (свой DASH): без сервера — всегда, со своим сервером —
+  /// для обычных (не прямых) трансляций.
   final bool tvDirect;
 
   /// Свой DASH для этого ролика уже давал сбой — сразу HLS.
   final bool noOwnDash;
+
+  /// Запасной HLS с одним качеством (только без сервера: HLS сервера — это трансляции).
+  final bool hlsSingle;
 
   /// Потолок качества и формат, выбранный в меню.
   final int cap;
@@ -57,6 +61,7 @@ class CtStreamRequest {
     this.useServerDash = false,
     this.tvDirect = false,
     this.noOwnDash = false,
+    this.hlsSingle = true,
     this.cap = 2160,
     this.itag,
   });
@@ -126,14 +131,15 @@ Future<CtStreamChoice> ctPickStream(CtStreamRequest r) async {
       return CtStreamChoice(
         kind: CtStreamKind.ownDash,
         url: d.$1,
-        headers: ctDirectStreamHeaders(d.$3),
+        // свой DASH: заголовки для самих потоков (YouTube — клиент, свой сервер — пароль сайта)
+        headers: {...?r.serverHeaders(d.$3), ...ctDirectStreamHeaders(d.$3)},
         height: d.$2,
         itag: d.$4,
         qualityLabel: f != null ? CtDashLocal.label(f).replaceAll(', ', ' · ') : '${d.$2}p',
       );
     }
   }
-  if (r.tvDirect && isHls) {
+  if (r.tvDirect && isHls && r.hlsSingle) {
     final local = await CtHlsLocal.single(url, headers, cap: r.cap);
     if (local != null) {
       return CtStreamChoice(

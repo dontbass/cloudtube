@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
+import '../videos/models/adaptive_format.dart';
+
 final _log = Logger('CtHlsLocal');
 
 /// ТВ: ExoPlayer по мастер-плейлисту HLS начинает с самого низкого качества (оценка скорости
@@ -110,6 +112,44 @@ class CtDashLocal {
     if (formats == null || formats.isEmpty) return;
     _raw[id] = (formats, durationMs);
     if (_raw.length > 30) _raw.remove(_raw.keys.first);
+  }
+
+  /// Свой сервер: форматы из ответа Invidious переводятся в тот же вид, что у YouTube, —
+  /// и дальше всё как без сервера: одно качество, меню «Качество» со всеми форматами.
+  /// [urlFor] — адрес потока (через прокси сервера или напрямую).
+  static void rememberInvidious(
+      String id, List<AdaptiveFormat> formats, int durationMs, String Function(AdaptiveFormat f) urlFor) {
+    final out = <Map<String, Object?>>[];
+    for (final f in formats) {
+      final m = f.toJson();
+      (int, int)? range(Object? s) {
+        final p = '${s ?? ''}'.split('-');
+        if (p.length != 2) return null;
+        final a = int.tryParse(p[0]), b = int.tryParse(p[1]);
+        return a == null || b == null ? null : (a, b);
+      }
+
+      final init = range(m['init']), index = range(m['index']);
+      if (init == null || index == null) continue;
+      final label = '${m['qualityLabel'] ?? ''}';
+      final res = RegExp(r'(\d+)x(\d+)').firstMatch('${m['resolution'] ?? ''}');
+      final h = int.tryParse(RegExp(r'(\d+)p').firstMatch(label)?.group(1) ?? '') ??
+          int.tryParse(res?.group(2) ?? '') ??
+          0;
+      final fps = int.tryParse(RegExp(r'p(\d+)').firstMatch(label)?.group(1) ?? '') ?? 30;
+      out.add({
+        'itag': int.tryParse('${m['itag']}') ?? m['itag'],
+        'height': h,
+        'width': int.tryParse(res?.group(1) ?? '') ?? h * 16 ~/ 9,
+        'fps': fps,
+        'bitrate': int.tryParse('${m['bitrate'] ?? 0}') ?? 0,
+        'mimeType': m['type'],
+        'url': urlFor(f),
+        'initRange': {'start': '${init.$1}', 'end': '${init.$2}'},
+        'indexRange': {'start': '${index.$1}', 'end': '${index.$2}'},
+      });
+    }
+    remember(id, out, durationMs);
   }
 
   static int _h(Map f) => (f['height'] as num?)?.toInt() ?? 0;

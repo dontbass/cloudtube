@@ -175,19 +175,7 @@ class AppRouter extends RootStackRouter {
                       page: RecommendedRoute.page, path: recommendedVideoPath),
                   AutoRoute(page: CommentsRoute.page, path: commentsPath)
                 ]),
-                AutoRoute(
-                    page: ChannelRoute.page,
-                    path: channelPath,
-                    children: [
-                      AutoRoute(page: ChannelInfoRoute.page, path: infoPath),
-                      AutoRoute(page: ChannelVideoRoute.page, path: videosPath),
-                      AutoRoute(
-                          page: ChannelShortsRoute.page, path: shortsPath),
-                      AutoRoute(
-                          page: ChannelStreamRoute.page, path: streamsPath),
-                      AutoRoute(
-                          page: ChannelPlaylistsRoute.page, path: playlistsPath)
-                    ]),
+                AutoRoute(page: ChannelRoute.page, path: channelPath),
                 AutoRoute(page: DownloadManagerRoute.page),
                 AutoRoute(page: SearchRoute.page, path: searchPath, children: [
                   AutoRoute(page: SearchVideoRoute.page, path: videosPath),

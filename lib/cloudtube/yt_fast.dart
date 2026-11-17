@@ -27,7 +27,7 @@ class CtYtFast {
     return _visitorFut ??= () async {
       try {
         final r = await client.get(Uri.parse('https://www.youtube.com/sw.js_data'), headers: {
-          'User-Agent': yt.YoutubeApiClient.ios.payload['context']['client']['userAgent'],
+          'User-Agent': yt.YoutubeApiClient.ios.payload['context']['client']['userAgent'] as String,
         }).timeout(const Duration(seconds: 4));
         var b = r.body;
         if (b.startsWith(")]}'")) b = b.substring(4);
@@ -59,13 +59,13 @@ class CtYtFast {
     final r = await client
         .post(Uri.parse(c.apiUrl), body: jsonEncode(body), headers: {
           'Content-Type': 'application/json',
-          'User-Agent': cl['userAgent'] ??
+          'User-Agent': (cl['userAgent'] as String?) ??
               (name == 'ANDROID_VR'
                   ? 'com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12; eureka-user Build/SQ3A.220605.009.A1) gzip'
                   : 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip'),
           'X-Youtube-Client-Name': name == 'IOS' ? '5' : (name == 'ANDROID_VR' ? '28' : '3'),
           'X-Youtube-Client-Version': '${cl['clientVersion']}',
-          if (cl['visitorData'] != null) 'X-Goog-Visitor-Id': cl['visitorData'],
+          if (cl['visitorData'] != null) 'X-Goog-Visitor-Id': '${cl['visitorData']}',
           'Origin': 'https://www.youtube.com',
         })
         .timeout(const Duration(seconds: 7));
@@ -201,7 +201,7 @@ class CtYtFast {
         final v = x['videoRenderer'];
         if (v is Map && v['videoId'] is String) {
           final ch = _find(v['ownerText'] ?? v['longBylineText'], 'browseId');
-          add(v['videoId'], _text(v['title']), _text(v['ownerText'] ?? v['longBylineText']), '${ch ?? ''}',
+          add(v['videoId'] as String, _text(v['title']), _text(v['ownerText'] ?? v['longBylineText']), '${ch ?? ''}',
               _dur(_text(v['lengthText'])));
         }
         final sl = x['shortsLockupViewModel'];
@@ -211,9 +211,9 @@ class CtYtFast {
           if (id is String) add(id, title is Map ? '${title['content'] ?? ''}' : '', '', '', 0);
         }
         final reel = x['reelItemRenderer'];
-        if (reel is Map && reel['videoId'] is String) add(reel['videoId'], _text(reel['headline']), '', '', 0);
+        if (reel is Map && reel['videoId'] is String) add(reel['videoId'] as String, _text(reel['headline']), '', '', 0);
         final cmd = x['continuationCommand'];
-        if (cmd is Map && cmd['token'] is String) next = cmd['token'];
+        if (cmd is Map && cmd['token'] is String) next = cmd['token'] as String;
         x.values.forEach(walk);
       } else if (x is List) {
         x.forEach(walk);
@@ -414,7 +414,7 @@ class CtYtFast {
     void walk(dynamic x) {
       if (x is Map) {
         final c = x['compactVideoRenderer'];
-        if (c is Map && c['videoId'] is String && seen.add(c['videoId'])) {
+        if (c is Map && c['videoId'] is String && seen.add(c['videoId'] as String)) {
           final vid = c['videoId'] as String;
           final ch = _find(c['longBylineText'] ?? c['shortBylineText'], 'browseId');
           rec.add({
@@ -433,7 +433,7 @@ class CtYtFast {
           });
         }
         final l = x['lockupViewModel'];
-        if (l is Map && '${l['contentType']}'.contains('VIDEO') && l['contentId'] is String && seen.add(l['contentId'])) {
+        if (l is Map && '${l['contentType']}'.contains('VIDEO') && l['contentId'] is String && seen.add(l['contentId'] as String)) {
           final vid = l['contentId'] as String;
           final meta = _find(l['metadata'], 'lockupMetadataViewModel') as Map?;
           final title = '${(meta?['title'] as Map?)?['content'] ?? ''}';
@@ -500,8 +500,8 @@ class CtYtFast {
 
   static String _text(dynamic t) {
     if (t is! Map) return '';
-    if (t['simpleText'] is String) return t['simpleText'];
-    if (t['content'] is String) return t['content'];
+    if (t['simpleText'] is String) return t['simpleText'] as String;
+    if (t['content'] is String) return t['content'] as String;
     final runs = t['runs'];
     if (runs is List) return runs.map((r) => (r as Map?)?['text'] ?? '').join();
     return '';

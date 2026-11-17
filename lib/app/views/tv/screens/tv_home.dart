@@ -397,7 +397,7 @@ class _CtTvRows extends StatelessWidget {
                                 (_) => null,
                               };
 
-                              focusFunction(video, index, focus) {
+                              void focusFunction(Video video, int index, bool focus) {
                                 if (focus) ctTvScrollToRow(key);
                               }
 

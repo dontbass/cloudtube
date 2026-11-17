@@ -41,7 +41,7 @@ class AddToPlaylistDialog extends StatelessWidget {
         });
   }
 
-  addToPlaylist(BuildContext context, String playlistId) async {
+  Future<void> addToPlaylist(BuildContext context, String playlistId) async {
     var locals = AppLocalizations.of(context)!;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {

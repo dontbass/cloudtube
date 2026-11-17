@@ -39,7 +39,7 @@ class PlayerControlsCubit extends Cubit<PlayerControlsState> {
     log.fine('Event: ${event.state}, ${event.type}');
     switch (event.state) {
       case MediaState.buffering:
-        setBuffer(event.value ?? Duration.zero);
+        setBuffer((event.value as Duration?) ?? Duration.zero);
         break;
       case MediaState.loading:
         emit(state.copyWith(buffering: true));
@@ -62,23 +62,23 @@ class PlayerControlsCubit extends Cubit<PlayerControlsState> {
       case MediaEventType.progress:
         if (!state.draggingPositionSlider) {
           emit(state.copyWith(
-              position: event.value, buffering: false, errored: false));
+              position: event.value as Duration, buffering: false, errored: false));
         }
         break;
       case MediaEventType.seek:
         hideControlsDebounce();
         break;
       case MediaEventType.fullScreenChanged:
-        setFullScreenState(event.value);
+        setFullScreenState(event.value as FullScreenState);
         break;
       case MediaEventType.volumeChanged:
-        setMuted(!event.value);
+        setMuted(!(event.value as bool));
         break;
       case MediaEventType.durationChanged:
-        setDuration(event.value);
+        setDuration(event.value as Duration);
         break;
       case MediaEventType.bufferChanged:
-        setBuffer(event.value);
+        setBuffer(event.value as Duration);
         break;
       case MediaEventType.pause:
       case MediaEventType.play:

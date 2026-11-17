@@ -11,7 +11,9 @@ class SubscribeButtonCubit extends Cubit<SubscribeButtonState> {
     onReady();
   }
 
-  setAccountSubscription(bool subscribed) async {
+  /// [attempt] — повтор при неудаче. Раньше повтор был бесконечным: если сервер не
+  /// подтверждал подписку, приложение слало запросы по кругу и кнопка крутилась вечно.
+  Future<void> setAccountSubscription(bool subscribed, {int attempt = 0}) async {
     emit(state.copyWith(loading: true));
 
     bool wasSubscribed = state.isAccountSubscribed;
@@ -22,13 +24,13 @@ class SubscribeButtonCubit extends Cubit<SubscribeButtonState> {
       success = await service.subscribe(state.channelId);
     }
     bool isSubscribed = await service.isSubscribedToChannel(state.channelId);
-    if (!success || isSubscribed == wasSubscribed) {
-      return setAccountSubscription(subscribed);
+    if ((!success || isSubscribed == wasSubscribed) && attempt < 2) {
+      return setAccountSubscription(subscribed, attempt: attempt + 1);
     }
     emit(state.copyWith(loading: false, isAccountSubscribed: isSubscribed));
   }
 
-  setOfflineSubscription(bool subscribed) async {
+  Future<void> setOfflineSubscription(bool subscribed) async {
     emit(state.copyWith(loading: true));
     if (subscribed) {
       final channel = await service.getChannel(state.channelId);

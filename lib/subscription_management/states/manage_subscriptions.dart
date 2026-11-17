@@ -33,7 +33,7 @@ class ManageSubscriptionCubit extends Cubit<ManageSubscriptionsState> {
     refreshSubs();
   }
 
-  refreshSubs() async {
+  Future<void> refreshSubs() async {
     final isLoggedIn = await service.isLoggedIn();
     emit(state.copyWith(loading: true));
     List<Subscription> subs = [];
@@ -60,6 +60,6 @@ sealed class ManageSubscriptionsState with _$ManageSubscriptionsState {
   const factory ManageSubscriptionsState(
       {@Default([]) List<Subscription> subs,
       @Default([]) List<OfflineSubscription> offlineSubs,
-      @Default(false) isLoggedIn,
+      @Default(false) bool isLoggedIn,
       @Default(true) bool loading}) = _ManageSubscriptionsState;
 }

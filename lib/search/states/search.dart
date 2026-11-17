@@ -72,7 +72,7 @@ class SearchCubit<T extends SearchState> extends Cubit<SearchState> {
     }
   }
 
-  getHistory() {
+  void getHistory() {
     emit(state.copyWith(
         searchHistory:
             settings.state.useSearchHistory ? db.getSearchHistory() : []));
@@ -128,8 +128,8 @@ sealed class SearchState with _$SearchState {
       bool? showResults,
       bool? loading,
       int? videoPage,
-      channelPage,
-      playlistPage,
+      int? channelPage,
+      int? playlistPage,
       String? query}) {
     return SearchState(
         queryController:

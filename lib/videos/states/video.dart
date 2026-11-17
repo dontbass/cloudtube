@@ -122,7 +122,7 @@ sealed class VideoState with _$VideoState {
   const factory VideoState(
       {Video? video,
       int? dislikes,
-      @Default(true) loadingVideo,
+      @Default(true) bool loadingVideo,
       required String videoId,
       required bool isLoggedIn,
       @Default(false) bool downloading,

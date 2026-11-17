@@ -27,7 +27,7 @@ class SearchFiltersCubit<T extends SearchFiltersState>
 @freezed
 sealed class SearchFiltersState with _$SearchFiltersState {
   const factory SearchFiltersState(
-      {@Default(SearchDate.any) date,
-      @Default(SearchDuration.any) duration,
-      @Default(SearchSortBy.relevance) sortBy}) = _SearchFiltersState;
+      {@Default(SearchDate.any) SearchDate date,
+      @Default(SearchDuration.any) SearchDuration duration,
+      @Default(SearchSortBy.relevance) SearchSortBy sortBy}) = _SearchFiltersState;
 }

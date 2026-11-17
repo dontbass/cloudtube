@@ -444,7 +444,7 @@ sealed class SettingsState with _$SettingsState {
   const factory SettingsState(
       {required Map<String, SettingsValue> settings,
       required PackageInfo packageInfo,
-      @Default(false) subscriptionNotifications}) = _SettingsState;
+      @Default(false) bool subscriptionNotifications}) = _SettingsState;
 
   static SettingsState init() {
     PackageInfo packageInfo =

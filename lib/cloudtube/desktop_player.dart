@@ -10,6 +10,7 @@ import '../globals.dart';
 import '../router.dart';
 import '../settings/models/db/server.dart';
 import '../videos/models/video.dart';
+import '../videos/models/adaptive_format.dart';
 import 'platform.dart';
 import 'direct.dart';
 import 'watch.dart';
@@ -123,7 +124,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       _full = v;
       // качества видео: лучший поток на каждую высоту, до 4K
       final byHeight = <int, _Quality>{};
-      for (final f in v.adaptiveFormats ?? const []) {
+      for (final f in v.adaptiveFormats ?? const <AdaptiveFormat>[]) {
         if (!f.type.startsWith('video/')) continue;
         final h = int.tryParse(RegExp(r'(\d+)p').firstMatch(f.qualityLabel ?? f.resolution ?? '')?.group(1) ?? '') ?? 0;
         if (h == 0) continue;
@@ -132,7 +133,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
         if (cur == null || prefer == 1) byHeight[h] = _Quality(f.qualityLabel ?? '${h}p', f.itag, h);
       }
       _qualities = byHeight.values.toList()..sort((a, b) => b.height - a.height);
-      final audio = (v.adaptiveFormats ?? const []).where((f) => f.type.startsWith('audio/')).toList()
+      final audio = (v.adaptiveFormats ?? const <AdaptiveFormat>[]).where((f) => f.type.startsWith('audio/')).toList()
         ..sort((a, b) => (int.tryParse(b.bitrate ?? '') ?? 0).compareTo(int.tryParse(a.bitrate ?? '') ?? 0));
       final m4a = audio.where((f) => f.type.contains('mp4')).toList();
       _audioItag = (m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null))?.itag;

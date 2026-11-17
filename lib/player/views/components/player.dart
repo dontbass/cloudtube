@@ -4,7 +4,6 @@ import 'package:clipious/cloudtube/platform.dart';
 import 'package:clipious/videos/views/components/download_modal_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/player/states/interfaces/media_player.dart';
 import 'package:clipious/player/states/player.dart';
@@ -33,7 +32,6 @@ class Player extends StatelessWidget {
   Widget build(BuildContext context) {
     var themeData = Theme.of(context);
     ColorScheme colors = themeData.colorScheme;
-    AppLocalizations locals = AppLocalizations.of(context)!;
     return Builder(
       builder: (context) {
         var cubit = context.read<PlayerCubit>();
@@ -158,7 +156,7 @@ class Player extends StatelessWidget {
                                     isMini || isPip || isFullScreen
                                         ? const SizedBox.shrink()
                                         : AppBar(
-                                            title: Text(locals.videoPlayer),
+                                            // как в YouTube: без заголовка «Видеопроигрыватель»
                                             leading: IconButton(
                                               icon:
                                                   const Icon(Icons.expand_more),

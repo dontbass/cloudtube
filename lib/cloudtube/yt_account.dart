@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'net.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -24,7 +25,7 @@ class CtYtAccount {
   // + полный доступ YouTube Data API (нужен для отправки комментариев); если Google не примет — без него
   static const _scopeFull = '$_scope https://www.googleapis.com/auth/youtube';
 
-  static http.Client client = http.Client();
+  static http.Client client = ctHttp;
 
   static (String, String)? _creds;
   static String? _access;
@@ -56,7 +57,7 @@ class CtYtAccount {
   static Future<Map<String, dynamic>> _post(String url, Map<String, dynamic> body, {Map<String, String>? headers}) async {
     final r = await client.post(Uri.parse(url),
         headers: {'Content-Type': 'application/json', 'User-Agent': tvUserAgent, ...?headers}, body: jsonEncode(body));
-    final j = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body);
+    final j = r.body.isEmpty ? <String, dynamic>{} : await ctJsonDecodeBytes(r.bodyBytes);
     if (j is! Map<String, dynamic>) throw 'Неожиданный ответ YouTube (${r.statusCode})';
     j['_status'] = r.statusCode;
     return j;

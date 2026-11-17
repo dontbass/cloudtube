@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
-import 'package:dio/dio.dart';
+import 'package:clipious/cloudtube/download.dart';
 import 'package:flutter/services.dart';
 import 'package:downloadsfolder/downloadsfolder.dart';
 import 'package:easy_debounce/easy_throttle.dart';
@@ -24,7 +24,7 @@ part 'download_manager.freezed.dart';
 final Logger log = Logger('DownloadState');
 
 class DownloadProgress {
-  CancelToken cancelToken;
+  CtCancel cancelToken;
   int count = 0, total = 1;
 
   List<Function(double progress)> listeners = [];
@@ -140,20 +140,31 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
         // FormatStream stream = vid.formatStreams
         //     .firstWhere((element) => element.resolution == quality);
 
-        final stream = vid.adaptiveFormats!.firstWhere((element) =>
-            element.encoding == 'vp9' &&
-            element.qualityLabel == quality &&
-            element.type.contains('video/webm'));
-
+        // WebM-видео нужного качества; если такого нет — лучшее WebM не выше него
+        // (раньше при отсутствии точного качества загрузка падала и оставалась «висеть» в списке)
+        int h(AdaptiveFormat f) =>
+            int.tryParse(RegExp(r'(\d+)p').firstMatch(f.qualityLabel ?? f.resolution ?? '')?.group(1) ?? '') ?? 0;
+        final want = int.tryParse(quality.replaceAll(RegExp(r'\D'), '')) ?? 720;
+        final webm = vid.adaptiveFormats!.where((f) => f.type.contains('video/webm') && h(f) > 0).toList()
+          ..sort((a, b) => h(b).compareTo(h(a)));
+        final stream = webm.where((f) => h(f) <= want).firstOrNull ?? webm.lastOrNull;
+        if (stream == null) {
+          await onDownloadError('Нет подходящего видеопотока', downloadedVideo);
+          return false;
+        }
         videoUrl = stream.url;
       }
-      AdaptiveFormat audio = vid.adaptiveFormats!
+      final audio = vid.adaptiveFormats!
           .sortByReversed((e) => int.parse(e.bitrate ?? "0"))
-          .firstWhere((element) => element.type.contains("audio/webm"));
+          .where((element) => element.type.contains("audio/webm"))
+          .firstOrNull;
+      if (audio == null) {
+        await onDownloadError('Нет звуковой дорожки', downloadedVideo);
+        return false;
+      }
       String audioUrl = audio.url;
 
-      Dio dio = Dio();
-      CancelToken cancelToken = CancelToken();
+      final cancelToken = CtCancel();
 
       var progresses =
           Map<String, DownloadProgress>.from(state.downloadProgresses);
@@ -168,9 +179,14 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
         //download thumbnail
         var thumbnailPath = await downloadedVideo.thumbnailPath;
         log.fine("Downloading thumbnail to: $thumbnailPath");
-        await dio.download(thumbUrl, thumbnailPath,
-            cancelToken: cancelToken,
-            options: Options(headers: server.headersForUrl(thumbUrl)));
+        try {
+          await ctDownloadFile(thumbUrl, thumbnailPath,
+              cancel: cancelToken, headers: server.headersForUrl(thumbUrl));
+        } on CtCancelled {
+          return false;
+        } catch (e) {
+          log.info('миниатюра не скачалась: $e'); // без неё ролик всё равно сохраняем
+        }
       }
 
       if (cancelToken.isCancelled) {
@@ -190,36 +206,18 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
         if (cancelToken.isCancelled) {
           return false;
         }
-        await dio
-            .download(audioUrl, audioPath,
-                onReceiveProgress: (count, total) => onProgress(
-                    count, total, downloadedVideo,
-                    step: 1, totalSteps: audioOnly ? 2 : 3),
-                cancelToken: cancelToken,
-                deleteOnError: true,
-                options: Options(headers: server.headersForUrl(audioUrl)))
-            .catchError((err) {
-          onDownloadError(err, downloadedVideo);
-          return Response<void>(requestOptions: RequestOptions());
-        });
+        // раньше после ошибки звука загрузка шла дальше и пыталась склеить несуществующий файл
+        await ctDownloadFile(audioUrl, audioPath,
+            onProgress: (count, total) =>
+                onProgress(count, total, downloadedVideo, step: 1, totalSteps: audioOnly ? 2 : 3),
+            cancel: cancelToken,
+            headers: server.headersForUrl(audioUrl));
 
         if (videoUrl != null) {
-          await dio
-              .download(videoUrl, videoPath,
-                  onReceiveProgress: (count, total) => onProgress(
-                        count,
-                        total,
-                        downloadedVideo,
-                        step: 2,
-                        totalSteps: 3,
-                      ),
-                  cancelToken: cancelToken,
-                  options: Options(headers: server.headersForUrl(videoUrl)),
-                  deleteOnError: true)
-              .catchError((err) {
-            onDownloadError(err, downloadedVideo);
-            return Response<void>(requestOptions: RequestOptions());
-          });
+          await ctDownloadFile(videoUrl, videoPath,
+              onProgress: (count, total) => onProgress(count, total, downloadedVideo, step: 2, totalSteps: 3),
+              cancel: cancelToken,
+              headers: server.headersForUrl(videoUrl));
         }
 
         if (audioOnly) {
@@ -244,7 +242,8 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
           return success;
         }
       } catch (e) {
-        rethrow;
+        await onDownloadError(e, downloadedVideo);
+        return false;
       } finally {
         final audio = File(audioPath);
         final video = File(videoPath);
@@ -291,11 +290,9 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
   }
 
   FutureOr<void> onDownloadError(dynamic err, DownloadedVideo vid) async {
-    if (err is DioException) {
-      if (err.type == DioExceptionType.cancel) {
-        log.fine("video cancelled, nothing to do");
-        return;
-      }
+    if (err is CtCancelled) {
+      log.fine("video cancelled, nothing to do");
+      return;
     }
     if (err is Error) {
       log.severe(

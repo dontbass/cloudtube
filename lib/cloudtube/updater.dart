@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:dio/dio.dart';
+import 'download.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -160,7 +160,7 @@ class CtUpdater {
     final path = '${dir.path}/CloudTube-${rel.version}-$abi.apk';
 
     final progress = ValueNotifier<double?>(null);
-    final cancel = CancelToken();
+    final cancel = CtCancel();
     if (!context.mounted) return;
     final nav = Navigator.of(context, rootNavigator: true);
     showDialog(
@@ -180,14 +180,15 @@ class CtUpdater {
       ),
     );
     try {
-      await Dio().download(url, path,
-          cancelToken: cancel, onReceiveProgress: (got, total) {
+      await ctDownloadFile(url, path, cancel: cancel, onProgress: (got, total) {
         final t = total > 0 ? total : (rel.sizes[abi] ?? 0);
         if (t > 0) progress.value = got / t;
       });
+    } on CtCancelled {
+      nav.pop();
+      return;
     } catch (e) {
       nav.pop();
-      if (e is DioException && CancelToken.isCancel(e)) return;
       rethrow;
     }
     nav.pop();

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'net.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
@@ -11,7 +12,7 @@ final _log = Logger('CtYtComments');
 /// (commentViewModel + commentEntityPayload) и старого (commentRenderer).
 /// Отправка — от имени аккаунта, в который вошли кодом.
 class CtYtComments {
-  static http.Client client = http.Client();
+  static http.Client client = ctHttp;
   static const _webVersion = '2.20251110.01.00';
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -47,7 +48,7 @@ class CtYtComments {
     final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/next?prettyPrint=false'),
         headers: headers, body: jsonEncode({..._ctx(auth: auth), ...body}));
     if (r.statusCode != 200) throw 'YouTube next: ${r.statusCode}';
-    return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return (await ctJsonDecodeBytes(r.bodyBytes)) as Map<String, dynamic>;
   }
 
   /// Первая страница: sort = top | new.

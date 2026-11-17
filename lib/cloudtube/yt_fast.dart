@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'net.dart';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -15,7 +16,7 @@ final _log = Logger('CtYtFast');
 /// без загрузки HTML-страницы просмотра (~1 МБ) и без лишних проверок.
 /// Описание, канал и рекомендации — отдельным запросом «next» параллельно.
 class CtYtFast {
-  static http.Client client = http.Client();
+  static http.Client client = ctHttp;
 
   /// Нужны адаптивные потоки (ТВ: своё DASH-качество) — тогда ждём ответа VISIONOS.
   static bool wantAdaptive = false;
@@ -70,7 +71,7 @@ class CtYtFast {
         })
         .timeout(const Duration(seconds: 7));
     if (r.statusCode != 200) return null;
-    final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    final j = (await ctJsonDecodeBytes(r.bodyBytes)) as Map<String, dynamic>;
     final st = (j['playabilityStatus'] as Map?)?['status'];
     if (st != 'OK') {
       _log.info('player $name $id: $st ${(j['playabilityStatus'] as Map?)?['reason'] ?? ''}');
@@ -119,7 +120,7 @@ class CtYtFast {
       _log.info('player VISIONOS $id: HTTP ${r.statusCode}');
       return null;
     }
-    final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    final j = (await ctJsonDecodeBytes(r.bodyBytes)) as Map<String, dynamic>;
     final st = (j['playabilityStatus'] as Map?)?['status'];
     if (st != 'OK') {
       _log.info('player VISIONOS $id: $st ${(j['playabilityStatus'] as Map?)?['reason'] ?? ''}');
@@ -151,7 +152,7 @@ class CtYtFast {
             }))
         .timeout(const Duration(seconds: 6));
     if (r.statusCode != 200) throw 'next ${r.statusCode}';
-    return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return (await ctJsonDecodeBytes(r.bodyBytes)) as Map<String, dynamic>;
   }
 
   /// Поиск через InnerTube (JSON, как приложение YouTube), а не через HTML-страницу результатов.
@@ -175,7 +176,7 @@ class CtYtFast {
             }))
         .timeout(const Duration(seconds: 8));
     if (r.statusCode != 200) throw 'search ${r.statusCode}';
-    final j = jsonDecode(utf8.decode(r.bodyBytes));
+    final j = await ctJsonDecodeBytes(r.bodyBytes);
     final out = <Map<String, dynamic>>[];
     final seen = <String>{};
     String? next;

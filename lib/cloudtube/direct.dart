@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'net.dart';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -113,7 +114,8 @@ class _CtDirect {
   static final instance = _CtDirect();
   final _yt = yt.YoutubeExplode();
   final _pagers = <String, _Pager>{};
-  final _videoCache = <String, (DateTime, Map<String, dynamic>)>{};
+  // ссылки на потоки живут несколько часов; держим 30 минут и не больше 80 роликов
+  final _videoCache = CtLru<String, Map<String, dynamic>>(80, ttl: const Duration(minutes: 30));
 
   String? _refresh;
 
@@ -209,7 +211,7 @@ class _CtDirect {
   /// Страница видео и плеер запрашивают одно и то же одновременно — делаем один запрос на двоих.
   Future<Map<String, dynamic>> _video(String id) {
     final hit = _videoCache[id];
-    if (hit != null && DateTime.now().difference(hit.$1) < const Duration(minutes: 30)) return Future.value(hit.$2);
+    if (hit != null) return Future.value(hit);
     // ВАЖНО: обработчик whenComplete не должен возвращать Future (remove() вернул бы этот же Future,
     // и whenComplete ждал бы сам себя — вечное ожидание; так сломался запуск видео в 1.1.19)
     return _inflight[id] ??= _video0(id).timeout(const Duration(seconds: 25)).whenComplete(() {
@@ -223,8 +225,7 @@ class _CtDirect {
     try {
       final f = await CtYtFast.video(id);
       if (f != null) {
-        _videoCache[id] = (DateTime.now(), f);
-        if (_videoCache.length > 80) _videoCache.remove(_videoCache.keys.first);
+        _videoCache[id] = f;
         return f;
       }
     } catch (e) {
@@ -317,7 +318,7 @@ class _CtDirect {
     // если не успели, допишем их в кэш позже (при следующем открытии будут)
     final budget = Future.delayed(const Duration(milliseconds: 800));
     unawaited(Future.wait([chFut, relFut].map((f) => f.then((_) => null, onError: (_) => null))).then((_) async {
-      final hit = _videoCache[id]?.$2;
+      final hit = _videoCache[id];
       if (hit == null) return;
       try {
         final ch = await chFut;
@@ -346,8 +347,7 @@ class _CtDirect {
     }
     _log.info('video $id: потоки ${streamsMs}мс, всего ${sw.elapsedMilliseconds}мс, '
         'hls=${master != null} muxed=${muxed.length} adaptive=${(j['adaptiveFormats'] as List).length}');
-    _videoCache[id] = (DateTime.now(), j);
-    if (_videoCache.length > 80) _videoCache.remove(_videoCache.keys.first);
+    _videoCache[id] = j;
     return j;
   }
 

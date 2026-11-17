@@ -1,9 +1,9 @@
 import 'package:clipious/cloudtube/direct.dart';
+import 'package:clipious/cloudtube/net.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'package:clipious/channels/models/channel_sort_by.dart';
 import 'package:clipious/extensions.dart';
@@ -74,23 +74,25 @@ class Service {
   final log = Logger('Service');
   final Client httpClient;
 
-  Service() : httpClient = CtHttpClient(http.Client());
+  Service() : httpClient = CtHttpClient(ctHttp);
 
   String urlFormatForLog(Uri? uri) {
     return kDebugMode ? uri.toString() : '${uri?.replace(host: 'xxxxxxxxxx')}';
   }
 
-  dynamic handleResponse(Response response) {
-    var body = utf8.decode(response.bodyBytes);
-    log.info(
+  /// Разбор ответа: крупный JSON — в фоновом изоляте. Запись о каждом ответе — уровня fine:
+  /// раньше каждый запрос писался в базу журнала (INFO), лишняя запись на диск на каждый ответ.
+  Future<dynamic> handleResponse(Response response) async {
+    final bytes = response.bodyBytes;
+    log.fine(
         "Response from ${response.request?.method} ${urlFormatForLog(response.request?.url)}, status: ${response.statusCode}");
 
-    if (body.isNotEmpty) {
-      var decoded = jsonDecode(body);
+    if (bytes.isNotEmpty) {
+      final decoded = await ctJsonDecodeBytes(bytes);
       String? error;
       try {
         Map<String, dynamic> errorFinder = decoded as Map<String, dynamic>;
-        error = errorFinder.containsKey('error') ? '${decoded['error']}' : null;
+        error = errorFinder.containsKey('error') ? '${errorFinder['error']}' : null;
       } catch (err) {
         // no error we keep going
       }
@@ -178,7 +180,7 @@ class Service {
         serverOverride: serverOverride);
     final response = await httpClient.get(req.uri, headers: req.headers);
 
-    var video = Video.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var video = Video.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     video = (await DeArrow.processVideos([video]))[0];
     video = video.copyWith(
         recommendedVideos:
@@ -263,7 +265,7 @@ class Service {
     var req = await buildRequest(urlGetTrending, query: query);
     final response = await httpClient.get(req.uri, headers: req.headers);
 
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
     var list = List<Video>.from(i.map((e) => Video.fromJson(e as Map<String, dynamic>)));
     list = (await postProcessVideos(list));
     return list;
@@ -272,7 +274,7 @@ class Service {
   Future<List<Video>> getPopular() async {
     var req = await buildRequest(urlGetPopular);
     final response = await httpClient.get(req.uri, headers: req.headers);
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
     var list = List<Video>.from(i.map((e) => Video.fromJson(e as Map<String, dynamic>)));
     list = (await postProcessVideos(list)).cast();
     return list;
@@ -295,7 +297,7 @@ class Service {
       'duration': duration != SearchDuration.any ? duration.name : null,
     });
     final response = await httpClient.get(req.uri, headers: req.headers);
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
     // only getting videos for now
     SearchResults results = SearchResults();
     try {
@@ -332,7 +334,7 @@ class Service {
         authenticated: true);
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    var feed = UserFeed.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var feed = UserFeed.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     feed.videos = (await postProcessVideos(feed.videos ?? [])).cast();
     feed.notifications =
         (await postProcessVideos(feed.notifications ?? [])).cast();
@@ -363,7 +365,7 @@ class Service {
 
       log.info('Calling $url');
       final response = await httpClient.get(Uri.parse(url));
-      final i = handleResponse(response) as List<dynamic>;
+      final i = (await handleResponse(response)) as List<dynamic>;
       return List<SponsorSegment>.from(
           i.map((e) => SponsorSegment.fromJson(e as Map<String, dynamic>)));
     } catch (err) {
@@ -403,7 +405,7 @@ class Service {
     final response =
         await httpClient.get(request.uri, headers: request.headers);
     SearchSuggestion search =
-        SearchSuggestion.fromJson(handleResponse(response) as Map<String, dynamic>);
+        SearchSuggestion.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     if (search.suggestions.any((element) => element.contains(";"))) {
       search.suggestions = search.suggestions
           .map((s) => s.replaceAll(" ", "&#32;").replaceAllMapped(
@@ -422,7 +424,7 @@ class Service {
       String url = serverUrl + urlStats;
       log.info('Calling $url');
       final response = await httpClient.get(Uri.parse(url), headers: headers);
-      final json = handleResponse(response) as Map<String, dynamic>;
+      final json = (await handleResponse(response)) as Map<String, dynamic>;
 
       if (json.containsKey("software") &&
           json['software']['name'] == 'invidious') {
@@ -490,7 +492,7 @@ class Service {
     var req = await buildRequest(urlGetSubscriptions, authenticated: true);
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
 
     return List<Subscription>.from(i.map((e) => Subscription.fromJson(e as Map<String, dynamic>)));
   }
@@ -503,7 +505,7 @@ class Service {
 
     final response = await httpClient.get(req.uri, headers: req.headers);
 
-    var channel = Channel.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var channel = Channel.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     channel.latestVideos =
         (await postProcessVideos(channel.latestVideos ?? [])).cast();
 
@@ -528,7 +530,7 @@ class Service {
     final response = await httpClient.get(req.uri, headers: req.headers);
 
     var videosWithContinuation =
-        VideosWithContinuation.fromJson(handleResponse(response) as Map<String, dynamic>);
+        VideosWithContinuation.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     videosWithContinuation.videos =
         (await postProcessVideos(videosWithContinuation.videos)).cast();
 
@@ -548,7 +550,7 @@ class Service {
     final response = await httpClient.get(req.uri, headers: req.headers);
 
     var videosWithContinuation =
-        VideosWithContinuation.fromJson(handleResponse(response) as Map<String, dynamic>);
+        VideosWithContinuation.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     videosWithContinuation.videos =
         (await postProcessVideos(videosWithContinuation.videos)).cast();
     return videosWithContinuation;
@@ -563,7 +565,7 @@ class Service {
     final response = await httpClient.get(req.uri, headers: req.headers);
 
     var videosWithContinuation =
-        VideosWithContinuation.fromJson(handleResponse(response) as Map<String, dynamic>);
+        VideosWithContinuation.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     videosWithContinuation.videos =
         (await postProcessVideos(videosWithContinuation.videos)).cast();
     return videosWithContinuation;
@@ -574,7 +576,7 @@ class Service {
       var req = await buildRequest(urlGetUserPlaylists, authenticated: true);
 
       final response = await httpClient.get(req.uri, headers: req.headers);
-      final i = handleResponse(response) as List<dynamic>;
+      final i = (await handleResponse(response)) as List<dynamic>;
       var list = List<Playlist>.from(i.map((e) => Playlist.fromJson(e as Map<String, dynamic>)));
       if (postProcessing) {
         for (int i = 0; i < list.length; i++) {
@@ -595,7 +597,7 @@ class Service {
         pathParams: {':id': channelId}, query: {'continuation': continuation});
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    var channelPlaylists = ChannelPlaylists.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var channelPlaylists = ChannelPlaylists.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     for (int i = 0; i < channelPlaylists.playlists.length; i++) {
       var pl = channelPlaylists.playlists[i];
       pl = pl.copyWith(videos: await postProcessVideos(pl.videos));
@@ -617,7 +619,7 @@ class Service {
 
     final response = await httpClient.post(req.uri,
         headers: req.headers, body: jsonEncode(body));
-    final playlist = handleResponse(response) as Map<String, dynamic>;
+    final playlist = (await handleResponse(response)) as Map<String, dynamic>;
     return playlist['playlistId'] as String;
   }
 
@@ -631,7 +633,7 @@ class Service {
 
     final response = await httpClient.post(req.uri,
         headers: req.headers, body: jsonEncode(body));
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<void> deleteUserPlaylist(String playListId) async {
@@ -639,7 +641,7 @@ class Service {
         pathParams: {":id": playListId}, authenticated: true, forceJson: true);
 
     final response = await httpClient.delete(req.uri, headers: req.headers);
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<void> deleteUserPlaylistVideo(
@@ -650,7 +652,7 @@ class Service {
         forceJson: true);
 
     final response = await httpClient.delete(req.uri, headers: req.headers);
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<List<String>> getUserHistory(int page, int maxResults) async {
@@ -660,7 +662,7 @@ class Service {
         forceJson: true);
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
 
     return List<String>.from(i.map((e) => e as String));
   }
@@ -685,14 +687,14 @@ class Service {
         authenticated: true, forceJson: true);
 
     final response = await httpClient.delete(req.uri, headers: req.headers);
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<void> deleteFromUserHistory(String videoId) async {
     var req = await buildRequest(urlAddDeleteHistory,
         pathParams: {':id': videoId}, authenticated: true, forceJson: true);
     final response = await httpClient.delete(req.uri, headers: req.headers);
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<void> addToUserHistory(String videoId) async {
@@ -700,7 +702,7 @@ class Service {
         pathParams: {':id': videoId}, authenticated: true, forceJson: true);
 
     final response = await httpClient.post(req.uri, headers: req.headers);
-    handleResponse(response);
+    await handleResponse(response);
   }
 
   Future<Duration?> pingServer(String url) async {
@@ -711,7 +713,7 @@ class Service {
         headers: {'Content-Type': 'application/json; charset=utf-16'});
 
     try {
-      handleResponse(response);
+      await handleResponse(response);
       var diff = DateTime.now().millisecondsSinceEpoch - start;
       return Duration(milliseconds: diff);
     } catch (err, stacktrace) {
@@ -724,7 +726,7 @@ class Service {
     final response =
         await httpClient.get(Uri.parse(urlGetInvidiousPublicServers));
     List<InvidiousPublicServer> servers = [];
-    final i = handleResponse(response) as List<dynamic>;
+    final i = (await handleResponse(response)) as List<dynamic>;
 
     for (var element in i) {
       Iterable s = element as Iterable;
@@ -745,7 +747,7 @@ class Service {
         pathParams: {':id': playlistId}, query: {'page': page?.toString()});
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    var playlist = Playlist.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var playlist = Playlist.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     var oldLength = playlist.videos.length;
     playlist = playlist.copyWith(
         videos: await postProcessVideos(playlist.videos),
@@ -764,7 +766,7 @@ class Service {
         pathParams: {':id': playlistId}, authenticated: true);
 
     final response = await httpClient.get(req.uri, headers: req.headers);
-    var playlist = Playlist.fromJson(handleResponse(response) as Map<String, dynamic>);
+    var playlist = Playlist.fromJson((await handleResponse(response)) as Map<String, dynamic>);
     var oldLength = playlist.videos.length;
     playlist = playlist.copyWith(
         videos: await postProcessVideos(playlist.videos),
@@ -783,7 +785,7 @@ class Service {
         videoId);
 
     final response = await httpClient.get(uri);
-    return Dislike.fromJson(handleResponse(response) as Map<String, dynamic>);
+    return Dislike.fromJson((await handleResponse(response)) as Map<String, dynamic>);
   }
 }
 

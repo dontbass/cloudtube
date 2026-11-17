@@ -59,7 +59,7 @@ class PlaylistList extends StatelessWidget {
                           onRefresh: () =>
                               !small && state.paginatedList.hasRefresh()
                                   ? cubit.refreshPlaylists()
-                                  : null,
+                                  : Future<void>.value(),
                           child: DeviceWidget(
                             forcedTyped: small ? DeviceType.phone : null,
                             phone: ListView.builder(

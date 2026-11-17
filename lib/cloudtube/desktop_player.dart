@@ -13,6 +13,8 @@ import '../videos/models/video.dart';
 import '../videos/models/adaptive_format.dart';
 import 'platform.dart';
 import 'direct.dart';
+import '../player/core/recovery.dart';
+import '../player/core/watchdog.dart';
 import 'watch.dart';
 import '../videos/views/components/compact_video.dart';
 
@@ -77,12 +79,32 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   StreamSubscription? _logSub;
   Duration _lastPos = Duration.zero;
   int _stuck = 0;
+  // общие с телефоном и ТВ сторож и правила восстановления (lib/player/core)
+  final _recovery = CtRecoveryPolicy();
+  late final _guard = CtPlaybackWatchdog(
+    read: () {
+      final st = _player.state;
+      return PlaybackSnapshot(
+          initialized: st.duration > Duration.zero,
+          playing: st.playing && !st.completed,
+          buffering: st.buffering,
+          position: st.position);
+    },
+    nudgePlay: () => _player.play(),
+    // на ПК автозапуск не нужен (и мешал бы паузе кнопками mpv): только «не открылось» и «зависло»
+    autoplayWindow: Duration.zero,
+    onFail: _recover,
+  );
   final _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _errSub = _player.stream.error.listen((e) => _log.warning('mpv: $e'));
+    _errSub = _player.stream.error.listen((e) {
+      _log.warning('mpv: $e');
+      // ошибка открытия потока (ссылка протухла, сеть) — как и на Android, восстанавливаемся
+      if (e.contains('Failed to open') || e.contains('HTTP error') || e.contains('403')) _recover('ошибка mpv: $e');
+    });
     _logSub = _player.stream.log.listen((l) => _log.info('mpv ${l.level} ${l.prefix}: ${l.text}'));
     // Сторож: mpv с отдельной звуковой дорожкой иногда «замирает» на старте, хотя данные уже
     // загружены (то же лечится паузой/плей вручную). Если позиция стоит 2,5 с при запасе буфера —
@@ -111,6 +133,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   void dispose() {
     _errSub?.cancel();
     _watch?.cancel();
+    _guard.stop();
     _logSub?.cancel();
     _player.dispose();
     _scroll.dispose();
@@ -195,6 +218,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       await np.setProperty(
           'user-agent', ctDirectActive ? (ctDirectStreamHeaders(url)['User-Agent'] ?? kCtIosUserAgent) : 'Mozilla/5.0 CloudTube');
     }
+    _guard.start();
     if (audio == null) {
       await _player.open(Media(url, httpHeaders: headers, start: at));
       return;
@@ -213,6 +237,28 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       }
     }
     await _player.play();
+  }
+
+  /// Сбой: свежие ссылки и продолжение с той же секунды; после нескольких сбоев подряд — ошибка.
+  Future<void> _recover(String why) async {
+    if (!mounted || _full == null) return;
+    _guard.stop();
+    final id = _full!.videoId;
+    final action = _recovery.onFailure(id, tvDirect: false);
+    _log.warning('desktop: $why → $action (#${_recovery.fails})');
+    if (action == CtRecovery.giveUp) {
+      setState(() => _error = 'Видео не воспроизводится: $why');
+      return;
+    }
+    final pos = _player.state.position;
+    if (ctDirectActive) ctDirectForget(id);
+    try {
+      _full = await service.getVideo(id);
+    } catch (e) {
+      _log.warning('desktop: не удалось обновить ссылки: $e');
+    }
+    if (!mounted) return;
+    await _play(at: pos > const Duration(seconds: 1) ? pos : null);
   }
 
   String _stream(Server s, String id, String itag) => '${s.url}/latest_version?id=$id&itag=$itag&local=true';

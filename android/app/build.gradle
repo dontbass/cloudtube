@@ -106,6 +106,13 @@ android {
         }
     }
     namespace 'com.github.lamarios.clipious'
+
+    // CloudTube: нативные библиотеки в APK сжаты — установщик заметно меньше
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
 }
 
 flutter {

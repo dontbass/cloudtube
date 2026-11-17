@@ -88,7 +88,7 @@ jobs:
         run: |
           N=${{ github.run_number }}
           # versionCode = (100+N)*10 + ABI — больше, чем у ранних сборок 1.0.x
-          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 --build-name=1.1.$N --build-number=$((100 + N))
+          flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 --build-name=1.1.$N --build-number=$((100 + N)) --split-debug-info=build/symbols
           mkdir -p out
           for f in build/app/outputs/flutter-apk/app-*-release.apk build/app/outputs/flutter-apk/app-release.apk; do
             [ -f "$f" ] || continue

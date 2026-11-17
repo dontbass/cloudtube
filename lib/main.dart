@@ -9,7 +9,6 @@ import 'package:clipious/cloudtube/desktop_player.dart';
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dynamic_color/dynamic_color.dart';
 import 'cloudtube/sponsor_toast.dart';
 import 'cloudtube/yt_fast.dart';
 import 'cloudtube/tv_nav.dart';
@@ -183,8 +182,8 @@ class MyApp extends StatelessWidget {
 
           return ValueListenableBuilder<bool>(
               valueListenable: ctSoftTheme,
-              builder: (context, soft, _) => DynamicColorBuilder(
-              builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+              builder: (context, soft, _) => Builder(
+              builder: (context) {
             // CloudTube: фиксированная палитра как у сайта (динамические цвета Android не используем)
             final ColorScheme lightColorScheme = soft ? ctSoftScheme : ctLightScheme;
             darkColorScheme = soft ? ctDimScheme : ctDarkScheme;
@@ -249,7 +248,9 @@ class MyApp extends StatelessWidget {
               localeListResolutionCallback: (locales, supportedLocales) {
                 log.info(
                     'device locales=$locales supported locales=$supportedLocales, saved: $savedLocale');
-                if (savedLocale != null) {
+                // сохранённый язык мог быть из убранных переводов — тогда как у устройства
+                if (savedLocale != null &&
+                    supportedLocales.any((l) => l.languageCode == savedLocale.languageCode)) {
                   log.info("using saved locale, $savedLocale");
                   return savedLocale;
                 }

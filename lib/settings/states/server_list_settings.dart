@@ -108,7 +108,6 @@ class ServerListSettingsCubit extends Cubit<ServerListSettingsState> {
 
   switchServer(Server s) async {
     await db.useServer(s);
-    await fileDb.useServer(s);
     await refreshServers();
     appCubit.setServer(s);
   }

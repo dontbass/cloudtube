@@ -16,7 +16,6 @@ class ServerSettingsCubit extends Cubit<ServerSettingsState> {
 
   useServer(bool value) async {
     await db.useServer(state.server);
-    await fileDb.useServer(state.server);
     Server s = state.server.copyWith(inUse: true);
     emit(state.copyWith(server: s));
     app.setServer(state.server);
@@ -27,7 +26,6 @@ class ServerSettingsCubit extends Cubit<ServerSettingsState> {
     headers[key] = value;
     emit(state.copyWith.server(customHeaders: headers));
     db.upsertServer(state.server);
-    fileDb.upsertServer(state.server);
   }
 
   removeHeader(String key) {
@@ -35,15 +33,11 @@ class ServerSettingsCubit extends Cubit<ServerSettingsState> {
     headers.remove(key);
     emit(state.copyWith.server(customHeaders: headers));
     db.upsertServer(state.server);
-    fileDb.upsertServer(state.server);
   }
 
   Future<void> logOut() async {
     Server s = state.server.copyWith(sidCookie: null, authToken: null);
     await db.upsertServer(s);
-    if (s.inUse) {
-      await fileDb.useServer(s);
-    }
     emit(state.copyWith(server: s));
     // we only refresh the app if the app is currently on this server
     if (app.state.server?.url == s.url) {
@@ -68,9 +62,6 @@ class ServerSettingsCubit extends Cubit<ServerSettingsState> {
         headers: s.customHeaders);
     s = s.copyWith(sidCookie: cookie);
     await db.upsertServer(s);
-    if (s.inUse) {
-      fileDb.useServer(s);
-    }
     emit(state.copyWith(server: s));
     // we only refresh the app if the app is currently on this server
     if (app.state.server?.url == s.url) {

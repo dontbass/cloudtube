@@ -59,7 +59,6 @@ class CtYouPage extends StatelessWidget {
           headers: s.customHeaders);
       s = s.copyWith(sidCookie: cookie);
       await db.upsertServer(s);
-      if (s.inUse) await fileDb.useServer(s);
       app.setServer(s);
       messenger.showSnackBar(const SnackBar(content: Text('Вы вошли в аккаунт')));
     } catch (e) {
@@ -72,7 +71,6 @@ class CtYouPage extends StatelessWidget {
     Server s = await db.getCurrentlySelectedServer();
     s = s.copyWith(sidCookie: null, authToken: null);
     await db.upsertServer(s);
-    if (s.inUse) await fileDb.useServer(s);
     app.setServer(s);
   }
 

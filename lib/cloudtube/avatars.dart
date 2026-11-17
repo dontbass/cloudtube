@@ -217,13 +217,26 @@ class CtVideoChannel {
     }
     _running++;
     try {
-      final j = await CtYtFast.player(videoId, yt.YoutubeApiClient.androidVr).timeout(const Duration(seconds: 8));
-      final ch = '${(j?['videoDetails'] as Map?)?['channelId'] ?? ''}';
-      final id = ch.startsWith('UC') ? ch : null;
+      // как на странице просмотра: ответ «next» (WEB) содержит владельца ролика —
+      // id канала и его аватарку сразу (player у части роликов отвечает без videoDetails)
+      final n = await CtYtFast.next(videoId).timeout(const Duration(seconds: 8));
+      final owner = CtYtFast.findKey(n, 'videoOwnerRenderer');
+      String? id;
+      String? avatar;
+      if (owner is Map) {
+        final b = CtYtFast.findKey(owner['navigationEndpoint'], 'browseId');
+        if (b is String && b.startsWith('UC')) id = b;
+        final th = CtYtFast.findKey(owner['thumbnail'], 'thumbnails');
+        if (th is List && th.isNotEmpty && th.last is Map) {
+          final u = '${(th.last as Map)['url'] ?? ''}';
+          avatar = u.startsWith('//') ? 'https:$u' : u;
+        }
+      }
       _cache[videoId] = id;
+      if (id != null && (avatar ?? '').isNotEmpty) CtAvatars.instance._done(id, avatar);
       return id;
     } catch (e) {
-      _log.fine('channel of $videoId: $e');
+      _log.info('канал ролика $videoId: $e');
       return null;
     } finally {
       _running--;
@@ -302,8 +315,14 @@ class CtChannelAvatar extends StatelessWidget {
   /// Полный адрес картинки и заголовки (для относительного пути — через свой сервер).
   Future<(String, Map<String, String>?)?> _resolve() async {
     var id = channelId;
-    if (id.isEmpty && (videoId ?? '').isNotEmpty) id = await CtVideoChannel.of(videoId!) ?? '';
-    final url = (this.url?.isNotEmpty ?? false) ? this.url : await CtAvatars.instance.get(id, slow: slow);
+    final vid = videoId ?? '';
+    if (id.isEmpty && vid.isNotEmpty) id = await CtVideoChannel.of(vid) ?? '';
+    var url = (this.url?.isNotEmpty ?? false) ? this.url : await CtAvatars.instance.get(id, slow: slow);
+    // страница канала не отдала картинку — берём её из данных ролика
+    if ((url == null || url.isEmpty) && vid.isNotEmpty && ctDirectActive) {
+      final ch = await CtVideoChannel.of(vid);
+      if (ch != null) url = await CtAvatars.instance.get(ch);
+    }
     if (url == null || url.isEmpty) return null;
     Server? server;
     try {

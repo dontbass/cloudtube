@@ -510,6 +510,9 @@ class CtYtFast {
 
   static dynamic _find(dynamic n, String key) => _findWhere(n, (k, _) => k == key);
 
+  /// Первое значение по ключу в глубине JSON-ответа InnerTube.
+  static dynamic findKey(dynamic n, String key) => _find(n, key);
+
   static dynamic _findWhere(dynamic n, bool Function(String k, dynamic v) test) {
     if (n is Map) {
       for (final e in n.entries) {

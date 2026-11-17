@@ -468,7 +468,7 @@ class _CtShortItemState extends State<CtShortItem> {
       if (mounted) {
         setState(() => _subscribed = was);
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Войдите в аккаунт («Вы»), чтобы подписываться')));
+            .showSnackBar(const SnackBar(content: Text('Войдите в аккаунт («Профиль»), чтобы подписываться')));
       }
     }
   }
@@ -521,7 +521,7 @@ class _CtShortItemState extends State<CtShortItem> {
       });
     } catch (_) {
       messenger.showSnackBar(
-          const SnackBar(content: Text('Войдите в аккаунт («Вы»), чтобы сохранять в плейлисты')));
+          const SnackBar(content: Text('Войдите в аккаунт («Профиль»), чтобы сохранять в плейлисты')));
     }
   }
 

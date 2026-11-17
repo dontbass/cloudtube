@@ -234,7 +234,7 @@ class CtYtCookies {
             ),
           const Padding(
             padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: Text('Другой Google-аккаунт: «Вы» → «Комментарии от своего имени» → «Добавить аккаунт Google».',
+            child: Text('Другой Google-аккаунт: «Профиль» → «Аккаунт для комментариев» → «Добавить аккаунт Google».',
                 style: TextStyle(fontSize: 12)),
           ),
         ],

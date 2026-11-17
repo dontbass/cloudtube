@@ -248,7 +248,7 @@ class _CtDeployScreenState extends State<CtDeployScreen> {
         setState(() {
           _phase = _Phase.done;
           _error = 'Сервер работает, но войти в аккаунт не удалось: ${e.message}. '
-              'Зарегистрируйтесь на сайте и войдите во вкладке «Вы».';
+              'Зарегистрируйтесь на сайте и войдите во вкладке «Профиль».';
         });
       }
     }

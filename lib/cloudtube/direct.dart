@@ -550,7 +550,7 @@ class _CtDirect {
   }
 
   Future<Object?> _auth(String method, List<String> p, Map<String, String> q) async {
-    if (_refresh == null) throw _Http(401, 'Войдите в аккаунт YouTube (вкладка «Вы»)');
+    if (_refresh == null) throw _Http(401, 'Войдите в аккаунт YouTube (вкладка «Профиль»)');
     final page = int.tryParse(q['page'] ?? '1') ?? 1;
     final what = p.length > 3 ? p[3] : '';
     switch (what) {

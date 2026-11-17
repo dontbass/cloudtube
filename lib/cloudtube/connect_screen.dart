@@ -124,7 +124,7 @@ class _CtConnectScreenState extends State<CtConnectScreen> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Войти в аккаунт Invidious'),
-                  subtitle: Text('Подписки, история и плейлисты. Можно сделать позже во вкладке «Вы»', style: muted),
+                  subtitle: Text('Подписки, история и плейлисты. Можно сделать позже во вкладке «Профиль»', style: muted),
                   value: _account,
                   onChanged: (v) => setState(() => _account = v),
                 ),

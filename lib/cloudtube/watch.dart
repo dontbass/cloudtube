@@ -66,7 +66,7 @@ class _CtWatchBodyState extends State<CtWatchBody> {
         }
       });
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('Войдите в аккаунт («Вы»), чтобы сохранять')));
+      messenger.showSnackBar(const SnackBar(content: Text('Войдите в аккаунт («Профиль»), чтобы сохранять')));
     }
   }
 

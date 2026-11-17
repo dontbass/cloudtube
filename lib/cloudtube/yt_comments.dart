@@ -117,7 +117,7 @@ class CtYtComments {
     }
     if (params == null) {
       throw 'YouTube не дал отправить комментарий: возможно, вход через сайт устарел '
-          '(«Вы» → «Комментарии от своего имени» → войти заново) или комментарии к видео ограничены';
+          '(«Профиль» → «Аккаунт для комментариев» → войти заново) или комментарии к видео ограничены';
     }
     final r = await client.post(Uri.parse('https://www.youtube.com/youtubei/v1/comment/create_comment?prettyPrint=false'),
         headers: {

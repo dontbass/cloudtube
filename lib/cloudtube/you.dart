@@ -17,8 +17,10 @@ import 'yt_login.dart';
 import 'yt_cookies.dart';
 import 'platform.dart';
 import '../main.dart' show isTv;
+import 'theme.dart';
+import 'ui_card.dart';
 
-/// Вкладка «Вы»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
+/// Вкладка «Профиль»: аккаунт (вход/выход), история, плейлисты, загрузки, подписки, настройки.
 class CtYouPage extends StatelessWidget {
   const CtYouPage({super.key});
 
@@ -86,121 +88,174 @@ class CtYouPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final loggedIn = context.select((AppCubit a) => a.isLoggedIn);
     final server = context.select((AppCubit a) => a.state.server);
     final direct = ctIsDirectUrl(server?.url);
-    Widget tile(IconData icon, String title, VoidCallback onTap, {String? subtitle}) => ListTile(
-          leading: Icon(icon, color: colors.onSurface),
-          title: Text(title),
-          subtitle: subtitle != null ? Text(subtitle) : null,
-          onTap: onTap,
-        );
-    Widget section(String t) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 4),
-          child: Text(t,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.primary, letterSpacing: .3)),
-        );
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Row(children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: const Color(0xFF7B5CD6),
-              child: Icon(loggedIn ? Icons.person : Icons.person_outline, color: Colors.white, size: 34),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(direct ? (loggedIn ? 'Аккаунт YouTube' : 'Без сервера') : (loggedIn ? 'Вы вошли в аккаунт' : 'Вы не вошли'),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(direct ? 'YouTube напрямую' : (server?.url.replaceFirst('https://', '') ?? ''),
-                    style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13)),
+    final accent = ctAccent(colors);
+
+    // шапка: кто вы и куда подключены — в той же карточке, что и остальное
+    final header = Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(color: accent.withValues(alpha: 0.16), shape: BoxShape.circle),
+            child: Icon(loggedIn ? Icons.person : Icons.person_outline, color: accent, size: 32),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                  direct
+                      ? (loggedIn ? 'Аккаунт YouTube' : 'Без входа')
+                      : (loggedIn ? 'Аккаунт сервера' : 'Без входа'),
+                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Row(children: [
+                Icon(direct ? Icons.play_circle_outline : Icons.dns_outlined,
+                    size: 16, color: colors.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                      direct ? 'YouTube напрямую' : (server?.url.replaceFirst('https://', '') ?? ''),
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+                ),
               ]),
-            ),
-          ]),
-        ),
-        if (!loggedIn && direct)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Войдите в аккаунт YouTube — будут ваши рекомендации, подписки и история. '
-                  'Вход кодом с телефона или компьютера, как на телевизоре.',
-                  style: TextStyle(color: colors.onSurfaceVariant)),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                  icon: const Icon(Icons.login),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtYtLoginScreen())),
-                  label: const Text('Войти в аккаунт YouTube')),
-              const SizedBox(height: 8),
             ]),
           ),
-        if (!loggedIn && !direct)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Войдите, чтобы видеть свои подписки, историю и плейлисты.',
-                  style: TextStyle(color: colors.onSurfaceVariant)),
-              const SizedBox(height: 12),
-              FilledButton(onPressed: () => login(context), child: const Text('Войти в аккаунт')),
-              const SizedBox(height: 8),
-            ]),
+        ]),
+        if (!loggedIn) ...[
+          const SizedBox(height: 12),
+          Text(
+              direct
+                  ? 'Войдите в аккаунт YouTube — будут ваши рекомендации, подписки и история. '
+                      'Вход кодом с телефона или компьютера, как на телевизоре.'
+                  : 'Войдите, чтобы видеть свои подписки, историю и плейлисты.',
+              style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            icon: const Icon(Icons.login),
+            style: FilledButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            onPressed: () => direct
+                ? Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtYtLoginScreen()))
+                : login(context),
+            label: Text(direct ? 'Войти в аккаунт YouTube' : 'Войти в аккаунт'),
           ),
-        section('Моё'),
-        if (loggedIn) ...[
-          tile(Icons.history, 'История', () => _open(context, 'История', HomeDataSource.history.build(context, false)),
-              subtitle: 'Что вы смотрели'),
-          if (!direct)
-            tile(Icons.playlist_play, 'Плейлисты',
-                () => _open(context, 'Плейлисты', HomeDataSource.playlist.build(context, false)),
-                subtitle: 'Ваши подборки видео'),
-          tile(Icons.subscriptions_outlined, 'Управление подписками',
-              () => AutoRouter.of(context).push(const ManageSubscriptionsRoute()),
-              subtitle: 'Список каналов, отписаться'),
         ],
-        if (direct && !isTv && !ctDesktop)
-          tile(Icons.forum_outlined, 'Аккаунт для комментариев',
-              () async {
-                await CtYtCookies.manage(context);
-                if (context.mounted) (context as Element).markNeedsBuild();
-              },
-              subtitle: CtYtCookies.active
-                  ? 'Пишете как: ${CtYtCookies.identity?.name ?? 'основной канал'} — сменить канал или выйти'
-                  : 'Вход через сайт Google — нужен, чтобы писать комментарии'),
-        tile(Icons.download_outlined, 'Загрузки', () => AutoRouter.of(context).push(const DownloadManagerRoute()),
-            subtitle: 'Видео, сохранённые для просмотра без интернета'),
-        section('Как смотреть'),
-        if (server != null && ctIsDirectUrl(server.url))
-          tile(Icons.dns_outlined, 'Подключить свой сервер',
-              () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen())),
-              subtitle: 'Сейчас: YouTube напрямую. Свой сервер Invidious — без рекламы для всей семьи'),
-        if (server != null && !ctIsDirectUrl(server.url))
-          tile(Icons.play_circle_outline, 'Смотреть без сервера',
-              () => ctConnectDirect(context.read<AppCubit>()),
-              subtitle: 'YouTube напрямую; вернуться к серверу можно в настройках серверов'),
-        if (server != null && !ctIsDirectUrl(server.url))
-          tile(Icons.dns_outlined, 'Сервер и пароль сайта',
-              () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server)),
-              subtitle: 'Логин/пароль сайта (Basic Auth), другие серверы'),
-        tile(Icons.rocket_launch_outlined, 'Развернуть свой сервер',
-            () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtDeployScreen())),
-            subtitle: 'Invidious на вашем VPS за 10–15 минут'),
-        section('Приложение'),
-        tile(Icons.settings_outlined, 'Настройки', () => AutoRouter.of(context).push(const SettingsRoute()),
-            subtitle: 'Тема, качество видео, плеер, язык'),
-        FutureBuilder<String>(
-          future: CtUpdater.installedVersion(),
-          builder: (context, snap) => tile(Icons.system_update_outlined, 'Проверить обновления',
-              () => CtUpdater.check(context, manual: true),
-              subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null),
-        ),
-        tile(Icons.tour_outlined, 'Обучающий тур', () => CtOnboarding.start(context),
-            subtitle: 'Короткая экскурсия по кнопкам и вкладкам'),
-        if (loggedIn)
-          tile(Icons.logout, direct ? 'Выйти из аккаунта YouTube' : 'Выйти из аккаунта', () => logout(context)),
-        const SizedBox(height: 24),
+      ]),
+    );
+
+    final mine = <Widget>[
+      if (loggedIn) ...[
+        CtCard(
+            icon: Icons.history,
+            title: 'История',
+            subtitle: 'Что вы смотрели',
+            onTap: () => _open(context, 'История', HomeDataSource.history.build(context, false))),
+        if (!direct)
+          CtCard(
+              icon: Icons.playlist_play,
+              title: 'Плейлисты',
+              subtitle: 'Ваши подборки видео',
+              onTap: () => _open(context, 'Плейлисты', HomeDataSource.playlist.build(context, false))),
+        CtCard(
+            icon: Icons.subscriptions_outlined,
+            title: 'Подписки на каналы',
+            subtitle: 'Список каналов, отписаться',
+            onTap: () => AutoRouter.of(context).push(const ManageSubscriptionsRoute())),
+      ],
+      if (direct && !isTv && !ctDesktop)
+        CtCard(
+            icon: Icons.forum_outlined,
+            title: 'Аккаунт для комментариев',
+            subtitle: CtYtCookies.active
+                ? 'Пишете как: ${CtYtCookies.identity?.name ?? 'основной канал'}'
+                : 'Вход через сайт Google — чтобы писать комментарии',
+            onTap: () async {
+              await CtYtCookies.manage(context);
+              if (context.mounted) (context as Element).markNeedsBuild();
+            }),
+      CtCard(
+          icon: Icons.download_outlined,
+          title: 'Загрузки',
+          subtitle: 'Видео для просмотра без интернета',
+          onTap: () => AutoRouter.of(context).push(const DownloadManagerRoute())),
+    ];
+
+    final watch = <Widget>[
+      if (server != null && direct)
+        CtCard(
+            icon: Icons.dns_outlined,
+            title: 'Подключить свой сервер',
+            subtitle: 'Свой Invidious — без рекламы для всей семьи',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen()))),
+      if (server != null && !direct) ...[
+        CtCard(
+            icon: Icons.play_circle_outline,
+            title: 'Смотреть без сервера',
+            subtitle: 'YouTube напрямую',
+            onTap: () => ctConnectDirect(context.read<AppCubit>())),
+        CtCard(
+            icon: Icons.dns_outlined,
+            title: 'Сервер и пароль сайта',
+            subtitle: server.url.replaceFirst('https://', ''),
+            onTap: () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server))),
+      ],
+      CtCard(
+          icon: Icons.rocket_launch_outlined,
+          title: 'Развернуть свой сервер',
+          subtitle: 'Invidious на вашем VPS за 10–15 минут',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtDeployScreen()))),
+    ];
+
+    final app = <Widget>[
+      CtCard(
+          icon: Icons.settings_outlined,
+          title: 'Настройки',
+          subtitle: 'Плеер, качество, тема, уведомления',
+          onTap: () => AutoRouter.of(context).push(const SettingsRoute())),
+      FutureBuilder<String>(
+        future: CtUpdater.installedVersion(),
+        builder: (context, snap) => CtCard(
+            icon: Icons.system_update_outlined,
+            title: 'Проверить обновления',
+            subtitle: snap.hasData ? 'Установлена версия ${snap.data}' : null,
+            onTap: () => CtUpdater.check(context, manual: true)),
+      ),
+      CtCard(
+          icon: Icons.tour_outlined,
+          title: 'Обучающий тур',
+          subtitle: 'Короткая экскурсия по приложению',
+          onTap: () => CtOnboarding.start(context)),
+      if (loggedIn)
+        CtCard(
+            icon: Icons.logout,
+            title: direct ? 'Выйти из аккаунта YouTube' : 'Выйти из аккаунта',
+            danger: true,
+            onTap: () => logout(context)),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        header,
+        if (mine.isNotEmpty) ...[const CtCardSection('Моё'), CtCardGrid(children: mine)],
+        const CtCardSection('Как смотреть'),
+        CtCardGrid(children: watch),
+        const CtCardSection('Приложение'),
+        CtCardGrid(children: app),
       ],
     );
   }

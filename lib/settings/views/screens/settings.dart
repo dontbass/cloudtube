@@ -3,6 +3,7 @@ import 'package:clipious/cloudtube/connect.dart';
 import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:clipious/cloudtube/updater.dart';
+import 'package:clipious/cloudtube/ui_card.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (ctx, state) {
         final server = ctx.select((AppCubit a) => a.state.server);
         final cards = <Widget>[
-          _CtCard(
+          CtCard(
             icon: Icons.swap_horiz,
             title: 'Режим работы',
             subtitle: ctDirectActive ? 'Сейчас: без сервера, YouTube напрямую' : 'Сейчас: свой сервер',
@@ -53,31 +54,31 @@ class SettingsScreen extends StatelessWidget {
               if (ctx.mounted) (ctx as Element).markNeedsBuild();
             },
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.video_settings,
             title: locals.videoPlayer,
             subtitle: 'Качество, субтитры, SponsorBlock, автозапуск',
             onTap: () => router.push(const VideoPlayerSettingsRoute()),
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.home_outlined,
             title: locals.browsing,
             subtitle: 'Разделы, страна и язык, фильтры, история поиска',
             onTap: () => router.push(const BrowsingSettingsRoute()),
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.palette_outlined,
             title: locals.appearance,
             subtitle: 'Тема и панель навигации',
             onTap: () => router.push(const AppearanceSettingsRoute()),
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.cloud_queue,
             title: locals.manageServers,
             subtitle: server != null && !ctDirectActive ? server.url : 'Свой сервер Invidious не подключён',
             onTap: () => router.push(const ManageServersRoute()),
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.notifications_outlined,
             title: locals.notifications,
             subtitle: state.backgroundNotifications ? 'Включены' : 'Новые видео с подписок',
@@ -85,13 +86,13 @@ class SettingsScreen extends StatelessWidget {
           ),
         ];
         final about = <Widget>[
-          _CtCard(
+          CtCard(
             icon: Icons.system_update_outlined,
             title: 'Проверить обновления',
             subtitle: 'Установлена версия ${state.packageInfo.version}',
             onTap: () => CtUpdater.check(ctx, manual: true),
           ),
-          _CtCard(
+          CtCard(
             icon: Icons.toc,
             title: locals.appLogs,
             subtitle: 'Пригодится, если что-то работает не так',
@@ -135,64 +136,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _CtCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _CtCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final accent = ctAccent(colors);
-    return Material(
-      color: colors.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(18),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          // крупная цель для пальца — удобно и на экране в машине
-          constraints: const BoxConstraints(minHeight: 76),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.14), shape: BoxShape.circle),
-                child: Icon(icon, color: accent, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
-            ]),
-          ),
-        ),
-      ),
     );
   }
 }

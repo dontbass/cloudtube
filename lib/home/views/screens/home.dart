@@ -209,7 +209,7 @@ class _MainScreenState extends State<MainContentScreen> {
                               NavigationDestination(
                                   icon: Icon(Icons.account_circle_outlined),
                                   selectedIcon: Icon(Icons.account_circle),
-                                  label: 'Вы'),
+                                  label: 'Профиль'),
                             ],
                           )))
                         : null,
@@ -260,7 +260,7 @@ class _MainScreenState extends State<MainContentScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ctPhone && _ct == 3
-                              ? const Text('Вы')
+                              ? const Text('Профиль')
                               : selectedPage == HomeDataSource.popular
                                   ? const CtLogo()
                                   : Text(selectedPage.getLabel(locals)),
@@ -295,10 +295,10 @@ class _MainScreenState extends State<MainContentScreen> {
                         ),
                         if (!ctPhone)
                           IconButton(
-                            tooltip: 'Вы',
+                            tooltip: 'Профиль',
                             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                                 builder: (_) => Scaffold(
-                                    appBar: AppBar(title: const Text('Вы')),
+                                    appBar: AppBar(title: const Text('Профиль')),
                                     body: const Center(
                                         child: SizedBox(width: 720, child: CtYouPage()))))),
                             icon: const Icon(Icons.account_circle_outlined),

@@ -27,17 +27,22 @@ class DownloadProgress {
   CtCancel cancelToken;
   int count = 0, total = 1;
 
-  List<Function(double progress)> listeners = [];
+  /// Этап: 1 — звук, 2 — видео, 3 — склейка (для «только звук» этапов 2).
+  int step = 1, totalSteps = 1;
 
   DownloadProgress(this.cancelToken);
 
-  addListener(Function(double progress) f) {
-    listeners.add(f);
+  /// Общий прогресс загрузки 0..1 по всем этапам (раньше сбрасывался на каждом файле).
+  double get value {
+    final part = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
+    return ((step - 1 + part) / totalSteps).clamp(0.0, 1.0);
   }
 
-  removeListener(Function(double progress) f) {
-    listeners.remove(f);
-  }
+  String get stage => switch (step) {
+        1 => 'звук',
+        2 when totalSteps == 3 => 'видео',
+        _ => 'сохранение',
+      };
 }
 
 class DownloadManagerCubit extends Cubit<DownloadManagerState> {
@@ -69,13 +74,6 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
     emit(state.copyWith(videos: vids));
   }
 
-  void playAll() {
-    setVideos();
-    player.playOfflineVideos(state.videos
-        .where((element) => element.downloadComplete && !element.downloadFailed)
-        .toList());
-  }
-
   onProgress(int count, int total, DownloadedVideo video,
       {required int step, required int totalSteps}) async {
     if (count == total && step == totalSteps) {
@@ -93,9 +91,6 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
       await db.upsertDownload(video);
       emit(state.copyWith(downloadProgresses: progresses));
       setVideos();
-      for (var f in downloadProgress.listeners) {
-        f(count / total);
-      }
     } else {
       EasyThrottle.throttle(
           'download-${video.videoId}', const Duration(milliseconds: 500), () {
@@ -103,14 +98,15 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
             'Download of video ${video.videoId}, $count / $total =  ${count / total}, Total: ${state.totalProgress}');
         var progresses =
             Map<String, DownloadProgress>.from(state.downloadProgresses);
-        var downloadProgress = progresses[video.videoId];
-        downloadProgress?.count = count;
-        downloadProgress?.total = total;
-        emit(state.copyWith(downloadProgresses: progresses));
-        setVideos();
-        for (var f in downloadProgress?.listeners ?? []) {
-          f(count / total);
+        final dp = progresses[video.videoId];
+        if (dp != null) {
+          dp
+            ..count = count
+            ..total = total
+            ..step = step
+            ..totalSteps = totalSteps;
         }
+        emit(state.copyWith(downloadProgresses: progresses));
       });
     }
   }
@@ -300,8 +296,8 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
     } else {
       log.severe("Failed to download video ${vid.title}, removing it", err);
     }
+    // раньше здесь вызывался onProgress(1, 1) — он успевал записать «загружено» поверх ошибки
     vid = vid.copyWith(downloadComplete: false, downloadFailed: true);
-    onProgress(1, 1, vid, step: 1, totalSteps: 1);
     var progresses =
         Map<String, DownloadProgress>.from(state.downloadProgresses);
     progresses.remove(vid.videoId);
@@ -317,41 +313,20 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
         quality: vid.quality, audioOnly: vid.audioOnly);
   }
 
-  void addListener(
-      String? videoId, void Function(double progress) setProgress) {
-    var progresses =
-        Map<String, DownloadProgress>.from(state.downloadProgresses);
-    progresses[videoId]?.addListener(setProgress);
-    emit(state.copyWith(downloadProgresses: progresses));
-  }
-
-  void removeListener(
-      String? videoId, void Function(double progress) setProgress) {
-    var progresses =
-        Map<String, DownloadProgress>.from(state.downloadProgresses);
-
-    progresses[videoId]?.removeListener(setProgress);
-    emit(state.copyWith(downloadProgresses: progresses));
-  }
-
-  bool canPlayAll() =>
-      state.videos.where((element) => element.downloadComplete).isNotEmpty;
-
-  Future<void> copyToDownloadFolder(DownloadedVideo v) async {
-    final downloads = await getDownloadsDirectory();
-    if (downloads != null) {
-      if (!await downloads.exists()) {
-        downloads.create(recursive: true);
-      }
-      final file = File(await v.effectivePath);
-      if (await file.exists()) {
-        final fileName =
-            '${v.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').replaceAll(RegExp(r'_{2,}'), '')}_${v.videoId}${p.extension(file.path)}';
-
-        bool? success = await copyFileIntoDownloadFolder(file.path, fileName);
-        log.info(
-            "file ${file.path} copied to download folder as $fileName (success ?$success)");
-      }
+  /// Копия в общую папку «Загрузки». Имя — по названию ролика (кириллица сохраняется).
+  Future<bool> copyToDownloadFolder(DownloadedVideo v) async {
+    final file = File(await v.effectivePath);
+    if (!await file.exists()) return false;
+    var name = v.title.replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '_').replaceAll(RegExp(r'^_+|_+$'), '');
+    if (name.length > 80) name = name.substring(0, 80);
+    final fileName = '${name.isEmpty ? 'video' : name}_${v.videoId}${p.extension(file.path)}';
+    try {
+      final ok = await copyFileIntoDownloadFolder(file.path, fileName) ?? false;
+      log.info('file ${file.path} copied to download folder as $fileName (success $ok)');
+      return ok;
+    } catch (e) {
+      log.warning('copy to downloads failed: $e');
+      return false;
     }
   }
 }
@@ -366,14 +341,12 @@ sealed class DownloadManagerState with _$DownloadManagerState {
   const DownloadManagerState._();
 
   double get totalProgress {
-    int downloaded = 0;
-    int total = 0;
 
-    for (var element in downloadProgresses.values) {
-      downloaded += element.count;
-      total += element.total;
+    if (downloadProgresses.isEmpty) return 0;
+    var sum = 0.0;
+    for (final e in downloadProgresses.values) {
+      sum += e.value;
     }
-
-    return downloaded / total;
+    return sum / downloadProgresses.length;
   }
 }

@@ -1,5 +1,6 @@
 import 'server_caps.dart';
 import 'direct.dart';
+import 'yt_fast.dart';
 import '../utils/models/image_object.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import 'dart:async';
@@ -194,6 +195,42 @@ class CtAvatars {
   }
 }
 
+/// Канал по ролику (напрямую). В ленте «Главная» аккаунта YouTube (как на ТВ) у плиток
+/// нет id канала — без него не открыть канал и не взять аватарку. Берём из короткого
+/// ответа player (videoDetails.channelId), не больше 2 запросов сразу, с запоминанием.
+class CtVideoChannel {
+  CtVideoChannel._();
+
+  static final _cache = <String, String?>{};
+  static final _wait = <String, Future<String?>>{};
+  static int _running = 0;
+
+  static Future<String?> of(String videoId) {
+    if (videoId.isEmpty || !ctDirectActive) return Future.value(null);
+    if (_cache.containsKey(videoId)) return Future.value(_cache[videoId]);
+    return _wait[videoId] ??= _fetch(videoId).whenComplete(() => _wait.remove(videoId));
+  }
+
+  static Future<String?> _fetch(String videoId) async {
+    while (_running >= 2) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+    _running++;
+    try {
+      final j = await CtYtFast.player(videoId, yt.YoutubeApiClient.androidVr).timeout(const Duration(seconds: 8));
+      final ch = '${(j?['videoDetails'] as Map?)?['channelId'] ?? ''}';
+      final id = ch.startsWith('UC') ? ch : null;
+      _cache[videoId] = id;
+      return id;
+    } catch (e) {
+      _log.fine('channel of $videoId: $e');
+      return null;
+    } finally {
+      _running--;
+    }
+  }
+}
+
 /// В отдельном изоляте: загрузка и разбор страницы канала не тормозят интерфейс.
 Future<String?> _ytLogoIsolated(String id) => Isolate.run(() => _ytLogo(id));
 
@@ -220,8 +257,11 @@ class CtChannelAvatar extends StatelessWidget {
   /// Разрешить запрос по одному каналу (см. [CtAvatars.get]).
   final bool slow;
 
+  /// Ролик, по которому можно найти канал, если [channelId] пустой.
+  final String? videoId;
+
   const CtChannelAvatar(
-      {super.key, required this.channelId, required this.author, this.size = 36, this.onTap, this.url, this.slow = false});
+      {super.key, required this.channelId, required this.author, this.size = 36, this.onTap, this.url, this.slow = false, this.videoId});
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +301,9 @@ class CtChannelAvatar extends StatelessWidget {
 
   /// Полный адрес картинки и заголовки (для относительного пути — через свой сервер).
   Future<(String, Map<String, String>?)?> _resolve() async {
-    final url = (this.url?.isNotEmpty ?? false) ? this.url : await CtAvatars.instance.get(channelId, slow: slow);
+    var id = channelId;
+    if (id.isEmpty && (videoId ?? '').isNotEmpty) id = await CtVideoChannel.of(videoId!) ?? '';
+    final url = (this.url?.isNotEmpty ?? false) ? this.url : await CtAvatars.instance.get(id, slow: slow);
     if (url == null || url.isEmpty) return null;
     Server? server;
     try {

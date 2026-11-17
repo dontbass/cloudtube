@@ -13,6 +13,7 @@ import 'package:clipious/l10n/generated/app_localizations.dart';
 import '../../../../globals.dart';
 import '../../components/video_thumbnail.dart';
 import '../../../../cloudtube/tv_channels.dart';
+import '../../../../cloudtube/avatars.dart';
 
 /// Удерживается ли ОК (пришли повторы клавиши) — тогда на отпускании открываем меню.
 bool _ctOkHeld = false;
@@ -43,9 +44,13 @@ class TvVideoItem extends StatelessWidget {
     }
   }
 
-  void _menu(BuildContext context, Video e) {
-    ctShowTvVideoMenu(context,
-        title: e.title ?? '', author: e.author ?? '', channelId: e.authorId ?? '', onPlay: () => _play(context, e));
+  Future<void> _menu(BuildContext context, Video e) async {
+    var ch = e.authorId ?? '';
+    // в ленте аккаунта YouTube у плиток нет id канала — узнаём по ролику
+    if (ch.isEmpty) ch = await CtVideoChannel.of(e.videoId) ?? '';
+    if (!context.mounted) return;
+    await ctShowTvVideoMenu(context,
+        title: e.title ?? '', author: e.author ?? '', channelId: ch, onPlay: () => _play(context, e));
   }
 
   /// ОК — смотреть; долгое нажатие ОК или кнопка «Меню» — меню (канал, подписка).

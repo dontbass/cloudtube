@@ -111,7 +111,8 @@ class TvHomeScreen extends StatelessWidget {
     var locals = AppLocalizations.of(context)!;
     AutoRouter.of(context).push(TvGridRoute(
         paginatedVideoList: SubscriptionVideoList(),
-        title: locals.subscriptions));
+        title: locals.subscriptions,
+        showChannels: true));
   }
 
   openSearch(BuildContext context) {

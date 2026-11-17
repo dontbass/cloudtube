@@ -12,6 +12,10 @@ import 'package:clipious/l10n/generated/app_localizations.dart';
 
 import '../../../../globals.dart';
 import '../../components/video_thumbnail.dart';
+import '../../../../cloudtube/tv_channels.dart';
+
+/// Удерживается ли ОК (пришли повторы клавиши) — тогда на отпускании открываем меню.
+bool _ctOkHeld = false;
 
 class TvVideoItem extends StatelessWidget {
   final Video video;
@@ -30,22 +34,43 @@ class TvVideoItem extends StatelessWidget {
       this.onFocusChange,
       this.compact = false});
 
+  void _play(BuildContext context, Video e) {
+    if (onSelect != null) {
+      onSelect!(context, e);
+    } else if (!(video.isUpcoming ?? false)) {
+      // как в YouTube на ТВ: выбор ролика сразу запускает просмотр
+      AutoRouter.of(context).push(TvPlayerRoute(videos: [e]));
+    }
+  }
+
+  void _menu(BuildContext context, Video e) {
+    ctShowTvVideoMenu(context,
+        title: e.title ?? '', author: e.author ?? '', channelId: e.authorId ?? '', onPlay: () => _play(context, e));
+  }
+
+  /// ОК — смотреть; долгое нажатие ОК или кнопка «Меню» — меню (канал, подписка).
+  /// Меню открываем на отпускании, чтобы это же нажатие не сработало в меню.
   KeyEventResult openVideo(BuildContext context, Video e, FocusNode node, KeyEvent event) {
-    if (event is KeyUpEvent &&
-        isOk(event.logicalKey, physicalKeyboardKey: event.physicalKey)) {
+    final ok = isOk(event.logicalKey, physicalKeyboardKey: event.physicalKey);
+    if (ok && event is KeyDownEvent) {
+      _ctOkHeld = false;
+      return KeyEventResult.handled;
+    }
+    if (ok && event is KeyRepeatEvent) {
+      _ctOkHeld = true;
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && (event.logicalKey == LogicalKeyboardKey.contextMenu || ok && _ctOkHeld)) {
+      _ctOkHeld = false;
+      if (!e.filtered) _menu(context, e);
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && ok) {
       if (e.filtered) {
-        var cubit = context.read<VideoInListCubit>();
-        cubit.showVideoDetails();
+        context.read<VideoInListCubit>().showVideoDetails();
         return KeyEventResult.handled;
       }
-      if (onSelect != null) {
-        onSelect!(context, e);
-      } else {
-        if (!(video.isUpcoming ?? false)) {
-          // как в YouTube на ТВ: выбор ролика сразу запускает просмотр
-          AutoRouter.of(context).push(TvPlayerRoute(videos: [e]));
-        }
-      }
+      _play(context, e);
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -78,6 +103,7 @@ class TvVideoItem extends StatelessWidget {
                   final FocusNode focusNode = Focus.of(ctx);
                   final bool hasFocus = focusNode.hasFocus;
                   return GestureDetector(
+                    onSecondaryTap: () => _menu(context, state.video!),
                     child: AnimatedScale(
                       curve: Curves.easeInOutQuad,
                       duration: animationDuration ~/ 2,

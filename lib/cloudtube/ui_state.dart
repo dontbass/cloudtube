@@ -9,13 +9,18 @@ class CtErrorView extends StatelessWidget {
   final VoidCallback? onRetry;
   final bool autofocus;
 
-  const CtErrorView({super.key, this.message = 'Не удалось загрузить', this.onRetry, this.autofocus = false});
+  /// Текст ошибки мелко под сообщением — чтобы по скриншоту было понятно, что случилось.
+  final String? details;
+
+  const CtErrorView(
+      {super.key, this.message = 'Не удалось загрузить', this.onRetry, this.autofocus = false, this.details});
 
   @override
   Widget build(BuildContext context) {
+    final d = details?.trim() ?? '';
     return CtEmptyView(
       icon: Icons.cloud_off_rounded,
-      text: message,
+      text: d.isEmpty ? message : '$message\n\n${d.length > 160 ? '${d.substring(0, 160)}…' : d}',
       action: onRetry == null
           ? null
           : FilledButton.icon(

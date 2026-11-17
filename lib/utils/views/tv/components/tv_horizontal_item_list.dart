@@ -6,6 +6,7 @@ import 'package:clipious/utils/views/components/placeholders.dart';
 import 'package:clipious/videos/views/tv/components/video_item.dart';
 
 import '../../../../utils.dart';
+import '../../../../cloudtube/tv_mouse.dart';
 import '../../../models/paginated_list.dart';
 
 class TvHorizontalItemList<T> extends StatelessWidget {
@@ -51,7 +52,9 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                       final textH = MediaQuery.textScalerOf(context).scale(ctTvCardTextH);
                       return SizedBox(
                       height: w * 9 / 16 + textH + 22,
-                      child: ListView.builder(
+                      child: CtRowArrows(
+                        controller: cubit.scrollController,
+                        child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         clipBehavior: Clip.none,
                         // одну-две карточки за краем готовим заранее (больше — на старте приставка
@@ -72,7 +75,7 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                             child: SizedBox(width: w, child: child),
                           );
                         },
-                      ),
+                      )),
                     );
                     }),
             ],

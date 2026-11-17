@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
-import 'yt_account.dart';
 import 'yt_cookies.dart';
 
 final _log = Logger('CtYtComments');
@@ -106,8 +105,6 @@ class CtYtComments {
     }
     return _parse(videoId, page).toJson(videoId);
   }
-
-  static bool canPost(String videoId) => ctYtRefreshToken != null;
 
   /// Отправить комментарий от своего имени — как на сайте: cookie входа + SAPISIDHASH,
   /// параметры из шапки комментариев, затем comment/create_comment.

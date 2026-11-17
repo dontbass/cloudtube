@@ -146,9 +146,6 @@ class CtDashLocal {
     return out;
   }
 
-  /// Доступные качества ролика (высоты, по убыванию).
-  static List<int> heights(String id) => (_byHeight(id).keys.toList()..sort((a, b) => b.compareTo(a)));
-
   static bool _av1(Map f) => '${f['mimeType']}'.contains('av01');
 
   /// Все видеоформаты ролика для меню (как «Видеоформат» в SmartTube): выше качество — выше в списке.

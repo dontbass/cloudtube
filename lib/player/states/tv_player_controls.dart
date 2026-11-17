@@ -200,6 +200,43 @@ class TvPlayerControlsCubit extends Cubit<TvPlayerControlsState> {
     return KeyEventResult.handled;
   }
 
+  // ——— мышь ———
+  DateTime _ctMouseAt = DateTime(2000);
+
+  /// Движение мыши над видео — показать панель кнопок (не чаще раза в 0,4 с).
+  void ctMouseMoved() {
+    final now = DateTime.now();
+    if (now.difference(_ctMouseAt) < const Duration(milliseconds: 400)) return;
+    _ctMouseAt = now;
+    if (state.showSettings || state.showQueue || ctSeekMode) return;
+    if (!state.displayControls) emit(state.copyWith(displayControls: true));
+    showUi();
+  }
+
+  /// Колесо над видео — перемотка ±10 с (в настройках и очереди колесо листает списки).
+  void ctMouseWheel(bool forward) {
+    if (state.showSettings || state.showQueue) return;
+    forward ? fastForward() : fastRewind();
+    showUi();
+  }
+
+  /// Клик/перетаскивание по полосе перемотки: [f] — доля длительности.
+  void ctMouseSeek(double f, {bool commit = false}) {
+    final len = player.duration;
+    if (len <= Duration.zero) return;
+    final p = Duration(milliseconds: (len.inMilliseconds * f).round());
+    if (commit) {
+      _ctIdle?.cancel();
+      ctSeek.value = null;
+      player.seek(p);
+      showUi();
+    } else {
+      ctSeek.value = p;
+      emit(state.copyWith(controlsOpacity: 1));
+      _ctArmIdle();
+    }
+  }
+
   @override
   Future<void> close() {
     _ctCommit?.cancel();

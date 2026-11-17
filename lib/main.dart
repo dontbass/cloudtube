@@ -13,6 +13,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'cloudtube/sponsor_toast.dart';
 import 'cloudtube/yt_fast.dart';
 import 'cloudtube/tv_nav.dart';
+import 'cloudtube/tv_mouse.dart';
 import 'package:feedback/feedback.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -242,7 +243,7 @@ class MyApp extends StatelessWidget {
                 const SliderThemeData(inactiveTrackColor: Colors.blue);
 
             return MaterialApp.router(
-              builder: isTv ? (context, child) => CtTvScale(child: CtTvSmoothTraversal(child: child ?? const SizedBox())) : null,
+              builder: isTv ? (context, child) => CtTvScale(child: CtTvMouse(child: CtTvSmoothTraversal(child: child ?? const SizedBox()))) : null,
               routerConfig: appRouter.config(
                   navigatorObservers: () => [MyRouteObserver()],
                   includePrefixMatches: true),

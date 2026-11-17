@@ -1,5 +1,7 @@
 import '../../../../cloudtube/sponsor_toast.dart';
 import '../../../../cloudtube/up_next.dart';
+import '../../../../cloudtube/tv_mouse.dart';
+import 'package:flutter/gestures.dart';
 import '../../../../cloudtube/theme.dart';
 import 'package:clipious/player/states/tv_player_controls.dart';
 import 'package:clipious/player/views/tv/components/player_settings.dart';
@@ -56,6 +58,13 @@ class TvPlayerControls extends StatelessWidget {
               autofocus: true,
               onKeyEvent: (node, event) =>
                   cubit.handleRemoteEvents(node, event),
+              // мышь: движение показывает панель, колесо — перемотка ±10 с
+              child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerHover: (_) => cubit.ctMouseMoved(),
+              onPointerSignal: (e) {
+                if (e is PointerScrollEvent && e.scrollDelta.dy != 0) cubit.ctMouseWheel(e.scrollDelta.dy > 0);
+              },
               child: Stack(
                 children: [
                   // SponsorBlock: «Пропущен фрагмент …» поверх видео
@@ -369,7 +378,21 @@ class TvPlayerControls extends StatelessWidget {
                                             final accent = ctAccent(Theme.of(context).colorScheme);
                                             final h = seek != null ? 12.0 : 8.0;
                                             return LayoutBuilder(builder: (context, c) {
-                                              return SizedBox(
+                                              // мышь: клик по полосе — перейти в это место, можно тянуть
+                                              void at(Offset local, {bool commit = false}) => cubit.ctMouseSeek(
+                                                  (local.dx / c.maxWidth).clamp(0.0, 1.0),
+                                                  commit: commit);
+                                              return Listener(
+                                                behavior: HitTestBehavior.opaque,
+                                                onPointerDown: (e) {
+                                                  ctMouseSkipClick = true;
+                                                  at(e.localPosition);
+                                                },
+                                                onPointerMove: (e) => at(e.localPosition),
+                                                onPointerUp: (e) => at(e.localPosition, commit: true),
+                                                child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: SizedBox(
                                                 height: 28,
                                                 child: Stack(
                                                   alignment: Alignment.centerLeft,
@@ -411,7 +434,7 @@ class TvPlayerControls extends StatelessWidget {
                                                       ),
                                                   ],
                                                 ),
-                                              );
+                                              )));
                                             });
                                           },
                                         )),
@@ -463,7 +486,7 @@ class TvPlayerControls extends StatelessWidget {
                                 ))
                               : const SizedBox.shrink()))
                 ],
-              ),
+              )),
             ),
           );
         },

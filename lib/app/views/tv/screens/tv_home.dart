@@ -20,6 +20,7 @@ import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
 import '../../../../cloudtube/direct.dart';
 import '../../../../cloudtube/tv_nav.dart';
+import '../../../../cloudtube/tv_mouse.dart';
 import 'package:clipious/utils/views/tv/components/tv_horizontal_item_list.dart';
 import '../../../../cloudtube/home_feed.dart';
 import '../../../../cloudtube/yt_login.dart';
@@ -36,6 +37,8 @@ GlobalKey? _ctCurRow;
 /// Вертикальная прокрутка к ряду — только при смене ряда. Раньше она запускалась на КАЖДОМ
 /// ролике при движении вправо-влево и спорила с горизонтальной прокруткой — отсюда рывки.
 void ctTvScrollToRow(GlobalKey? key) {
+  // мышью: ряд под курсором не двигаем (иначе плитки уезжают из-под него), листают колесом
+  if (ctMouseActive.value) return;
   if (key == null || identical(key, _ctCurRow)) return;
   final ctx = key.currentContext;
   if (ctx == null) return;

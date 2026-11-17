@@ -51,9 +51,6 @@ String ctUserAgentForClient(String c) {
 /// Сейчас выбран режим «без сервера» (обновляется при смене сервера).
 bool ctDirectActive = false;
 
-/// Сбросить кэш видео (для проверки скорости).
-void ctDirectClearCache() => _CtDirect.instance._videoCache.clear();
-
 /// Забыть один ролик (при восстановлении после сбоя — свежие ссылки на потоки).
 void ctDirectForget(String id) => _CtDirect.instance._videoCache.remove(id);
 

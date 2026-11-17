@@ -211,14 +211,6 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
       _recover();
     } else if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
       _stallTimer?.cancel();
-      // подстраховка: видео должно стартовать само (плеер мог поставить паузу «по видимости»,
-      // пока экран плеера ещё открывался — на ТВ и медленных устройствах)
-      final startedFor = state.video?.videoId;
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (!isClosed && state.video?.videoId == startedFor && videoController?.isPlaying() != true) {
-          videoController?.play();
-        }
-      });
       if (_recoverFor != state.video?.videoId) _recoverTries = 0;
     }
 
@@ -724,10 +716,12 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
 
   void _ctPreferHighQuality({bool retry = true}) {
-    // плейлист уже без низких качеств — между 720p и 1080p пусть выбирает ExoPlayer
+    // ТВ со своим сервером (или запасной HLS без фильтра): сразу лучшее качество не выше выбранного
+    // потолка (по умолчанию 4K) — сам ExoPlayer на приставках застревает на низком.
+    // Без сервера качество уже одно (_ctFiltered) — здесь делать нечего
     if (!isTv || _ctFiltered) return;
     final tracks = (videoController?.betterPlayerAsmsTracks ?? const <BetterPlayerAsmsTrack>[])
-        .where((t) => (t.height ?? 0) > 0 && (t.height ?? 0) <= 1080)
+        .where((t) => (t.height ?? 0) > 0 && (t.height ?? 0) <= ctTvQualityCap)
         .toList();
     if (tracks.isEmpty) {
       // список качеств HLS иногда появляется чуть позже

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'tv_mouse.dart';
+
 import '../app/views/tv/screens/tv_home.dart' show ctOpenTvMenu, ctTvLastContent;
 
 /// ТВ: стоим ли на самом левом элементе (слева в том же ряду фокусироваться не на что
@@ -74,6 +76,7 @@ class CtTvLeftEdge extends StatelessWidget {
 /// Здесь — короткая плавная прокрутка; при зажатой стрелке новая подхватывает текущую.
 void ctTvRequestFocus(FocusNode node,
     {ScrollPositionAlignmentPolicy? alignmentPolicy, double? alignment, Duration? duration, Curve? curve}) {
+  ctMouseActive.value = false; // управляют пультом
   node.requestFocus();
   final ctx = node.context;
   if (ctx == null) return;

@@ -22,6 +22,7 @@ settingsTheme(ColorScheme colorScheme) => SettingsThemeData(
     titleTextColor: ctAccent(colorScheme),
     dividerColor: colorScheme.outlineVariant,
     tileDescriptionTextColor: colorScheme.onSurfaceVariant,
+    settingsTileTextColor: colorScheme.onSurface,
     leadingIconsColor: ctAccent(colorScheme),
     tileHighlightColor: colorScheme.secondaryContainer);
 

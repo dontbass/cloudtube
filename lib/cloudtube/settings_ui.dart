@@ -7,16 +7,26 @@ import 'theme.dart';
 /// перешли на новый вид без переписывания логики. Оформление: группы-карточки со скруглением,
 /// иконка в круге акцентного цвета, переключатели CloudTube.
 
-/// Оставлен для совместимости вызовов: цвета берутся из темы приложения.
+/// Цвета для мест, где экраны настроек рисуют текст сами.
 class SettingsThemeData {
+  final Color? settingsSectionBackground;
+  final Color? settingsListBackground;
+  final Color? titleTextColor;
+  final Color? dividerColor;
+  final Color? tileDescriptionTextColor;
+  final Color? settingsTileTextColor;
+  final Color? leadingIconsColor;
+  final Color? tileHighlightColor;
+
   const SettingsThemeData({
-    Color? settingsSectionBackground,
-    Color? settingsListBackground,
-    Color? titleTextColor,
-    Color? dividerColor,
-    Color? tileDescriptionTextColor,
-    Color? leadingIconsColor,
-    Color? tileHighlightColor,
+    this.settingsSectionBackground,
+    this.settingsListBackground,
+    this.titleTextColor,
+    this.dividerColor,
+    this.tileDescriptionTextColor,
+    this.settingsTileTextColor,
+    this.leadingIconsColor,
+    this.tileHighlightColor,
   });
 }
 

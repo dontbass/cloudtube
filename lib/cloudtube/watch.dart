@@ -140,7 +140,12 @@ class _CtWatchBodyState extends State<CtWatchBody> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
           child: Row(children: [
-            CtChannelAvatar(channelId: v.authorId ?? '', author: v.author ?? '', size: 36, onTap: _openChannel),
+            CtChannelAvatar(
+                channelId: v.authorId ?? '',
+                author: v.author ?? '',
+                size: 36,
+                url: v.authorThumbnails.isEmpty ? null : v.authorThumbnails.first.url,
+                onTap: _openChannel),
             const SizedBox(width: 10),
             Expanded(
               child: InkWell(

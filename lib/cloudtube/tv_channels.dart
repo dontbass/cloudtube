@@ -188,7 +188,7 @@ class _CtTvChannelsRowState extends State<CtTvChannelsRow> {
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    CtChannelAvatar(channelId: id, author: name, size: 84),
+                    CtChannelAvatar(channelId: id, author: name, size: 84, slow: true),
                     const SizedBox(height: 8),
                     Text(name,
                         maxLines: 2,

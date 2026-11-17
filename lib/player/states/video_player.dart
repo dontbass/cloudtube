@@ -373,8 +373,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         _ctDashHeight = choice.kind == CtStreamKind.ownDash ? choice.height : null;
         _ctCurHeight = choice.fixedQuality ? choice.height : null;
         if (choice.kind == CtStreamKind.ownDash) _ctCurItag = choice.itag;
-        if (choice.progressiveResolution != null) {
-          newState = newState.copyWith(selectedNonDashTrack: choice.progressiveResolution);
+        final progressiveRes = choice.progressiveResolution;
+        if (progressiveRes != null) {
+          newState = newState.copyWith(selectedNonDashTrack: progressiveRes);
         }
         final videoUrl = choice.url;
         final streamHeaders = choice.headers;

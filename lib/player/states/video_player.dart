@@ -23,6 +23,7 @@ import '../views/tv/components/player_controls.dart';
 import '../../cloudtube/trace.dart';
 import '../../cloudtube/hls_local.dart';
 import '../core/recovery.dart';
+import '../core/stream_source.dart';
 import '../core/watchdog.dart';
 import '../../cloudtube/tv_scale.dart';
 import '../../cloudtube/up_next.dart';
@@ -32,7 +33,6 @@ part 'video_player.freezed.dart';
 
 final log = Logger('VideoPlayer');
 
-final _googleCdnRegex = RegExp(r'https://(.+)googlevideo.com/');
 
 class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   BetterPlayerController? videoController;
@@ -350,93 +350,43 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
         var server = await db.getCurrentlySelectedServer();
         String baseUrl = (server).url;
-
-        Map<String, String> resolutions = {};
-
-        bool isHls = newState.video!.hlsUrl != null;
-
-        var formatStream = isHls || newState.video!.formatStreams!.isEmpty
-            ? null
-            : newState.video!
-                .formatStreams![newState.video!.formatStreams!.length - 1];
-
-        var useProxy = service.useProxy();
-
-        String videoUrl = isHls
-            ? '${newState.video!.hlsUrl!}${useProxy ? '?local=true' : ''}'
-            : isUsingDash()
-                ? '${newState.video!.dashUrl}${useProxy ? '?local=true' : ''}'
-                : formatStream?.url ?? '';
-        if (!isUsingDash() && formatStream != null) {
-          newState =
-              newState.copyWith(selectedNonDashTrack: formatStream.resolution);
+        final v = newState.video!;
+        final id = v.videoId;
+        // выбор потока — lib/player/core/stream_source.dart
+        final choice = await ctPickStream(CtStreamRequest(
+          videoId: id,
+          hlsUrl: v.hlsUrl,
+          dashUrl: v.dashUrl,
+          formatStreams: v.formatStreams ?? const <FormatStream>[],
+          serverUrl: server.url,
+          serverHeaders: server.headersForUrl,
+          useProxy: service.useProxy(),
+          useServerDash: isUsingDash(),
+          tvDirect: isTv && ctDirectActive,
+          noOwnDash: _ctNoDashFor == id,
+          cap: _ctCapFor == id ? _ctCapOverride! : ctTvQualityCap,
+          itag: _ctItagFor == id ? _ctItag : null,
+        ));
+        CtTrace.mark(choice.trace);
+        ctNowQuality.value = choice.qualityLabel;
+        _ctFiltered = choice.fixedQuality;
+        _ctDashHeight = choice.kind == CtStreamKind.ownDash ? choice.height : null;
+        _ctCurHeight = choice.fixedQuality ? choice.height : null;
+        if (choice.kind == CtStreamKind.ownDash) _ctCurItag = choice.itag;
+        final progressiveRes = choice.progressiveResolution;
+        if (progressiveRes != null) {
+          newState = newState.copyWith(selectedNonDashTrack: progressiveRes);
         }
+        final videoUrl = choice.url;
+        final streamHeaders = choice.headers;
+        log.info('Playing url (${choice.kind.name}) $videoUrl');
 
-        // somehow invidious is sending google url even when using local proxy when not using dash
-        if (!isUsingDash() && useProxy) {
-          // we replace google's cdn by invidious server url.
-          videoUrl = videoUrl.replaceFirst(_googleCdnRegex, '${(server).url}/');
-        }
-
-        var streamHeaders = !offline
-            ? <String, String>{...?server.headersForUrl(videoUrl), ...ctDirectStreamHeaders(videoUrl)}
-            : <String, String>{};
-        // ТВ без сервера: как в SmartTube — свой DASH с одним (лучшим до 1080p) качеством,
-        // иначе ExoPlayer на приставке берёт 360p и не поднимается. Запасной вариант — HLS 720–1080p.
-        var ctDash = false;
-        ctNowQuality.value = isHls ? null : formatStream?.resolution;
-        _ctFiltered = false;
-        _ctDashHeight = null;
-        _ctCurHeight = null;
-        if (isTv && ctDirectActive && _ctNoDashFor != newState.video!.videoId) {
-          final id = newState.video!.videoId;
-          final d = await CtDashLocal.build(id,
-              cap: _ctCapFor == id ? _ctCapOverride! : ctTvQualityCap,
-              itag: _ctItagFor == id ? _ctItag : null);
-          if (d != null) {
-            ctDash = true;
-            _ctDashHeight = d.$2;
-            _ctCurHeight = d.$2;
-            _ctCurItag = d.$4;
-            _ctFiltered = true;
-            streamHeaders = {...ctDirectStreamHeaders(d.$3)};
-            videoUrl = d.$1;
-            CtTrace.mark('плеер: DASH ${d.$2}p (одно качество)');
-            final f = CtDashLocal.formats(id).where((f) => '${f['itag']}' == d.$4).firstOrNull;
-            ctNowQuality.value = f != null ? CtDashLocal.label(f).replaceAll(', ', ' · ') : '${d.$2}p';
-          }
-        }
-        if (!ctDash && isHls && isTv && ctDirectActive) {
-          // запасной путь — HLS, но тоже с одним качеством (лучшее не выше выбранного)
-          final local = await CtHlsLocal.single(videoUrl, streamHeaders,
-              cap: _ctCapFor == newState.video!.videoId ? _ctCapOverride! : ctTvQualityCap);
-          CtTrace.mark(local != null ? 'плеер: HLS ${local.$2}p (одно качество)' : 'плеер: HLS без фильтра качества');
-          _ctFiltered = local != null;
-          if (local != null) {
-            videoUrl = local.$1;
-            _ctCurHeight = local.$2;
-            ctNowQuality.value = '${local.$2}p';
-          }
-        } else if (!ctDash) {
-          CtTrace.mark(isHls ? 'плеер: HLS' : (isUsingDash() ? 'плеер: DASH' : 'плеер: обычный поток ${formatStream?.resolution ?? ''}'));
-        }
-
-        log.info(
-            'Playing url (dash ${isUsingDash()},  hasHls ? ${newState.video!.hlsUrl != null})  $videoUrl');
-
-        BetterPlayerVideoFormat format = ctDash
-            ? BetterPlayerVideoFormat.dash
-            : isHls
-            ? BetterPlayerVideoFormat.hls
-            : isUsingDash()
-                ? BetterPlayerVideoFormat.dash
-                : BetterPlayerVideoFormat.other;
-
-        if (format == BetterPlayerVideoFormat.other) {
-          for (final value in (newState.video!.formatStreams ?? const <FormatStream>[])) {
-            resolutions[value.qualityLabel] = value.url;
-          }
-        }
+        final format = switch (choice.kind) {
+          CtStreamKind.ownDash || CtStreamKind.serverDash => BetterPlayerVideoFormat.dash,
+          CtStreamKind.hls || CtStreamKind.hlsSingle => BetterPlayerVideoFormat.hls,
+          CtStreamKind.progressive => BetterPlayerVideoFormat.other,
+        };
+        final resolutions = choice.resolutions;
 
         String lastSubtitle = '';
         if (settings.state.rememberSubtitles) {

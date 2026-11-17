@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -69,7 +70,9 @@ class CtUpdater {
   }
 
   /// Проверка обновлений. [manual] — пользователь нажал сам: сообщаем и «обновлений нет».
-  static Future<void> check(BuildContext context, {bool manual = false}) async {
+  /// Автопроверка при сбое сети повторяется через 30 с и через 2 мин (в машине и на ТВ сеть
+  /// часто поднимается позже запуска приложения).
+  static Future<void> check(BuildContext context, {bool manual = false, int attempt = 0}) async {
     if (!Platform.isAndroid || _busy) return;
     _busy = true;
     try {
@@ -83,7 +86,15 @@ class CtUpdater {
         }
         return;
       }
-      if (!manual && db.getSettings(_skipKey)?.value == rel.version) return;
+      // «Позже» откладывает напоминание об этой версии на сутки (раньше — навсегда)
+      if (!manual) {
+        final skip = (db.getSettings(_skipKey)?.value ?? '').split('|');
+        final at = skip.length > 1 ? int.tryParse(skip[1]) ?? 0 : 0;
+        if (skip.first == rel.version &&
+            DateTime.now().millisecondsSinceEpoch - at < const Duration(hours: 24).inMilliseconds) {
+          return;
+        }
+      }
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -94,7 +105,7 @@ class CtUpdater {
           actions: [
             TextButton(
                 onPressed: () {
-                  db.saveSetting(SettingsValue(_skipKey, rel.version));
+                  db.saveSetting(SettingsValue(_skipKey, '${rel.version}|${DateTime.now().millisecondsSinceEpoch}'));
                   Navigator.pop(ctx, false);
                 },
                 child: const Text('Позже')),
@@ -107,11 +118,27 @@ class CtUpdater {
       _log.warning('update check: $e');
       if (manual && context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Не удалось проверить обновления: $e')));
+            .showSnackBar(SnackBar(content: Text('Не удалось проверить обновления: ${_why(e)}')));
+      } else if (!manual && attempt < 2) {
+        Future.delayed(Duration(seconds: attempt == 0 ? 30 : 120), () {
+          if (context.mounted) check(context, attempt: attempt + 1);
+        });
       }
     } finally {
       _busy = false;
     }
+  }
+
+  static String _why(Object e) {
+    final t = '$e';
+    if (e is TlsException || t.contains('HandshakeException') || t.contains('CERTIFICATE')) {
+      return 'проверьте дату и время на устройстве';
+    }
+    if (e is SocketException || t.contains('SocketException') || t.contains('Failed host lookup')) {
+      return 'нет подключения к интернету';
+    }
+    if (e is TimeoutException) return 'GitHub не отвечает, попробуйте позже';
+    return t;
   }
 
   static Future<String?> _pickAbi(CtRelease rel) async {

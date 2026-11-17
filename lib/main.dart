@@ -14,7 +14,6 @@ import 'cloudtube/sponsor_toast.dart';
 import 'cloudtube/yt_fast.dart';
 import 'cloudtube/tv_nav.dart';
 import 'cloudtube/tv_mouse.dart';
-import 'package:feedback/feedback.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:clipious/cloudtube/theme.dart';
@@ -136,8 +135,7 @@ Future<void> main() async {
   CtYtFast.wantAdaptive = isTv;
   if (isTv) ctLoadTvScale();
   await ctSponsorDefaults();
-  runApp(BetterFeedback(
-    child: MultiBlocProvider(providers: [
+  runApp(MultiBlocProvider(providers: [
       BlocProvider(
         create: (context) {
           return AppCubit(AppState(0, null, HomeLayout()));
@@ -159,8 +157,7 @@ Future<void> main() async {
         create: (context) => DownloadManagerCubit(
             const DownloadManagerState(), context.read<PlayerCubit>()),
       )
-    ], child: const MyApp()),
-  ));
+    ], child: const MyApp()));
 }
 
 late ColorScheme darkColorScheme;

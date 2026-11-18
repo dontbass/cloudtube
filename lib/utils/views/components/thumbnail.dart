@@ -3,6 +3,7 @@ import 'package:cloudtube/globals.dart';
 import 'package:cloudtube/main.dart' show isTv;
 import 'package:cloudtube/settings/models/db/server.dart';
 import 'package:cloudtube/utils/states/thumbnail.dart';
+import 'package:cloudtube/cloudtube/img.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -67,9 +68,7 @@ class Thumbnail extends StatelessWidget {
                     } else {
                       final cubit = context.read<ThumbnailCubit>();
 
-                      final url = state.selected!.startsWith('/')
-                          ? server.data!.url + state.selected!
-                          : state.selected!;
+                      final url = ctImageUrl(state.selected!, server.data);
 
                       return CachedNetworkImage(
                         key: ValueKey(url),
@@ -101,8 +100,10 @@ class Thumbnail extends StatelessWidget {
                           width: width,
                           height: height,
                         ),
-                        progressIndicatorBuilder: (context, url, progress) =>
-                            Container(
+                        // загрузка «висит» — следующий адрес или заглушка, а не вечный кружок
+                        progressIndicatorBuilder: (context, url, progress) => CtLoadTimeout(
+                            onTimeout: cubit.onThumbnailFailed,
+                            child: Container(
                           height: height,
                           width: width,
                           alignment: Alignment.center,
@@ -116,7 +117,7 @@ class Thumbnail extends StatelessWidget {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1,
                                   )),
-                        ),
+                        )),
                       );
                     }
                   }),

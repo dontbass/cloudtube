@@ -113,7 +113,17 @@ class CtUpdater {
           ],
         ),
       );
-      if (go == true && context.mounted) await _downloadAndInstall(context, rel);
+      if (go == true && context.mounted) {
+        // ошибка загрузки — сообщаем всегда (раньше при автопроверке она терялась,
+        // а окно «Доступно обновление» появлялось снова через 30 с)
+        final messenger = ScaffoldMessenger.of(context);
+        try {
+          await _downloadAndInstall(context, rel);
+        } catch (e) {
+          _log.warning('update download: $e');
+          messenger.showSnackBar(SnackBar(content: Text('Не удалось обновить: ${_why(e)}')));
+        }
+      }
     } catch (e) {
       _log.warning('update check: $e');
       if (manual && context.mounted) {
@@ -167,7 +177,10 @@ class CtUpdater {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      // «Назад» не закрывает окно: иначе по окончании загрузки закрылся бы экран под ним
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
         title: Text('Загрузка ${rel.version}'),
         content: ValueListenableBuilder<double?>(
           valueListenable: progress,
@@ -178,6 +191,7 @@ class CtUpdater {
           ]),
         ),
         actions: [TextButton(onPressed: () => cancel.cancel(), child: const Text('Отмена'))],
+      ),
       ),
     );
     try {
@@ -256,13 +270,17 @@ class CtUpdater {
 
   /// Остаток прошлого обновления (CloudTube.old.exe) — удалить, когда он уже не запущен.
   static Future<void> _cleanupWindows() async {
-    try {
-      final exe = File(Platform.resolvedExecutable);
-      for (final f in exe.parent.listSync().whereType<File>()) {
-        final n = f.uri.pathSegments.last.toLowerCase();
-        if (n.endsWith('.old.exe') || n.endsWith('.new.exe')) await f.delete();
-      }
-    } catch (_) {}
+    // только свои остатки (CloudTube.old.exe / CloudTube.new.exe): раньше удалялись
+    // любые *.old.exe в папке — а лежать программа может в «Документах» или на рабочем столе
+    final exe = File(Platform.resolvedExecutable);
+    final name = exe.uri.pathSegments.last;
+    final base = name.toLowerCase().endsWith('.exe') ? name.substring(0, name.length - 4) : name;
+    for (final suffix in const ['.old.exe', '.new.exe']) {
+      try {
+        final f = File('${exe.parent.path}${Platform.pathSeparator}$base$suffix');
+        if (await f.exists()) await f.delete();
+      } catch (_) {} // старый exe ещё не завершился — уберём в следующий раз
+    }
   }
 
   /// Скачать новый CloudTube.exe рядом с текущим, подменить его и перезапуститься.
@@ -281,10 +299,14 @@ class CtUpdater {
     if (!context.mounted) return;
     final nav = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
+    final client = http.Client();
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      // «Назад» не закрывает окно: иначе по окончании загрузки закрылся бы экран под ним
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
         title: Text('Загрузка ${rel.version}'),
         content: ValueListenableBuilder<double?>(
           valueListenable: progress,
@@ -294,18 +316,28 @@ class CtUpdater {
             Text(p == null ? 'Подключение…' : '${(p * 100).round()} %'),
           ]),
         ),
-        actions: [TextButton(onPressed: () => cancelled = true, child: const Text('Отмена'))],
+        actions: [
+          TextButton(
+              onPressed: () {
+                cancelled = true;
+                client.close(); // обрывает и «зависшую» загрузку
+              },
+              child: const Text('Отмена'))
+        ],
+      ),
       ),
     );
-    final client = http.Client();
     try {
-      final res = await client.send(http.Request('GET', Uri.parse(rel.files['win']!)));
+      final res = await client
+          .send(http.Request('GET', Uri.parse(rel.files['win']!)))
+          .timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) throw 'GitHub ответил ${res.statusCode}';
       final total = res.contentLength ?? rel.sizes['win'] ?? 0;
       final sink = fresh.openWrite();
       var got = 0;
       try {
-        await for (final chunk in res.stream) {
+        // 30 с без данных — загрузка зависла
+        await for (final chunk in res.stream.timeout(const Duration(seconds: 30))) {
           if (cancelled) throw const _Cancelled();
           sink.add(chunk);
           got += chunk.length;
@@ -326,21 +358,27 @@ class CtUpdater {
       }
       await Process.start(exe.path, const [], mode: ProcessStartMode.detached);
       exit(0);
-    } on _Cancelled {
+    } catch (e) {
+      if (!cancelled) {
+        if (e is FileSystemException) {
+          nav.pop();
+          _log.warning('windows update: $e');
+          // например, программа лежит в Program Files — туда без прав администратора не записать
+          messenger.showSnackBar(const SnackBar(
+              content: Text('Не удалось заменить файл программы. Переместите CloudTube.exe в обычную папку '
+                  '(например, «Документы») и повторите обновление.')));
+          return;
+        }
+        nav.pop();
+        try {
+          await fresh.delete();
+        } catch (_) {}
+        rethrow;
+      }
       nav.pop();
       try {
         await fresh.delete();
       } catch (_) {}
-    } on FileSystemException catch (e) {
-      nav.pop();
-      _log.warning('windows update: $e');
-      // например, программа лежит в Program Files — туда без прав администратора не записать
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Не удалось заменить файл программы. Переместите CloudTube.exe в обычную папку '
-              '(например, «Документы») и повторите обновление.')));
-    } catch (e) {
-      nav.pop();
-      rethrow;
     } finally {
       client.close();
     }

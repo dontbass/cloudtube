@@ -48,17 +48,22 @@ class CtDesktopPlayer extends StatefulWidget {
     final nav = appRouter.navigatorKey.currentState;
     if (nav == null) return;
     final route = MaterialPageRoute(builder: (_) => CtDesktopPlayer(video: v), settings: const RouteSettings(name: 'ct-desktop-player'));
-    var replacing = false;
-    nav.popUntil((r) {
-      if (r.settings.name == 'ct-desktop-player') replacing = true;
-      return true;
-    });
-    if (replacing) {
-      nav.pushReplacement(route);
-    } else {
-      nav.push(route);
+    // Плеер может быть не сверху (плеер → канал автора → ролик): раньше открывался второй,
+    // а первый продолжал играть под ним — два звука. Старый плеер убираем, где бы он ни был.
+    final old = _current;
+    if (old != null && old.isActive) {
+      if (old.isCurrent) {
+        nav.pushReplacement(route);
+        _current = route;
+        return;
+      }
+      nav.removeRoute(old);
     }
+    nav.push(route);
+    _current = route;
   }
+
+  static Route<dynamic>? _current;
 
   @override
   State<CtDesktopPlayer> createState() => _CtDesktopPlayerState();
@@ -107,6 +112,9 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   final _sponsor = CtSponsorSkipper();
   StreamSubscription? _posSub;
   DateTime _savedAt = DateTime(2000);
+  bool _recovering = false;
+  int _playGen = 0;
+  double _lastVol = 100;
 
   @override
   void initState() {
@@ -193,9 +201,12 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   }
 
   Future<void> _play({Duration? at}) async {
+    // одновременно — только последний запуск (смена качества во время старта, восстановление)
+    final gen = ++_playGen;
+    bool stale() => gen != _playGen || !mounted;
     final v = _full!;
     final server = await db.getCurrentlySelectedServer();
-    final headers = server.headersForUrl(server.url) ?? {};
+    if (stale()) return;
     final np = _player.platform;
     if (np is NativePlayer) {
       // быстрее старт: меньше анализа потока перед первым кадром
@@ -208,9 +219,6 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     if (np is NativePlayer && ctCaFile != null) {
       await np.setProperty('tls-ca-file', ctCaFile!);
       await np.setProperty('tls-verify', 'yes');
-    }
-    if (np is NativePlayer && headers.isNotEmpty) {
-      await np.setProperty('http-header-fields', headers.entries.map((e) => '${e.key}: ${e.value}').join(','));
     }
     String url;
     String? audio;
@@ -232,14 +240,21 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       url = _stream(server, v.videoId, v.formatStreams!.last.itag);
       audio = null;
     } else {
-      setState(() => _error = 'У видео нет потоков');
+      if (mounted) setState(() => _error = 'У видео нет потоков');
       return;
+    }
+    // заголовки сервера (вход на сайт и т. п.) — только для ссылок на сам сервер:
+    // раньше они уходили и на googlevideo в режиме «напрямую»
+    final headers = server.headersForUrl(url) ?? const <String, String>{};
+    if (np is NativePlayer) {
+      await np.setProperty('http-header-fields', headers.entries.map((e) => '${e.key}: ${e.value}').join(','));
     }
     if (np is NativePlayer) {
       // User-Agent того клиента YouTube, для которого выдана ссылка (иначе 403)
       await np.setProperty(
           'user-agent', ctDirectActive ? (ctDirectStreamHeaders(url)['User-Agent'] ?? kCtIosUserAgent) : 'Mozilla/5.0 CloudTube');
     }
+    if (stale()) return;
     _guard.start();
     if (audio == null) {
       await _player.open(Media(url, httpHeaders: headers, start: at));
@@ -248,9 +263,10 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     // Отдельная звуковая дорожка: сначала открываем видео на паузе, потом добавляем звук
     // командой mpv audio-add (через свойство audio-files звук на Windows не подхватывался).
     await _player.open(Media(url, httpHeaders: headers, start: at), play: false);
-    for (var i = 0; i < 40 && _player.state.duration == Duration.zero; i++) {
+    for (var i = 0; i < 40 && _player.state.duration == Duration.zero && !stale(); i++) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
+    if (stale()) return;
     if (np is NativePlayer) {
       try {
         await np.command(['audio-add', audio, 'select']);
@@ -302,7 +318,20 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
 
   /// Сбой: свежие ссылки и продолжение с той же секунды; после нескольких сбоев подряд — ошибка.
   Future<void> _recover(String why) async {
-    if (!mounted || _full == null) return;
+    // одна ошибка mpv даёт несколько строк + сторож: раньше это запускало несколько
+    // восстановлений сразу, и одна протухшая ссылка заканчивалась «Видео не воспроизводится»
+    if (!mounted || _full == null || _recovering) return;
+    _recovering = true;
+    try {
+      await _recoverNow(why);
+    } catch (e) {
+      _log.warning('desktop: восстановление не удалось: $e');
+    } finally {
+      _recovering = false;
+    }
+  }
+
+  Future<void> _recoverNow(String why) async {
     _guard.stop();
     final id = _full!.videoId;
     final action = _recovery.onFailure(id, tvDirect: false);
@@ -426,7 +455,6 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     }
 
     void vol(double d) => _player.setVolume((_player.state.volume + d).clamp(0, 100));
-    double lastVol = 100;
     final m = <ShortcutActivator, VoidCallback>{
       const SingleActivator(LogicalKeyboardKey.space): _player.playOrPause,
       const SingleActivator(LogicalKeyboardKey.keyK): _player.playOrPause,
@@ -439,10 +467,10 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       const SingleActivator(LogicalKeyboardKey.arrowDown): () => vol(-5),
       const SingleActivator(LogicalKeyboardKey.keyM): () {
         if (_player.state.volume > 0) {
-          lastVol = _player.state.volume;
+          _lastVol = _player.state.volume;
           _player.setVolume(0);
         } else {
-          _player.setVolume(lastVol);
+          _player.setVolume(_lastVol > 0 ? _lastVol : 100);
         }
       },
     };

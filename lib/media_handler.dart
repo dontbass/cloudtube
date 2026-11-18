@@ -1,5 +1,5 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:clipious/player/states/player.dart';
+import 'package:cloudtube/player/states/player.dart';
 
 class MediaHandler extends BaseAudioHandler
     with

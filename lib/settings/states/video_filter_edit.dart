@@ -1,8 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/search/models/search_type.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/search/models/search_type.dart';
 import 'package:logging/logging.dart';
 
 import '../../channels/models/channel.dart';

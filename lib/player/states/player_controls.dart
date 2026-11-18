@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:bloc/bloc.dart';
-import 'package:clipious/player/models/media_event.dart';
-import 'package:clipious/player/states/interfaces/media_player.dart';
+import 'package:cloudtube/player/models/media_event.dart';
+import 'package:cloudtube/player/states/interfaces/media_player.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';

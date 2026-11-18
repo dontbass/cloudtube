@@ -1,5 +1,5 @@
-import 'package:clipious/player/core/recovery.dart';
-import 'package:clipious/player/core/watchdog.dart';
+import 'package:cloudtube/player/core/recovery.dart';
+import 'package:cloudtube/player/core/watchdog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const step = Duration(milliseconds: 500);

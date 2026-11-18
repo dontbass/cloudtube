@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/player/states/player.dart';
+import 'package:cloudtube/player/states/player.dart';
 
 import '../../../settings/states/settings.dart';
 

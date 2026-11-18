@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/router.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/router.dart';
 
 import '../../states/download_manager.dart';
 

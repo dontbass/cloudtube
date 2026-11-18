@@ -1,4 +1,4 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 
 import '../../../utils.dart';

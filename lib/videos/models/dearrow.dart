@@ -1,6 +1,6 @@
-import 'package:clipious/globals.dart';
-import 'package:clipious/videos/models/db/dearrow_cache.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/videos/models/db/dearrow_cache.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../settings/models/db/settings.dart';

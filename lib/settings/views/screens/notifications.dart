@@ -1,12 +1,12 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/settings/views/components/channel_notifications.dart';
-import 'package:clipious/settings/views/components/playlist_notifications.dart';
-import 'package:clipious/settings/views/screens/settings.dart';
-import 'package:clipious/cloudtube/settings_ui.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/settings/views/components/channel_notifications.dart';
+import 'package:cloudtube/settings/views/components/playlist_notifications.dart';
+import 'package:cloudtube/settings/views/screens/settings.dart';
+import 'package:cloudtube/cloudtube/settings_ui.dart';
 
 @RoutePage()
 class NotificationSettingsScreen extends StatelessWidget {

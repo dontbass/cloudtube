@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/playlists/states/playlist_list.dart';
-import 'package:clipious/playlists/views/components/playlist_list.dart';
-import 'package:clipious/utils/models/paginated_list.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/playlists/states/playlist_list.dart';
+import 'package:cloudtube/playlists/views/components/playlist_list.dart';
+import 'package:cloudtube/utils/models/paginated_list.dart';
 
 import '../../../utils.dart';
 

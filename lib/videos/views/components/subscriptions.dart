@@ -1,7 +1,7 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/main.dart';
-import 'package:clipious/utils/views/tv/components/tv_horizontal_item_list.dart';
+import 'package:cloudtube/main.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_horizontal_item_list.dart';
 
 import '../../../utils/models/paginated_list.dart';
 import 'video_list.dart';

@@ -1,15 +1,15 @@
 import 'dart:collection';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:clipious/app/states/app.dart';
-import 'package:clipious/downloads/states/download_manager.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/home/models/db/home_layout.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/service.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/videos/models/dislike.dart';
-import 'package:clipious/videos/states/video.dart';
+import 'package:cloudtube/app/states/app.dart';
+import 'package:cloudtube/downloads/states/download_manager.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/home/models/db/home_layout.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/service.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/videos/models/dislike.dart';
+import 'package:cloudtube/videos/states/video.dart';
 
 import '../../test/test_app_cubit.dart';
 import '../../test/test_player_cubit.dart';

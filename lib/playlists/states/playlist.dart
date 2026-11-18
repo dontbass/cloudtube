@@ -1,5 +1,5 @@
 import 'package:bloc/bloc.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:logging/logging.dart';
 
 import '../../globals.dart';

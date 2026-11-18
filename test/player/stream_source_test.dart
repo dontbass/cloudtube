@@ -1,7 +1,7 @@
-import 'package:clipious/cloudtube/hls_local.dart';
-import 'package:clipious/player/core/stream_source.dart';
-import 'package:clipious/videos/models/adaptive_format.dart';
-import 'package:clipious/videos/models/format_stream.dart';
+import 'package:cloudtube/cloudtube/hls_local.dart';
+import 'package:cloudtube/player/core/stream_source.dart';
+import 'package:cloudtube/videos/models/adaptive_format.dart';
+import 'package:cloudtube/videos/models/format_stream.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 FormatStream fs(String label, String url) =>

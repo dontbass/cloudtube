@@ -2,11 +2,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/settings/states/video_filter_edit.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/utils/views/components/select_list_dialog.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/settings/states/video_filter_edit.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/utils/views/components/select_list_dialog.dart';
 
 import '../../../channels/models/channel.dart';
 import '../../models/db/video_filter.dart';

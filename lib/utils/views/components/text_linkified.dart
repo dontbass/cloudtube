@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/router.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../globals.dart';

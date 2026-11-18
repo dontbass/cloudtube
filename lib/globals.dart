@@ -1,9 +1,9 @@
 library app.globals;
 
 import 'package:flutter/animation.dart';
-import 'package:clipious/service.dart';
-import 'package:clipious/utils/file_db.dart';
-import 'package:clipious/utils/interfaces/db.dart';
+import 'package:cloudtube/service.dart';
+import 'package:cloudtube/utils/file_db.dart';
+import 'package:cloudtube/utils/interfaces/db.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'utils/models/country.dart';

@@ -1,5 +1,5 @@
 import 'package:bloc/bloc.dart';
-import 'package:clipious/offline_subscriptions/models/offline_subscription.dart';
+import 'package:cloudtube/offline_subscriptions/models/offline_subscription.dart';
 import 'package:logging/logging.dart';
 
 import '../../globals.dart';

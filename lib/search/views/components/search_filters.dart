@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/search/models/search_date.dart';
-import 'package:clipious/search/models/search_duration.dart';
-import 'package:clipious/search/models/search_sort_by.dart';
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/search/models/search_date.dart';
+import 'package:cloudtube/search/models/search_duration.dart';
+import 'package:cloudtube/search/models/search_sort_by.dart';
+import 'package:cloudtube/utils.dart';
 
 import '../../states/search.dart';
 

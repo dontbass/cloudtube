@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:clipious/videos/models/ided_video.dart';
+import 'package:cloudtube/videos/models/ided_video.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:path_provider/path_provider.dart';

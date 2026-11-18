@@ -1,6 +1,6 @@
-import 'package:clipious/globals.dart';
-import 'package:clipious/utils/views/components/placeholders.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/utils/views/components/placeholders.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 
 import '../../../videos/views/components/video_thumbnail.dart';

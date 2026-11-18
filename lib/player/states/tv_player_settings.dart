@@ -1,8 +1,8 @@
-import 'package:clipious/player/models/sleep_timer.dart';
+import 'package:cloudtube/player/models/sleep_timer.dart';
 import 'package:river_player/river_player.dart';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/player/states/video_player.dart';
+import 'package:cloudtube/player/states/video_player.dart';
 import 'package:logging/logging.dart';
 
 import '../../settings/states/settings.dart';

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/utils/states/item_list.dart';
-import 'package:clipious/utils/views/components/top_loading.dart';
-import 'package:clipious/videos/views/components/history_video.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/utils/states/item_list.dart';
+import 'package:cloudtube/utils/views/components/top_loading.dart';
+import 'package:cloudtube/videos/views/components/history_video.dart';
 
 import '../../../utils.dart';
 import '../../../utils/models/paginated_list.dart';

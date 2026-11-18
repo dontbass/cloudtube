@@ -1,13 +1,13 @@
-import 'package:clipious/cloudtube/theme.dart';
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/router.dart';
-import 'package:clipious/utils/states/tv/time_picker.dart';
-import 'package:clipious/utils/views/tv/components/tv_button.dart';
-import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/router.dart';
+import 'package:cloudtube/utils/states/tv/time_picker.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_button.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_overscan.dart';
 
 RegExp time = RegExp(r'^[0-2][0-3]:[0-5][0-9]:[0-5][0-9]$');
 

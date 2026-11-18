@@ -1,4 +1,4 @@
-name: clipious
+name: cloudtube
 version: 1.0.0+1
 publish_to: none
 description: Client for invidious.
@@ -13,7 +13,6 @@ dependencies:
   back_button_interceptor: 8.0.4
   bloc: 9.0.0
   cached_network_image: 3.4.1
-  carousel_slider: 5.1.1
   copy_with_extension: 9.1.0
   device_info_plus: 11.5.0
   qr_flutter: ^4.1.0

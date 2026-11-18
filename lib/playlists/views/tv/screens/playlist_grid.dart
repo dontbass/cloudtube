@@ -1,14 +1,14 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/playlists/models/playlist.dart';
-import 'package:clipious/playlists/states/playlist_list.dart';
-import 'package:clipious/playlists/views/components/playlist_in_list.dart';
-import 'package:clipious/utils/models/paginated_list.dart';
-import 'package:clipious/utils/views/components/placeholders.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/playlists/models/playlist.dart';
+import 'package:cloudtube/playlists/states/playlist_list.dart';
+import 'package:cloudtube/playlists/views/components/playlist_in_list.dart';
+import 'package:cloudtube/utils/models/paginated_list.dart';
+import 'package:cloudtube/utils/views/components/placeholders.dart';
 import '../../../../cloudtube/tv_nav.dart';
-import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_overscan.dart';
 
 @RoutePage()
 class TvPlaylistGridScreen extends StatelessWidget {

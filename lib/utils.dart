@@ -1,19 +1,19 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:clipious/settings/models/db/settings.dart';
+import 'package:cloudtube/settings/models/db/settings.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:intl/intl.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/utils/models/sharelink.dart';
-import 'package:clipious/utils/views/tv/components/tv_button.dart';
-import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/utils/models/sharelink.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_button.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_overscan.dart';
 import 'package:logging/logging.dart';
 import 'package:share_plus/share_plus.dart';
 

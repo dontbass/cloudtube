@@ -1,4 +1,4 @@
-import 'package:clipious/cloudtube/hls_local.dart';
+import 'package:cloudtube/cloudtube/hls_local.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Выбор качества для ТВ без сервера: какой поток попадёт в свой DASH-манифест.

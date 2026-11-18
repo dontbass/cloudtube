@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/channels/models/channel_videos.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/videos/views/components/video_list.dart';
+import 'package:cloudtube/channels/models/channel_videos.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/videos/views/components/video_list.dart';
 
 import '../../../utils/models/paginated_list.dart';
 import '../../models/channel.dart';

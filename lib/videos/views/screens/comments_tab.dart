@@ -1,5 +1,5 @@
 import 'package:auto_route/annotations.dart';
-import 'package:clipious/cloudtube/comments.dart';
+import 'package:cloudtube/cloudtube/comments.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/video.dart';

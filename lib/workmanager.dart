@@ -3,13 +3,13 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'cloudtube/direct.dart';
 import 'cloudtube/yt_account.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/notifications/models/db/subscription_notifications.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/utils/file_db.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/notifications/models/db/subscription_notifications.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/utils/file_db.dart';
 import 'package:logging/logging.dart';
 import 'package:workmanager/workmanager.dart';
 

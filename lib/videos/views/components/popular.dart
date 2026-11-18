@@ -1,6 +1,6 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/globals.dart';
+import 'package:cloudtube/globals.dart';
 
 import '../../../main.dart';
 import '../../../utils/models/paginated_list.dart';

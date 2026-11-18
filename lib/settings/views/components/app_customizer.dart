@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/home/models/db/home_layout.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/home/models/db/home_layout.dart';
 
 import '../../states/app_customizer.dart';
 import '../../states/settings.dart';

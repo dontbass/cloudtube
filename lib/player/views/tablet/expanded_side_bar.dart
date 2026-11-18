@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/player/states/interfaces/media_player.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/player/views/components/video_queue.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/player/states/interfaces/media_player.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/player/views/components/video_queue.dart';
 
 import '../../../cloudtube/comments.dart';
 import '../../../downloads/models/downloaded_video.dart';

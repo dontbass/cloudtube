@@ -1,6 +1,6 @@
-import 'package:clipious/cloudtube/theme.dart';
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/utils.dart';
 
 class TvButton extends StatelessWidget {
   final Widget? child;

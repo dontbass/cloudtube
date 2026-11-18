@@ -1,9 +1,9 @@
-import 'package:clipious/player/models/sleep_timer.dart';
-import 'package:clipious/player/states/sleep_timer.dart';
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/player/models/sleep_timer.dart';
+import 'package:cloudtube/player/states/sleep_timer.dart';
+import 'package:cloudtube/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:gap/gap.dart';
 
 const sleepTimerMinDuration = Duration(minutes: 1);

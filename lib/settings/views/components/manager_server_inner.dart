@@ -1,14 +1,14 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:clipious/router.dart';
-import 'package:clipious/settings/models/errors/cannot_add_server_error.dart';
-import 'package:clipious/settings/models/errors/missing_software_key.dart';
-import 'package:clipious/settings/models/errors/unreacheable_server.dart';
-import 'package:clipious/settings/states/server_list_settings.dart';
-import 'package:clipious/settings/states/settings.dart';
+import 'package:cloudtube/router.dart';
+import 'package:cloudtube/settings/models/errors/cannot_add_server_error.dart';
+import 'package:cloudtube/settings/models/errors/missing_software_key.dart';
+import 'package:cloudtube/settings/models/errors/unreacheable_server.dart';
+import 'package:cloudtube/settings/states/server_list_settings.dart';
+import 'package:cloudtube/settings/states/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/cloudtube/settings_ui.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/cloudtube/settings_ui.dart';
 
 import '../../../utils.dart';
 import '../../models/db/server.dart';

@@ -8,8 +8,8 @@ import 'dart:isolate';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/settings/models/db/server.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/settings/models/db/server.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'prefs.dart';

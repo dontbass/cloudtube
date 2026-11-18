@@ -1,11 +1,11 @@
-import 'package:clipious/channels/models/channel_videos.dart';
-import 'package:clipious/search/models/search_results.dart';
-import 'package:clipious/search/models/search_sort_by.dart';
-import 'package:clipious/search/models/search_type.dart';
-import 'package:clipious/utils/extensions/list_unique.dart';
-import 'package:clipious/utils/models/item_with_continuation.dart';
-import 'package:clipious/videos/models/user_feed.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/channels/models/channel_videos.dart';
+import 'package:cloudtube/search/models/search_results.dart';
+import 'package:cloudtube/search/models/search_sort_by.dart';
+import 'package:cloudtube/search/models/search_type.dart';
+import 'package:cloudtube/utils/extensions/list_unique.dart';
+import 'package:cloudtube/utils/models/item_with_continuation.dart';
+import 'package:cloudtube/videos/models/user_feed.dart';
+import 'package:cloudtube/videos/models/video.dart';
 
 import '../../globals.dart';
 

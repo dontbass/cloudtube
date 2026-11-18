@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/downloads/models/downloaded_video.dart';
+import 'package:cloudtube/downloads/models/downloaded_video.dart';
 import 'package:logging/logging.dart';
 
 import '../../downloads/states/download_manager.dart';

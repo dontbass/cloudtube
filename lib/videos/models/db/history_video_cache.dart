@@ -1,6 +1,6 @@
-import 'package:clipious/cloudtube/direct.dart';
-import 'package:clipious/cloudtube/yt_account.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/cloudtube/direct.dart';
+import 'package:cloudtube/cloudtube/yt_account.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import '../../../globals.dart';

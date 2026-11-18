@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/channels/models/channel.dart';
-import 'package:clipious/globals.dart';
+import 'package:cloudtube/channels/models/channel.dart';
+import 'package:cloudtube/globals.dart';
 
 import '../models/db/video_filter.dart';
 

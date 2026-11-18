@@ -1,4 +1,4 @@
-import 'package:clipious/cloudtube/comments.dart';
+import 'package:cloudtube/cloudtube/comments.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

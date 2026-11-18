@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/main.dart' show isTv;
-import 'package:clipious/settings/models/db/server.dart';
-import 'package:clipious/utils/states/thumbnail.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/main.dart' show isTv;
+import 'package:cloudtube/settings/models/db/server.dart';
+import 'package:cloudtube/utils/states/thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

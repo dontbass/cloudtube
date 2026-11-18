@@ -1,9 +1,9 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/settings/states/server_list_settings.dart';
-import 'package:clipious/settings/views/components/manager_server_inner.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/settings/states/server_list_settings.dart';
+import 'package:cloudtube/settings/views/components/manager_server_inner.dart';
 
 import '../../../app/states/app.dart';
 

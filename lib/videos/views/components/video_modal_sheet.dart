@@ -1,11 +1,11 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/videos/views/components/add_to_playlist_button.dart';
-import 'package:clipious/videos/views/components/download_modal_sheet.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/videos/views/components/add_to_playlist_button.dart';
+import 'package:cloudtube/videos/views/components/download_modal_sheet.dart';
 
 import '../../../main.dart';
 import 'add_to_queue_button.dart';

@@ -349,7 +349,6 @@ class _Key extends StatelessWidget {
   final void Function(bool focus)? onFocus;
   final double width;
   final bool autofocus;
-  final bool selected;
   final bool accent;
 
   const _Key(
@@ -359,7 +358,6 @@ class _Key extends StatelessWidget {
       this.onFocus,
       this.width = _TvSearchBodyState._key,
       this.autofocus = false,
-      this.selected = false,
       this.accent = false});
 
   @override
@@ -372,7 +370,7 @@ class _Key extends StatelessWidget {
       onKeyEvent: (n, e) => onTvSelect(e, context, (_) => onPressed()),
       child: Builder(builder: (ctx) {
         final f = Focus.of(ctx).hasFocus;
-        final fg = f ? colors.onPrimary : (accent || selected ? ctAccent(colors) : colors.onSurface);
+        final fg = f ? colors.onPrimary : (accent ? ctAccent(colors) : colors.onSurface);
         return GestureDetector(
           onTap: onPressed,
           child: AnimatedContainer(
@@ -383,7 +381,7 @@ class _Key extends StatelessWidget {
             decoration: BoxDecoration(
               color: f
                   ? ctAccent(colors)
-                  : (selected || accent ? ctAccent(colors).withValues(alpha: 0.14) : colors.surfaceContainerHigh),
+                  : (accent ? ctAccent(colors).withValues(alpha: 0.14) : colors.surfaceContainerHigh),
               border: ctFocusBorder(colors, f),
               borderRadius: BorderRadius.circular(10),
             ),

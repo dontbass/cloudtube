@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 /// Цвета CloudTube — те же, что у сайта (yt.css).
@@ -84,8 +89,9 @@ const ColorScheme ctDarkScheme = ColorScheme(
 
 /// Акцент для переключателей, чекбоксов и фокуса пульта (синий, как у YouTube) —
 /// хорошо виден и на белом, и на тёмном фоне.
-Color ctAccent(ColorScheme c) =>
-    c.brightness == Brightness.dark ? const Color(0xFF3EA6FF) : const Color(0xFF065FD4);
+Color ctAccent(ColorScheme c) => c.brightness == Brightness.dark
+    ? const Color(0xFF3EA6FF)
+    : (c.surface == ctPaperSurface ? ctPaperTerracotta : const Color(0xFF065FD4));
 
 /// Рамка выделения для Android TV: заметная рамка вокруг элемента в фокусе.
 /// Прозрачная рамка той же толщины без фокуса — чтобы элемент не «прыгал».
@@ -96,18 +102,21 @@ BoxBorder ctFocusBorder(ColorScheme c, bool focused) =>
 CheckboxThemeData ctCheckboxTheme(ColorScheme c) => CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected) ? ctAccent(c) : Colors.transparent),
-      checkColor: WidgetStatePropertyAll(c.brightness == Brightness.dark ? Colors.black : Colors.white),
+      checkColor: WidgetStatePropertyAll(
+          c.brightness == Brightness.dark ? Colors.black : (ctIsPaper(c) ? ctPaperSurface : Colors.white)),
       side: WidgetStateBorderSide.resolveWith((s) => BorderSide(
           color: s.contains(WidgetState.selected) ? ctAccent(c) : c.onSurfaceVariant, width: 2)),
     );
 
 SwitchThemeData ctSwitchTheme(ColorScheme c) => SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected)
-          ? Colors.white
+          ? (ctIsPaper(c) ? ctPaperSurface : Colors.white)
           : (c.brightness == Brightness.dark ? const Color(0xFFBDBDBD) : const Color(0xFF8A8A8A))),
       trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected)
           ? ctAccent(c)
-          : (c.brightness == Brightness.dark ? const Color(0xFF4A4A4A) : const Color(0xFFDADADA))),
+          : (c.brightness == Brightness.dark
+              ? const Color(0xFF4A4A4A)
+              : (ctIsPaper(c) ? const Color(0xFFDECFB4) : const Color(0xFFDADADA)))),
       trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
     );
 
@@ -117,23 +126,50 @@ RadioThemeData ctRadioTheme(ColorScheme c) => RadioThemeData(
     );
 
 // ---------------- Промежуточные темы ----------------
-/// «Мягкая»: светлая, но не белая — тёплый светло-серый фон.
+/// «Пергамент»: старая бумага, бережёт глаза. Ни чистого белого, ни чистого чёрного:
+/// фон — тёплый крем #F4EFE6, текст — тёплый уголь #2C251E; остальные поверхности —
+/// тот же оттенок (38°) темнее на 4–6 % по светлоте; акценты приглушённые, землистые
+/// (терракота #8C4A27). Сверху — едва заметное «зерно» бумаги ([CtPaperGrain]).
+const ctPaperSurface = Color(0xFFF4EFE6);
+const ctPaperText = Color(0xFF2C251E);
+const ctPaperTerracotta = Color(0xFF8C4A27);
+const ctPaperForest = Color(0xFF3D5A45);
+const ctPaperInk = Color(0xFF2F4858);
+
 final ColorScheme ctSoftScheme = ctLightScheme.copyWith(
-  surface: const Color(0xFFEDEBE7),
-  surfaceBright: const Color(0xFFF5F3EF),
-  surfaceDim: const Color(0xFFE2DFD9),
-  surfaceContainerLowest: const Color(0xFFF5F3EF),
-  surfaceContainerLow: const Color(0xFFE7E4DF),
-  surfaceContainer: const Color(0xFFE0DDD7),
-  surfaceContainerHigh: const Color(0xFFD9D6D0),
-  surfaceContainerHighest: const Color(0xFFD1CEC7),
-  primaryContainer: const Color(0xFFDDDAD4),
-  secondaryContainer: const Color(0xFFDDDAD4),
-  outline: const Color(0xFFBDB9B2),
-  outlineVariant: const Color(0xFFD1CEC7),
-  onSurface: const Color(0xFF1C1B19),
-  onSurfaceVariant: const Color(0xFF55524D),
+  primary: ctPaperText,
+  onPrimary: ctPaperSurface,
+  primaryContainer: const Color(0xFFE8DDCA),
+  onPrimaryContainer: ctPaperText,
+  secondary: const Color(0xFF6B5E50),
+  onSecondary: ctPaperSurface,
+  secondaryContainer: const Color(0xFFE8DDCA),
+  onSecondaryContainer: ctPaperText,
+  tertiary: ctPaperTerracotta,
+  onTertiary: ctPaperSurface,
+  tertiaryContainer: const Color(0xFFEBD3C4),
+  onTertiaryContainer: const Color(0xFF3B1B0A),
+  error: const Color(0xFF9E3A2B),
+  onError: ctPaperSurface,
+  surface: ctPaperSurface,
+  onSurface: ctPaperText,
+  onSurfaceVariant: const Color(0xFF6B5E50),
+  surfaceBright: const Color(0xFFF7F3EC),
+  surfaceDim: const Color(0xFFE8DDCA),
+  surfaceContainerLowest: const Color(0xFFF7F3EC),
+  surfaceContainerLow: const Color(0xFFF1EADF),
+  surfaceContainer: const Color(0xFFEEE6D8),
+  surfaceContainerHigh: const Color(0xFFEBE1D1),
+  surfaceContainerHighest: const Color(0xFFE4D8C3),
+  outline: const Color(0xFFC9BBA4),
+  outlineVariant: const Color(0xFFDECFB4),
+  inverseSurface: ctPaperText,
+  onInverseSurface: ctPaperSurface,
+  inversePrimary: ctPaperSurface,
 );
+
+/// Включена ли «Пергамент» (по палитре).
+bool ctIsPaper(ColorScheme c) => c.brightness == Brightness.light && c.surface == ctPaperSurface;
 
 /// «Сумерки»: тёмная, но не чёрная — графитово-серый фон, мягче для глаз.
 final ColorScheme ctDimScheme = ctDarkScheme.copyWith(
@@ -153,13 +189,13 @@ final ColorScheme ctDimScheme = ctDarkScheme.copyWith(
   onSurfaceVariant: const Color(0xFFB0B2B6),
 );
 
-/// true — промежуточный вариант текущей яркости (мягкая светлая / сумерки).
+/// true — промежуточный вариант текущей яркости (пергамент / сумерки).
 final ValueNotifier<bool> ctSoftTheme = ValueNotifier(false);
 
 /// Темы по кругу для кнопки в шапке.
 enum CtTheme {
   light('Светлая', Icons.light_mode_outlined),
-  soft('Мягкая', Icons.wb_twilight_outlined),
+  soft('Пергамент', Icons.history_edu_outlined),
   dim('Сумерки', Icons.nights_stay_outlined),
   dark('Тёмная', Icons.dark_mode_outlined);
 
@@ -177,7 +213,7 @@ enum CtTheme {
 
 
 /// Все всплывающие подсказки (SnackBar): тёмная плашка со скруглёнными углами, белый текст —
-/// одинаково читается в светлой, мягкой и тёмной темах.
+/// одинаково читается в светлой, пергаментной и тёмной темах.
 const ctSnackBarTheme = SnackBarThemeData(
   behavior: SnackBarBehavior.floating,
   backgroundColor: Color(0xF0202124),
@@ -187,3 +223,95 @@ const ctSnackBarTheme = SnackBarThemeData(
   insetPadding: EdgeInsets.fromLTRB(24, 0, 24, 24),
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
 );
+
+
+/// «Зерно» бумаги для темы «Пергамент»: шум, нарисованный один раз в небольшую текстуру
+/// и замощённый на весь экран; не ловит нажатия, непрозрачность ~3 % — текст не страдает.
+class CtPaperGrain extends StatefulWidget {
+  final Widget child;
+
+  const CtPaperGrain({super.key, required this.child});
+
+  @override
+  State<CtPaperGrain> createState() => _CtPaperGrainState();
+}
+
+ui.Image? _ctGrain;
+Future<ui.Image>? _ctGrainFut;
+
+/// Шум «как fractalNoise»: две октавы — крупные пятна и мелкое зерно.
+Future<ui.Image> _makeGrain() {
+  const n = 160;
+  final rnd = math.Random(7);
+  final coarse = List.generate(41 * 41, (_) => rnd.nextDouble());
+  double c(int x, int y) {
+    // билинейно сглаженная крупная октава (шаг 4 пикселя), бесшовная по краям
+    final fx = x / 4, fy = y / 4;
+    final x0 = fx.floor() % 40, y0 = fy.floor() % 40;
+    final x1 = (x0 + 1) % 40, y1 = (y0 + 1) % 40;
+    final tx = fx - fx.floor(), ty = fy - fy.floor();
+    double v(int a, int b) => coarse[b * 41 + a];
+    final top = v(x0, y0) * (1 - tx) + v(x1, y0) * tx;
+    final bot = v(x0, y1) * (1 - tx) + v(x1, y1) * tx;
+    return top * (1 - ty) + bot * ty;
+  }
+
+  final px = Uint8List(n * n * 4);
+  for (var y = 0; y < n; y++) {
+    for (var x = 0; x < n; x++) {
+      final noise = 0.55 * c(x, y) + 0.45 * rnd.nextDouble();
+      final i = (y * n + x) * 4;
+      // тёплый уголь, прозрачность 0..~6 % (в среднем ~3 %)
+      px[i] = 0x2C;
+      px[i + 1] = 0x25;
+      px[i + 2] = 0x1E;
+      px[i + 3] = (noise * 15).round();
+    }
+  }
+  final done = Completer<ui.Image>();
+  ui.decodeImageFromPixels(px, n, n, ui.PixelFormat.rgba8888, done.complete);
+  return done.future;
+}
+
+class _CtPaperGrainState extends State<CtPaperGrain> {
+  @override
+  void initState() {
+    super.initState();
+    if (_ctGrain == null) {
+      (_ctGrainFut ??= _makeGrain()).then((img) {
+        _ctGrain = img;
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final img = _ctGrain;
+    return Stack(textDirection: TextDirection.ltr, children: [
+      widget.child,
+      if (img != null)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(child: CustomPaint(painter: _GrainPainter(img))),
+          ),
+        ),
+    ]);
+  }
+}
+
+class _GrainPainter extends CustomPainter {
+  final ui.Image img;
+
+  _GrainPainter(this.img);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = ImageShader(img, TileMode.repeated, TileMode.repeated, Matrix4.identity().storage);
+    canvas.drawRect(Offset.zero & size, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter old) => old.img != img;
+}

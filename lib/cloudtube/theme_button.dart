@@ -6,7 +6,7 @@ import 'theme.dart';
 import 'prefs.dart';
 
 /// Кнопка в шапке: одно нажатие — следующая тема по кругу
-/// Светлая → Мягкая → Сумерки → Тёмная → Светлая.
+/// Светлая → Пергамент → Сумерки → Тёмная → Светлая.
 class CtThemeButton extends StatelessWidget {
   const CtThemeButton({super.key});
 

@@ -67,7 +67,7 @@ abstract final class CtPrefs {
   /// Масштаб интерфейса на ТВ.
   static final tvScale = _double('ct-tv-scale', 0.8, min: 0.5, max: 1.0);
 
-  /// «Мягкая» тема (тёплые цвета).
+  /// Промежуточная тема: «Пергамент» (светлая) / «Сумерки» (тёмная).
   static final softTheme = _bool('ct-theme-soft', false);
 
   /// Последний свой сервер (адрес) — к нему возвращает переключатель «Свой сервер».

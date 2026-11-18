@@ -1,3 +1,4 @@
+import 'dart:ui' as ui show channelBuffers;
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/gestures.dart';
@@ -131,7 +132,9 @@ class _CtTvMouseState extends State<CtTvMouse> {
     final down = _rightDown;
     _rightDown = null;
     if (down == null || (e.position - down).distance > 14) return;
-    WidgetsBinding.instance.handlePopRoute();
+    // тот же путь, что у кнопки «Назад» Android: сообщение popRoute в канал навигации
+    final data = const JSONMethodCodec().encodeMethodCall(const MethodCall('popRoute'));
+    ui.channelBuffers.push('flutter/navigation', data, (_) {});
   }
 
   @override

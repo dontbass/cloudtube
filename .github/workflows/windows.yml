@@ -46,6 +46,62 @@ jobs:
           $out = "build\windows\x64\runner\Release"
           Compress-Archive -Path "$out\*" -DestinationPath "CloudTube-windows-x64.zip"
 
+      # Один файл CloudTube.exe: Enigma Virtual Box «зашивает» библиотеки и папку data внутрь exe —
+      # при запуске ничего не распаковывается на диск, программа видит файлы как настоящие.
+      - name: Single exe (Enigma Virtual Box)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest "https://enigmaprotector.com/assets/files/enigmavb.exe" -OutFile evb-setup.exe
+          Start-Process .\evb-setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-' -Wait
+          $con = Get-ChildItem "C:\Program Files*\Enigma Virtual Box\enigmavbconsole.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $con) { $con = Get-ChildItem "C:\Program Files*" -Recurse -Filter enigmavbconsole.exe -ErrorAction SilentlyContinue | Select-Object -First 1 }
+          if (-not $con) { throw "enigmavbconsole.exe не найден" }
+          Write-Host "EVB: $($con.FullName)"
+          $rel = (Resolve-Path "build\windows\x64\runner\Release").Path
+          $exe = Join-Path $rel "CloudTube.exe"
+          $outExe = Join-Path (Get-Location) "CloudTube.exe"
+          function Esc([string]$t) { [Security.SecurityElement]::Escape($t) }
+          function Add-Dir([string]$path) {
+            $sb = New-Object System.Text.StringBuilder
+            foreach ($f in Get-ChildItem -LiteralPath $path -File) {
+              if ($f.FullName -ieq $exe) { continue }
+              [void]$sb.Append("<File><Type>2</Type><Name>$(Esc $f.Name)</Name><File>$(Esc $f.FullName)</File><ActiveX>False</ActiveX><ActiveXInstall>False</ActiveXInstall><Action>0</Action><OverwriteDateTime>False</OverwriteDateTime><OverwriteAttributes>False</OverwriteAttributes><PassCommandLine>False</PassCommandLine><HideFromDialogs>0</HideFromDialogs></File>")
+            }
+            foreach ($d in Get-ChildItem -LiteralPath $path -Directory) {
+              [void]$sb.Append("<File><Type>3</Type><Name>$(Esc $d.Name)</Name><Action>0</Action><OverwriteDateTime>False</OverwriteDateTime><OverwriteAttributes>False</OverwriteAttributes><HideFromDialogs>0</HideFromDialogs><Files>")
+              [void]$sb.Append((Add-Dir $d.FullName))
+              [void]$sb.Append("</Files></File>")
+            }
+            return $sb.ToString()
+          }
+          $files = Add-Dir $rel
+          $xml = @"
+          <?xml version="1.0" encoding="windows-1252"?>
+          <>
+            <InputFile>$(Esc $exe)</InputFile>
+            <OutputFile>$(Esc $outExe)</OutputFile>
+            <Files>
+              <Enabled>True</Enabled>
+              <DeleteExtractedOnExit>False</DeleteExtractedOnExit>
+              <CompressFiles>True</CompressFiles>
+              <Files>
+                <File><Type>3</Type><Name>%DEFAULT FOLDER%</Name><Action>0</Action><OverwriteDateTime>False</OverwriteDateTime><OverwriteAttributes>False</OverwriteAttributes><HideFromDialogs>0</HideFromDialogs><Files>$files</Files></File>
+              </Files>
+            </Files>
+            <Registries><Enabled>False</Enabled><Registries></Registries></Registries>
+            <Packaging><Enabled>False</Enabled></Packaging>
+            <Options><ShareVirtualSystem>False</ShareVirtualSystem><MapExecutableWithTemporaryFile>True</MapExecutableWithTemporaryFile><TemporaryFileMask></TemporaryFileMask><AllowRunningOfVirtualExeFiles>True</AllowRunningOfVirtualExeFiles><ProcessesOfAnyPlatforms>False</ProcessesOfAnyPlatforms></Options>
+            <Storage><Files><Enabled>False</Enabled><Folder>%DEFAULT FOLDER%\</Folder><RandomFileNames>False</RandomFileNames><EncryptContent>False</EncryptContent></Files></Storage>
+          </>
+          "@
+          [IO.File]::WriteAllText("cloudtube.evb", $xml.Trim(), [Text.Encoding]::GetEncoding(1252))
+          & $con.FullName cloudtube.evb
+          if (-not (Test-Path $outExe)) { throw "CloudTube.exe не собран" }
+          "{0:N1} МБ" -f ((Get-Item $outExe).Length / 1MB)
+          # версия для самообновления
+          @{ version = "1.1.${{ github.run_number }}" } | ConvertTo-Json | Out-File -Encoding utf8 CloudTube-windows.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: CloudTube-windows-x64
@@ -54,6 +110,7 @@ jobs:
       # Пробная версия: отдельный пре-релиз windows-preview (перезаписывается).
       # Пре-релизы не видны обновлению Android-приложения (оно смотрит только releases/latest).
       - name: Preview release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/windows'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: windows-preview
@@ -61,15 +118,22 @@ jobs:
           prerelease: true
           make_latest: false
           body: |
-            Пробная сборка для Windows (x64). Распакуйте zip в любую папку и запустите CloudTube.exe.
-            Сборка ${{ github.sha }}. Обновляется при каждом изменении ветки windows.
-          files: CloudTube-windows-x64.zip
+            CloudTube для Windows (x64), версия 1.1.${{ github.run_number }}.
+            **CloudTube.exe** — один файл, ничего не распаковывает: положите в любую папку (например, «Документы» или рабочий стол) и запустите. Обновляется сам.
+            **CloudTube-windows-x64.zip** — запасной вариант, если антивирус не доверяет упакованному файлу: распакуйте и запустите CloudTube.exe.
+            При первом запуске Windows может показать «Система Windows защитила ваш компьютер» — «Подробнее» → «Выполнить в любом случае».
+            Сборка ${{ github.sha }}.
+          files: |
+            CloudTube.exe
+            CloudTube-windows-x64.zip
+            CloudTube-windows.json
 
       # Проверка запуска: открываем приложение, ждём, делаем снимок экрана и сохраняем лог.
       - name: Smoke test
         shell: pwsh
         run: |
-          $exe = Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
+          # проверяем именно однофайловую сборку
+          $exe = Get-Item ".\CloudTube.exe"
           Write-Host "exe: $($exe.FullName)"
           $p = Start-Process $exe.FullName -PassThru -RedirectStandardOutput app.out.txt -RedirectStandardError app.err.txt
           Start-Sleep -Seconds 25
@@ -99,7 +163,7 @@ jobs:
         run: |
           Remove-Item -Recurse -Force "$env:APPDATA\com.example" -ErrorAction SilentlyContinue
           Get-ChildItem $env:APPDATA | Where-Object { Test-Path "$($_.FullName)\*\cloudtube.db" } | ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
-          $exe = Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1
+          $exe = Get-Item ".\CloudTube.exe"
           $p = Start-Process $exe.FullName -PassThru -RedirectStandardOutput direct.out.txt -RedirectStandardError direct.err.txt
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           function Shot($name) {

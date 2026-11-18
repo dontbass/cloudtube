@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
-import '../settings/models/db/settings.dart';
 import 'logo.dart';
 import 'theme.dart';
+import 'prefs.dart';
 
 /// Ключи элементов, которые подсвечивает обучающий тур.
 class CtTourKeys {
@@ -12,14 +11,13 @@ class CtTourKeys {
   static final search = GlobalKey(debugLabel: 'ct-tour-search');
 }
 
-const _doneKey = 'ct-onboarding-done';
 
 class CtOnboarding {
   static bool _running = false;
 
   /// Первый запуск: короткий гид, затем тур по интерфейсу. Один раз.
   static Future<void> maybeStart(BuildContext context) async {
-    if (_running || db.getSettings(_doneKey)?.value == '1') return;
+    if (_running || CtPrefs.onboardingDone.value) return;
     await start(context);
   }
 
@@ -36,7 +34,7 @@ class CtOnboarding {
             )) ??
             false;
       }
-      await db.saveSetting(SettingsValue(_doneKey, '1'));
+      await CtPrefs.onboardingDone.set(true);
       if (tour && context.mounted) {
         await Future.delayed(const Duration(milliseconds: 350));
         if (context.mounted) await CtTour.run(context, _steps());

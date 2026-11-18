@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../globals.dart';
-import '../settings/models/db/settings.dart';
+import 'prefs.dart';
 
-const ctTvScaleKey = 'ct-tv-scale';
 
 /// Масштаб интерфейса на телевизоре (1.0 — как в Clipious; меньше — мельче и больше помещается).
 final ctTvScale = ValueNotifier<double>(0.8);
 
 void ctLoadTvScale() {
-  final v = double.tryParse(db.getSettings(ctTvScaleKey)?.value ?? '');
-  if (v != null && v >= 0.5 && v <= 1.0) ctTvScale.value = v;
+  ctTvScale.value = CtPrefs.tvScale.value;
 }
 
-const ctTvQualityKey = 'ct-tv-quality';
-const ctPhoneQualityKey = 'ct-phone-quality';
 
 /// Без сервера: потолок качества видео (как профиль в SmartTube). На ТВ по умолчанию 4K,
 /// на телефоне — 1080p (экран меньше, экономия трафика и батареи). Меняется выбором качества
@@ -24,19 +19,17 @@ bool _ctTv = false;
 
 void ctLoadQuality({required bool tv}) {
   _ctTv = tv;
-  ctTvQualityCap = tv ? 2160 : 1080;
-  final q = int.tryParse(db.getSettings(tv ? ctTvQualityKey : ctPhoneQualityKey)?.value ?? '');
-  if (q != null && q >= 144 && q <= 2160) ctTvQualityCap = q;
+  ctTvQualityCap = (tv ? CtPrefs.tvQuality : CtPrefs.phoneQuality).value;
 }
 
 Future<void> ctSetTvQuality(int h) async {
   ctTvQualityCap = h;
-  await db.saveSetting(SettingsValue(_ctTv ? ctTvQualityKey : ctPhoneQualityKey, '$h'));
+  await (_ctTv ? CtPrefs.tvQuality : CtPrefs.phoneQuality).set(h);
 }
 
 Future<void> ctSetTvScale(double v) async {
   ctTvScale.value = v;
-  await db.saveSetting(SettingsValue(ctTvScaleKey, '$v'));
+  await CtPrefs.tvScale.set(v);
 }
 
 const ctTvScales = [1.0, 0.9, 0.8, 0.7, 0.6];

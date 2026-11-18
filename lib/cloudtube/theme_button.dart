@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../globals.dart';
-import '../settings/models/db/settings.dart';
 import '../settings/states/settings.dart';
 import 'theme.dart';
+import 'prefs.dart';
 
 /// Кнопка в шапке: одно нажатие — следующая тема по кругу
 /// Светлая → Мягкая → Сумерки → Тёмная → Светлая.
@@ -28,7 +27,7 @@ class CtThemeButton extends StatelessWidget {
           ),
           onPressed: () async {
             ctSoftTheme.value = next.isSoft;
-            await db.saveSetting(SettingsValue(ctSoftThemeKey, '${next.isSoft}'));
+            await CtPrefs.softTheme.set(next.isSoft);
             if (!context.mounted) return;
             await context
                 .read<SettingsCubit>()

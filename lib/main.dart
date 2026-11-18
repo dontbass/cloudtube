@@ -39,6 +39,7 @@ import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'settings/models/db/app_logs.dart';
+import 'cloudtube/prefs.dart';
 
 const brandColor = Color(0xFF4f0096);
 
@@ -91,14 +92,14 @@ Future<void> main() async {
     }
   }
 
-  ctSoftTheme.value = db.getSettings(ctSoftThemeKey)?.value == 'true';
+  ctSoftTheme.value = CtPrefs.softTheme.value;
 
   // автотест сборки (CI): режим без сервера и, при желании, сразу открыть видео
   if (ctDesktop && Platform.environment['CT_SMOKE_DIRECT'] == '1') {
     final s = db.getServer(kCtDirectUrl) ?? const Server(url: kCtDirectUrl);
     await db.upsertServer(s.copyWith(inUse: true));
     await db.useServer(s.copyWith(inUse: true));
-    await db.saveSetting(SettingsValue('ct-onboarding-done', '1'));
+    await CtPrefs.onboardingDone.set(true);
     final vid = Platform.environment['CT_SMOKE_VIDEO'];
     if (vid != null && vid.isNotEmpty) {
       Future.delayed(const Duration(seconds: 12), () => CtDesktopPlayer.open(Video(videoId: vid)));

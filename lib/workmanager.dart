@@ -110,7 +110,7 @@ Future<void> _handlePlaylistNotifications() async {
       if (n.lastVideoCount > 0 && fresh > 0) {
         final locals = await getLocalization();
         await sendNotification(locals.playlistNotificationTitle(n.playlistName),
-            pl.videos.isNotEmpty && fresh == 1 ? pl.videos.last.title : locals.playlistNotificationContent(n.playlistName, fresh),
+            pl.videos.isNotEmpty && fresh == 1 ? (pl.videos.last.title ?? '') : locals.playlistNotificationContent(n.playlistName, fresh),
             type: NotificationTypes.playlist, payload: {playlistId: n.playlistId}, id: n.playlistId.hashCode);
       }
     } catch (e) {
@@ -131,7 +131,7 @@ Future<void> _handleChannelNotifications() async {
       final locals = await getLocalization();
       // одно новое видео — его название, несколько — сколько их
       await sendNotification(locals.channelNotificationTitle(n.channelName),
-          fresh == 1 ? videos.videos.first.title : locals.channelNotificationContent(n.channelName, fresh),
+          fresh == 1 ? (videos.videos.first.title ?? '') : locals.channelNotificationContent(n.channelName, fresh),
           type: NotificationTypes.channel,
           payload: {channelId: n.channelId, lastSeenVideo: videos.videos.first.videoId},
           id: n.channelId.hashCode);
@@ -225,7 +225,7 @@ Future<void> _handleOfflineSubscriptions() async {
   final locals = await getLocalization();
   final title = fresh.length == 1 ? fresh.first.$1 : locals.subscriptionNotificationTitle;
   final body = fresh.length == 1
-      ? (fresh.first.$2.title)
+      ? (fresh.first.$2.title ?? '')
       : '${locals.subscriptionNotificationContent(fresh.length)}: ${fresh.map((e) => e.$1).toSet().take(3).join(', ')}';
   await sendNotification(title, body,
       type: NotificationTypes.subscription, payload: {lastSeenVideo: fresh.first.$2.videoId});

@@ -64,6 +64,9 @@ abstract final class CtPrefs {
   static final tvQuality = _int('ct-tv-quality', 2160, min: 144, max: 2160);
   static final phoneQuality = _int('ct-phone-quality', 1080, min: 144, max: 2160);
 
+  /// Качество в плеере Windows: последнее выбранное (по умолчанию 1080p).
+  static final desktopQuality = _int('ct-desktop-quality', 1080, min: 144, max: 2160);
+
   /// Масштаб интерфейса на ТВ.
   static final tvScale = _double('ct-tv-scale', 0.8, min: 0.5, max: 1.0);
 

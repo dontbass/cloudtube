@@ -15,6 +15,13 @@ import 'platform.dart';
 import 'direct.dart';
 import '../player/core/recovery.dart';
 import '../player/core/watchdog.dart';
+import '../player/core/sponsor.dart';
+import '../videos/models/db/progress.dart' as db_progress;
+import '../videos/models/db/history_video_cache.dart';
+import '../utils/models/image_object.dart';
+import 'package:easy_debounce/easy_throttle.dart';
+import 'sponsor_toast.dart';
+import 'prefs.dart';
 import 'watch.dart';
 import '../videos/views/components/compact_video.dart';
 
@@ -96,10 +103,15 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     onFail: _recover,
   );
   final _scroll = ScrollController();
+  // SponsorBlock — те же правила, что на телефоне и ТВ (lib/player/core/sponsor.dart)
+  final _sponsor = CtSponsorSkipper();
+  StreamSubscription? _posSub;
+  DateTime _savedAt = DateTime(2000);
 
   @override
   void initState() {
     super.initState();
+    _posSub = _player.stream.position.listen(_onPosition);
     _errSub = _player.stream.error.listen((e) {
       _log.warning('mpv: $e');
       // ошибка открытия потока (ссылка протухла, сеть) — как и на Android, восстанавливаемся
@@ -132,6 +144,8 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   @override
   void dispose() {
     _errSub?.cancel();
+    _posSub?.cancel();
+    _saveProgress(_player.state.position);
     _watch?.cancel();
     _guard.stop();
     _logSub?.cancel();
@@ -162,9 +176,17 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       _audioItag = (m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null))?.itag;
       _quality = _qualities.isEmpty
           ? null
-          : _qualities.firstWhere((q) => q.height <= 720, orElse: () => _qualities.last);
+          : _qualities.firstWhere((q) => q.height <= CtPrefs.desktopQuality.value, orElse: () => _qualities.last);
       setState(() {});
-      await _play();
+      unawaited(ctLoadSponsorSegments(v.videoId).then((segs) {
+        if (mounted && _full?.videoId == v.videoId) _sponsor.setSegments(segs);
+      }));
+      unawaited(_rememberInHistory(v));
+      // продолжить с места, где остановились (как на телефоне): 0 % < прогресс < 90 %
+      final p = db.getVideoProgress(v.videoId);
+      final len = v.lengthSeconds ?? 0;
+      final resume = p > 0 && p < 0.9 && len > 0 && v.liveNow != true ? Duration(seconds: (len * p).floor()) : null;
+      await _play(at: resume);
     } catch (e) {
       if (mounted) setState(() => _error = 'Не удалось загрузить видео: $e');
     }
@@ -239,6 +261,45 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     await _player.play();
   }
 
+  void _onPosition(Duration pos) {
+    final st = _player.state;
+    if (!st.playing) return;
+    final skip = _sponsor.check(pos, st.duration);
+    if (skip != null) {
+      _player.seek(skip.to);
+      if (skip.announce) ctShowSponsorToast(ctSponsorSkipText(skip.seg));
+    }
+    // прогресс — раз в 5 с: продолжение с места, полоска «просмотрено», история
+    if (DateTime.now().difference(_savedAt) > const Duration(seconds: 5)) _saveProgress(pos);
+  }
+
+  void _saveProgress(Duration pos) {
+    final v = _full;
+    final len = v?.lengthSeconds ?? 0;
+    if (v == null || len <= 0 || v.liveNow == true || pos <= Duration.zero) return;
+    _savedAt = DateTime.now();
+    var progress = pos.inSeconds / len;
+    if (progress >= 0.9) progress = 1; // 90 % и больше — просмотрено
+    unawaited(db.saveProgress(db_progress.Progress.named(progress: progress, videoId: v.videoId)));
+    if (progress > 0.1) {
+      // в историю аккаунта — не чаще раза в 10 минут на ролик, как на телефоне
+      EasyThrottle.throttle('invidious-progress-sync-${v.videoId}', const Duration(minutes: 10), () async {
+        try {
+          if (await service.isLoggedIn()) await service.addToUserHistory(v.videoId);
+        } catch (_) {}
+      });
+    }
+  }
+
+  /// Название и картинка для экрана «История».
+  Future<void> _rememberInHistory(Video v) async {
+    try {
+      if (db.getHistoryVideoByVideoId(v.videoId) != null) return;
+      await db.upsertHistoryVideo(HistoryVideoCache(
+          v.videoId, v.title ?? '', v.author, ImageObject.getBestThumbnail(v.videoThumbnails)?.url ?? ''));
+    } catch (_) {}
+  }
+
   /// Сбой: свежие ссылки и продолжение с той же секунды; после нескольких сбоев подряд — ошибка.
   Future<void> _recover(String why) async {
     if (!mounted || _full == null) return;
@@ -266,6 +327,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
   Future<void> _setQuality(_Quality q) async {
     final pos = _player.state.position;
     setState(() => _quality = q);
+    unawaited(CtPrefs.desktopQuality.set(q.height)); // запомнить для следующих роликов
     await _play(at: pos);
   }
 
@@ -308,7 +370,8 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
                   child: mk.Video(
                     controller: _controller,
                     fill: Colors.black,
-                    controls: (state) => mk.MaterialDesktopVideoControlsTheme(
+                    controls: (state) => Stack(fit: StackFit.expand, children: [
+                      mk.MaterialDesktopVideoControlsTheme(
                       normal: mk.MaterialDesktopVideoControlsThemeData(
                         seekBarThumbColor: const Color(0xFFFF0033),
                         seekBarPositionColor: const Color(0xFFFF0033),
@@ -321,6 +384,9 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
                       ),
                       child: mk.MaterialDesktopVideoControls(state),
                     ),
+                      // «Пропущен фрагмент …» — и в окне, и во весь экран
+                      const Positioned(left: 16, bottom: 72, child: IgnorePointer(child: CtSponsorToast())),
+                    ]),
                   ),
                 ),
               );

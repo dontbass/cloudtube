@@ -23,7 +23,7 @@ import 'package:cloudtube/utils/video_post_processing.dart';
 import 'package:cloudtube/videos/models/db/progress.dart';
 import 'package:cloudtube/videos/models/dearrow.dart';
 import 'package:cloudtube/videos/models/dislike.dart';
-import 'package:cloudtube/videos/models/sponsor_segment.dart';
+import 'package:cloudtube/player/core/sponsor.dart';
 import 'package:cloudtube/videos/models/user_feed.dart';
 import 'package:cloudtube/videos/models/video.dart';
 import 'package:logging/logging.dart';

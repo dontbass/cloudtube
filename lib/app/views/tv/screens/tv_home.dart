@@ -1,5 +1,4 @@
 import '../../../../cloudtube/updater.dart';
-import 'package:clipious/videos/models/video.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +20,6 @@ import '../../../../utils/views/components/app_icon.dart';
 import '../../../../cloudtube/tv_link.dart';
 import '../../../../cloudtube/direct.dart';
 import '../../../../cloudtube/tv_nav.dart';
-import '../../../../cloudtube/tv_mouse.dart';
 import 'package:clipious/utils/views/tv/components/tv_horizontal_item_list.dart';
 import '../../../../cloudtube/home_feed.dart';
 import '../../../../cloudtube/yt_login.dart';

@@ -41,8 +41,8 @@ class CtModeSwitch extends StatelessWidget {
       child: SegmentedButton<bool>(
         showSelectedIcon: false,
         segments: const [
-          ButtonSegment(value: true, icon: Icon(Icons.play_circle_outline), label: Text('YouTube напрямую')),
-          ButtonSegment(value: false, icon: Icon(Icons.dns_outlined), label: Text('Свой сервер')),
+          ButtonSegment(value: true, label: Text('YouTube напрямую', maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ButtonSegment(value: false, label: Text('Свой сервер', maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
         selected: {direct},
         onSelectionChanged: (v) {

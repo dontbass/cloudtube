@@ -1,5 +1,6 @@
 import 'server_caps.dart';
 import 'direct.dart';
+import 'img.dart';
 import 'yt_fast.dart';
 import '../utils/models/image_object.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
@@ -327,11 +328,8 @@ class CtChannelAvatar extends StatelessWidget {
     try {
       server = await db.getCurrentlySelectedServer();
     } catch (_) {}
-    if (url.startsWith('/')) {
-      if (server == null) return null;
-      final full = server.url + url;
-      return (full, server.headersForUrl(full));
-    }
-    return (url, server?.headersForUrl(url));
+    if (url.startsWith('/') && server == null) return null;
+    final full = ctImageUrl(url, server);
+    return (full, server?.headersForUrl(full));
   }
 }

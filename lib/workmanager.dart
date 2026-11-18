@@ -75,9 +75,14 @@ _backgroundCheck() async {
       ctDirectActive = ctIsDirectUrl(cur.url);
       ctYtRefreshToken = ctDirectActive && (cur.authToken?.isNotEmpty ?? false) ? cur.authToken : null;
     } catch (_) {}
-    await _handleSubscriptionsNotifications();
-    await _handleChannelNotifications();
-    await _handlePlaylistNotifications();
+    // каждая проверка сама по себе: ошибка одной (сеть, канал удалён) не отменяет остальные
+    for (final step in [_handleSubscriptionsNotifications, _handleChannelNotifications, _handlePlaylistNotifications]) {
+      try {
+        await step();
+      } catch (e) {
+        log.info('фоновая проверка: $e');
+      }
+    }
   } catch (e) {
     log.severe("Error while running workmanager", e);
     rethrow;
@@ -95,82 +100,56 @@ Future<AppLocalizations> getLocalization() async {
   return await AppLocalizations.delegate.load(Locale(lang));
 }
 
-_handlePlaylistNotifications() async {
-  var notifs = await fileDb.getAllPlaylistNotifications();
-  for (var n in notifs) {
-    // we get the latest video,
-    var videos =
-        await service.getPublicPlaylists(n.playlistId, saveLastSeen: false);
-
-    if (videos.videos.isNotEmpty) {
-      if (n.lastVideoCount > 0) {
-        // if in list, we calculate
-        int videosToNotifyAbout = n.lastVideoCount - videos.videoCount;
-
-        // if not we tell that list.size+ new videos are available
-        var locals = await getLocalization();
-
-        if (kDebugMode || videosToNotifyAbout > 0) {
-          sendNotification(
-              locals.playlistNotificationTitle(n.playlistName),
-              locals.playlistNotificationContent(
-                  n.playlistName, videosToNotifyAbout),
-              type: NotificationTypes.playlist,
-              payload: {
-                playlistId: n.playlistId,
-              },
-              id: n.playlistId.hashCode);
-        }
+Future<void> _handlePlaylistNotifications() async {
+  final notifs = await fileDb.getAllPlaylistNotifications();
+  for (final n in notifs) {
+    try {
+      final pl = await service.getPublicPlaylists(n.playlistId, saveLastSeen: false);
+      // новых роликов = сейчас − сколько было (раньше вычиталось наоборот и уведомлений не было)
+      final fresh = pl.videoCount - n.lastVideoCount;
+      if (n.lastVideoCount > 0 && fresh > 0) {
+        final locals = await getLocalization();
+        await sendNotification(locals.playlistNotificationTitle(n.playlistName),
+            pl.videos.isNotEmpty && fresh == 1 ? (pl.videos.last.title ?? '') : locals.playlistNotificationContent(n.playlistName, fresh),
+            type: NotificationTypes.playlist, payload: {playlistId: n.playlistId}, id: n.playlistId.hashCode);
       }
+    } catch (e) {
+      log.info('плейлист ${n.playlistId}: $e');
     }
   }
 }
 
-_handleChannelNotifications() async {
-  var notifs = await fileDb.getAllChannelNotifications();
-
-  for (var n in notifs) {
-    // we get the latest video,
-    var videos =
-        await service.getChannelVideos(n.channelId, null, saveLastSeen: false);
-
-    if (videos.videos.isNotEmpty) {
-      if (n.lastSeenVideoId.isNotEmpty) {
-        // if in list, we calculate
-        int videosToNotifyAbout = 0;
-
-        int index = videos.videos
-            .indexWhere((element) => element.videoId == n.lastSeenVideoId);
-
-        if (index >= 0) {
-          videosToNotifyAbout = index;
-        } else {
-          videosToNotifyAbout = videos.videos.length;
-        }
-
-        // if not we tell that list.size+ new videos are available
-        var locals = await getLocalization();
-
-        if (kDebugMode || videosToNotifyAbout > 0) {
-          sendNotification(
-              locals.channelNotificationTitle(n.channelName),
-              locals.channelNotificationContent(
-                  n.channelName, videosToNotifyAbout),
-              type: NotificationTypes.channel,
-              payload: {
-                channelId: n.channelId,
-                lastSeenVideo: videos.videos.first.videoId
-              },
-              id: n.channelId.hashCode);
-        }
-      }
+Future<void> _handleChannelNotifications() async {
+  final notifs = await fileDb.getAllChannelNotifications();
+  for (final n in notifs) {
+    try {
+      final videos = await service.getChannelVideos(n.channelId, null, saveLastSeen: false);
+      if (videos.videos.isEmpty || n.lastSeenVideoId.isEmpty) continue;
+      final index = videos.videos.indexWhere((e) => e.videoId == n.lastSeenVideoId);
+      final fresh = index >= 0 ? index : videos.videos.length;
+      if (fresh <= 0) continue;
+      final locals = await getLocalization();
+      // одно новое видео — его название, несколько — сколько их
+      await sendNotification(locals.channelNotificationTitle(n.channelName),
+          fresh == 1 ? (videos.videos.first.title ?? '') : locals.channelNotificationContent(n.channelName, fresh),
+          type: NotificationTypes.channel,
+          payload: {channelId: n.channelId, lastSeenVideo: videos.videos.first.videoId},
+          id: n.channelId.hashCode);
+    } catch (e) {
+      log.info('канал ${n.channelId}: $e');
     }
   }
 }
 
-_handleSubscriptionsNotifications() async {
+Future<void> _handleSubscriptionsNotifications() async {
   bool isEnabled = await fileDb.getSubscriptionNotifications();
-  if (isEnabled && await db.isLoggedInToCurrentServer()) {
+  if (!isEnabled) return;
+  // без входа в аккаунт — по подпискам на устройстве (режим без сервера тоже)
+  if (!await db.isLoggedInToCurrentServer()) {
+    await _handleOfflineSubscriptions();
+    return;
+  }
+  {
     // we need to get the last notification before we call the feed endpoint as it is going to save the last seen video
     final lastNotification = await fileDb.getLastSubscriptionNotification();
     var feed = await service.getUserFeed(maxResults: 100, saveLastSeen: false);
@@ -209,4 +188,45 @@ _handleSubscriptionsNotifications() async {
       }
     }
   }
+}
+
+/// Подписки на устройстве: у каждого канала берём последний ролик и сравниваем с прошлой
+/// проверкой. Первый раз только запоминаем (иначе пришло бы уведомление обо всём сразу).
+/// Не больше 60 каналов за раз и 3 запросов одновременно — бережно к YouTube и серверу.
+Future<void> _handleOfflineSubscriptions() async {
+  final subs = (await fileDb.getOfflineSubscriptions()).take(60).toList();
+  if (subs.isEmpty) return;
+  final seen = await fileDb.getOfflineSeen();
+  final fresh = <(String channel, Video video)>[];
+  var i = 0;
+  Future<void> worker() async {
+    while (i < subs.length) {
+      final s = subs[i++];
+      try {
+        final v = (await service.getChannelVideos(s.channelId, null, saveLastSeen: false)).videos;
+        if (v.isEmpty) continue;
+        final last = seen[s.channelId];
+        if (last != null && last != v.first.videoId) {
+          final idx = v.indexWhere((e) => e.videoId == last);
+          for (final e in v.take(idx < 0 ? 3 : idx)) {
+            fresh.add((s.channelName, e));
+          }
+        }
+        seen[s.channelId] = v.first.videoId;
+      } catch (e) {
+        log.info('подписка ${s.channelId}: $e');
+      }
+    }
+  }
+
+  await Future.wait([worker(), worker(), worker()]);
+  await fileDb.setOfflineSeen(seen);
+  if (fresh.isEmpty) return;
+  final locals = await getLocalization();
+  final title = fresh.length == 1 ? fresh.first.$1 : locals.subscriptionNotificationTitle;
+  final body = fresh.length == 1
+      ? (fresh.first.$2.title ?? '')
+      : '${locals.subscriptionNotificationContent(fresh.length)}: ${fresh.map((e) => e.$1).toSet().take(3).join(', ')}';
+  await sendNotification(title, body,
+      type: NotificationTypes.subscription, payload: {lastSeenVideo: fresh.first.$2.videoId});
 }

@@ -362,11 +362,22 @@ class SembastSqfDb extends IDbClient {
   @override
   Future<void> addOfflineSubscription(OfflineSubscription sub) async {
     await offlineSubscriptions.record(sub.channelId).put(db, sub.toJson());
+    await _mirrorSubs();
   }
 
   @override
   Future<void> deleteOfflineSubscription(String channelId) async {
     await offlineSubscriptions.record(channelId).delete(db);
+    await _mirrorSubs();
+  }
+
+  /// Копия подписок на устройстве для фоновой проверки новых видео.
+  Future<void> _mirrorSubs() async {
+    try {
+      await fileDb.setOfflineSubscriptions(await getOfflineSubscriptions());
+    } catch (e) {
+      log.fine('файловая копия подписок: $e');
+    }
   }
 
   @override

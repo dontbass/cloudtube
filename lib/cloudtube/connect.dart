@@ -6,6 +6,7 @@ import '../app/states/app.dart';
 import '../globals.dart';
 import '../settings/models/db/server.dart';
 import 'direct.dart';
+import 'prefs.dart';
 
 class CtConnectError implements Exception {
   final String message;
@@ -63,12 +64,38 @@ Future<Server> ctConnectServer({
   }
   await db.upsertServer(s);
   await db.useServer(s);
+  await CtPrefs.lastServer.set(s.url);
   app.setServer(s);
   return s;
 }
 
+/// Последний свой сервер (не «напрямую»), если он сохранён.
+Future<Server?> ctLastOwnServer() async {
+  final all = (await db.getServers()).where((s) => !ctIsDirectUrl(s.url)).toList();
+  if (all.isEmpty) return null;
+  final url = CtPrefs.lastServer.value;
+  return all.firstWhere((s) => s.url == url, orElse: () => all.first);
+}
+
+/// Переключиться на свой сервер — тот же адрес, вход и пароль сайта, что были.
+/// null — своего сервера ещё нет (нужно подключить).
+Future<Server?> ctConnectLastServer(AppCubit app) async {
+  final s = await ctLastOwnServer();
+  if (s == null) return null;
+  final cur = s.copyWith(inUse: true);
+  await db.useServer(cur);
+  await CtPrefs.lastServer.set(cur.url);
+  app.setServer(cur);
+  return cur;
+}
+
 /// Режим «без сервера»: приложение ходит в YouTube напрямую.
 Future<Server> ctConnectDirect(AppCubit app) async {
+  // запоминаем свой сервер, чтобы вернуться к нему одним нажатием
+  try {
+    final cur = await db.getCurrentlySelectedServer();
+    if (!ctIsDirectUrl(cur.url)) await CtPrefs.lastServer.set(cur.url);
+  } catch (_) {}
   final existing = db.getServer(kCtDirectUrl);
   final s = (existing ?? const Server(url: kCtDirectUrl)).copyWith(inUse: true);
   await db.upsertServer(s);

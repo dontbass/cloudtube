@@ -380,13 +380,22 @@ class TVSettingsScreen extends StatelessWidget {
                 SettingsTile(
                   title: 'Режим работы',
                   description: ctDirectActive
-                      ? 'Без сервера — YouTube напрямую. Нажмите, чтобы подключить свой сервер с телефона'
-                      : 'Свой сервер. Нажмите, чтобы смотреть без сервера (YouTube напрямую)',
+                      ? 'Сейчас: YouTube напрямую. ОК — переключить на свой сервер'
+                      : 'Сейчас: свой сервер. ОК — переключить на YouTube напрямую',
                   leading: const Icon(Icons.swap_horiz),
                   onSelected: (context) async {
                     if (ctDirectActive) {
-                      await Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const CtTvLinkScreen()));
+                      // свой сервер уже подключали — возвращаемся к нему одним нажатием
+                      final s = await ctConnectLastServer(context.read<AppCubit>());
+                      if (s != null) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Режим: свой сервер (${s.url.replaceFirst(RegExp('^https?://'), '')})')));
+                        }
+                      } else if (context.mounted) {
+                        await Navigator.of(context)
+                            .push(MaterialPageRoute(builder: (_) => const CtTvLinkScreen()));
+                      }
                     } else {
                       await ctConnectDirect(context.read<AppCubit>());
                       if (context.mounted) {

@@ -118,3 +118,16 @@ jobs:
           name: CloudTube 1.1.${{ github.run_number }}
           body_path: notes.md
           files: out/*.apk
+
+      # Автоуборка: оставляем 3 последних релиза v1.1.N (есть куда откатиться),
+      # старые удаляются вместе с тегами. windows-preview и прочие теги не трогаются.
+      - name: Remove old releases (keep 3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list -R "$GITHUB_REPOSITORY" -L 500 --json tagName -q '.[].tagName' \
+            | grep -E '^v1\.1\.[0-9]+$' | sort -t. -k3 -n -r | tail -n +4 \
+            | while read -r t; do
+                echo "удаляю $t"
+                gh release delete "$t" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || echo "не удалось: $t"
+              done

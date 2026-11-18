@@ -61,6 +61,7 @@ class CtUpdater {
   static Future<String> installedVersion() async => (await PackageInfo.fromPlatform()).version;
 
   static Future<CtRelease?> fetch() async {
+    if (Platform.isWindows) return _fetchWindows();
     final r = await http.get(Uri.parse('https://api.github.com/repos/$kCtUpdateRepo/releases/latest'),
         headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
     if (r.statusCode != 200) throw 'GitHub ответил ${r.statusCode}';
@@ -71,8 +72,9 @@ class CtUpdater {
   /// Автопроверка при сбое сети повторяется через 30 с и через 2 мин (в машине и на ТВ сеть
   /// часто поднимается позже запуска приложения).
   static Future<void> check(BuildContext context, {bool manual = false, int attempt = 0}) async {
-    if (!Platform.isAndroid || _busy) return;
+    if (!(Platform.isAndroid || Platform.isWindows) || _busy) return;
     _busy = true;
+    if (Platform.isWindows) unawaited(_cleanupWindows());
     try {
       final rel = await fetch();
       final cur = await installedVersion();
@@ -148,6 +150,7 @@ class CtUpdater {
   }
 
   static Future<void> _downloadAndInstall(BuildContext context, CtRelease rel) async {
+    if (Platform.isWindows) return _windowsUpdate(context, rel);
     final abi = await _pickAbi(rel);
     if (abi == null) throw 'нет сборки для этого устройства';
     final url = rel.files[abi]!;
@@ -223,4 +226,127 @@ class CtUpdater {
     }
     await _channel.invokeMethod('install', {'path': path});
   }
+
+  // ---------------- Windows: один файл CloudTube.exe, обновляет сам себя ----------------
+
+  /// Сборка для Windows лежит в пре-релизе windows-preview: CloudTube.exe и версия в CloudTube-windows.json.
+  static Future<CtRelease?> _fetchWindows() async {
+    final r = await http.get(Uri.parse('https://api.github.com/repos/$kCtUpdateRepo/releases/tags/windows-preview'),
+        headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 15));
+    if (r.statusCode != 200) throw 'GitHub ответил ${r.statusCode}';
+    final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    String? exe, json;
+    var size = 0;
+    for (final a in (j['assets'] as List? ?? [])) {
+      final name = '${(a as Map)['name']}';
+      if (name == 'CloudTube.exe') {
+        exe = '${a['browser_download_url']}';
+        size = (a['size'] as num?)?.toInt() ?? 0;
+      }
+      if (name == 'CloudTube-windows.json') json = '${a['browser_download_url']}';
+    }
+    if (exe == null || json == null) return null;
+    final v = await http.get(Uri.parse(json)).timeout(const Duration(seconds: 15));
+    if (v.statusCode != 200) throw 'GitHub ответил ${v.statusCode}';
+    final raw = utf8.decode(v.bodyBytes).replaceFirst('\uFEFF', '');
+    final version = '${(jsonDecode(raw) as Map)['version'] ?? ''}';
+    if (version.isEmpty) return null;
+    return CtRelease(version, 'Новая версия CloudTube для Windows.', {'win': exe}, {'win': size});
+  }
+
+  /// Остаток прошлого обновления (CloudTube.old.exe) — удалить, когда он уже не запущен.
+  static Future<void> _cleanupWindows() async {
+    try {
+      final exe = File(Platform.resolvedExecutable);
+      for (final f in exe.parent.listSync().whereType<File>()) {
+        final n = f.uri.pathSegments.last.toLowerCase();
+        if (n.endsWith('.old.exe') || n.endsWith('.new.exe')) await f.delete();
+      }
+    } catch (_) {}
+  }
+
+  /// Скачать новый CloudTube.exe рядом с текущим, подменить его и перезапуститься.
+  /// Запущенный exe Windows удалить не даёт, а переименовать — даёт: текущий становится
+  /// CloudTube.old.exe (его уберёт следующий запуск), новый встаёт на его место.
+  static Future<void> _windowsUpdate(BuildContext context, CtRelease rel) async {
+    final exe = File(Platform.resolvedExecutable);
+    final dir = exe.parent.path;
+    final name = exe.uri.pathSegments.last;
+    final base = name.toLowerCase().endsWith('.exe') ? name.substring(0, name.length - 4) : name;
+    final fresh = File('$dir${Platform.pathSeparator}$base.new.exe');
+    final old = File('$dir${Platform.pathSeparator}$base.old.exe');
+
+    final progress = ValueNotifier<double?>(null);
+    var cancelled = false;
+    if (!context.mounted) return;
+    final nav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text('Загрузка ${rel.version}'),
+        content: ValueListenableBuilder<double?>(
+          valueListenable: progress,
+          builder: (_, p, __) => Column(mainAxisSize: MainAxisSize.min, children: [
+            LinearProgressIndicator(value: p),
+            const SizedBox(height: 12),
+            Text(p == null ? 'Подключение…' : '${(p * 100).round()} %'),
+          ]),
+        ),
+        actions: [TextButton(onPressed: () => cancelled = true, child: const Text('Отмена'))],
+      ),
+    );
+    final client = http.Client();
+    try {
+      final res = await client.send(http.Request('GET', Uri.parse(rel.files['win']!)));
+      if (res.statusCode != 200) throw 'GitHub ответил ${res.statusCode}';
+      final total = res.contentLength ?? rel.sizes['win'] ?? 0;
+      final sink = fresh.openWrite();
+      var got = 0;
+      try {
+        await for (final chunk in res.stream) {
+          if (cancelled) throw const _Cancelled();
+          sink.add(chunk);
+          got += chunk.length;
+          if (total > 0) progress.value = got / total;
+        }
+      } finally {
+        await sink.close();
+      }
+      if (total > 0 && got != total) throw 'файл скачался не полностью';
+      // подмена файла и перезапуск
+      if (await old.exists()) await old.delete();
+      await exe.rename(old.path);
+      try {
+        await fresh.rename(exe.path);
+      } catch (e) {
+        await old.rename(exe.path); // вернуть как было
+        rethrow;
+      }
+      await Process.start(exe.path, const [], mode: ProcessStartMode.detached);
+      exit(0);
+    } on _Cancelled {
+      nav.pop();
+      try {
+        await fresh.delete();
+      } catch (_) {}
+    } on FileSystemException catch (e) {
+      nav.pop();
+      _log.warning('windows update: $e');
+      // например, программа лежит в Program Files — туда без прав администратора не записать
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Не удалось заменить файл программы. Переместите CloudTube.exe в обычную папку '
+              '(например, «Документы») и повторите обновление.')));
+    } catch (e) {
+      nav.pop();
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+}
+
+class _Cancelled implements Exception {
+  const _Cancelled();
 }

@@ -26,9 +26,13 @@ class CtPref<T> {
     }
   }
 
-  Future<void> set(T v) => db.saveSetting(SettingsValue(key, _encode(v)));
+  Future<void> set(T v) async {
+    await db.saveSetting(SettingsValue(key, _encode(v)));
+  }
 
-  Future<void> clear() => db.deleteSetting(key);
+  Future<void> clear() async {
+    await db.deleteSetting(key);
+  }
 }
 
 CtPref<bool> _bool(String key, bool def) =>

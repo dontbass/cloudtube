@@ -6,7 +6,6 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
-import '../globals.dart';
 import 'prefs.dart';
 
 final _log = Logger('CtYtCookies');

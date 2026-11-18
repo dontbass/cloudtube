@@ -108,7 +108,6 @@ class TvVideoItem extends StatelessWidget {
                   final FocusNode focusNode = Focus.of(ctx);
                   final bool hasFocus = focusNode.hasFocus;
                   return GestureDetector(
-                    onSecondaryTap: () => _menu(context, state.video!),
                     child: AnimatedScale(
                       curve: Curves.easeInOutQuad,
                       duration: animationDuration ~/ 2,

@@ -50,7 +50,10 @@ class CtModeSwitch extends StatelessWidget {
           button: true,
           selected: on,
           label: label,
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
             AnimatedSwitcher(
               duration: dur,
               child: Icon(icon,
@@ -65,7 +68,12 @@ class CtModeSwitch extends StatelessWidget {
                     fontSize: 14.5,
                     fontWeight: on ? FontWeight.w700 : FontWeight.w500,
                     color: on ? Colors.white : colors.onSurfaceVariant),
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    // без лишнего отступа над строкой — текст по центру по высоте
+                    textHeightBehavior: const TextHeightBehavior(
+                        applyHeightToFirstAscent: false, applyHeightToLastDescent: false)),
               ),
             ),
           ]),
@@ -89,7 +97,8 @@ class CtModeSwitch extends StatelessWidget {
           borderRadius: BorderRadius.circular(25),
           border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
         ),
-        child: Stack(children: [
+        // StackFit.expand: и бегунок, и надписи — на всю высоту, надписи ровно по центру
+        child: Stack(fit: StackFit.expand, children: [
           // подсвеченная половина-«бегунок»
           AnimatedAlign(
             duration: dur,
@@ -115,7 +124,7 @@ class CtModeSwitch extends StatelessWidget {
               ),
             ),
           ),
-          Row(children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             side(true, Icons.smart_display_rounded, 'YouTube напрямую'),
             side(false, Icons.dns_rounded, 'Свой сервер'),
           ]),

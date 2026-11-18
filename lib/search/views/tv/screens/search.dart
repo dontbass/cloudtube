@@ -68,8 +68,10 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
   var _resultsFocused = false;
   String _lastKey = 'а';
 
-  static const _cols = 7;
-  static const _key = 40.0;
+  // 9 столбцов: русский алфавит — 4 ряда; вместе с двумя рядами действий клавиатура
+  // помещается по высоте, а подсказки стоят справа от неё (раньше уезжали за нижний край)
+  static const _cols = 9;
+  static const _key = 34.0;
   static const _gap = 4.0;
   static const _panel = _cols * (_key + _gap);
 
@@ -90,6 +92,8 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
   }
 
   FocusNode _node(String id) => _keyNodes.putIfAbsent(id, () => FocusNode(debugLabel: 'key $id'));
+
+  static double _w(int n) => _key * n + _gap * (n - 1);
 
   void _setText(String t) => _controller.value = TextEditingValue(text: t, selection: TextSelection.collapsed(offset: t.length));
 
@@ -192,7 +196,7 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
                   Wrap(spacing: _gap, runSpacing: _gap, children: [
                     _Key(
                         node: _node('space'),
-                        width: _key * 3 + _gap * 2,
+                        width: _w(4),
                         onFocus: (f) {
                           if (f) _lastKey = 'space';
                         },
@@ -200,7 +204,7 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
                         child: const Icon(Icons.space_bar_rounded)),
                     _Key(
                         node: _node('bs'),
-                        width: _key * 2 + _gap,
+                        width: _w(2),
                         onFocus: (f) {
                           if (f) _lastKey = 'bs';
                         },
@@ -208,23 +212,26 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
                         child: const Icon(Icons.backspace_outlined)),
                     _Key(
                         node: _node('clear'),
-                        width: _key * 2 + _gap,
+                        width: _w(3),
                         onFocus: (f) {
                           if (f) _lastKey = 'clear';
                         },
                         onPressed: () => _setText(''),
                         child: const Text('Стереть', style: TextStyle(fontSize: 13))),
-                    for (final l in _Layout.values)
-                      _Key(
-                        node: _node('layout-${l.name}'),
-                        width: _key * 2 + _gap,
-                        selected: l == _layout,
-                        onFocus: (f) {
-                          if (f) _lastKey = 'layout-${l.name}';
-                        },
-                        onPressed: () => setState(() => _layout = l),
-                        child: Text(l.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      ),
+                    // одна клавиша раскладки: RU → EN → 123 по кругу
+                    _Key(
+                      node: _node('layout'),
+                      width: _w(2),
+                      onFocus: (f) {
+                        if (f) _lastKey = 'layout';
+                      },
+                      onPressed: () => setState(() => _layout = _Layout.values[(_layout.index + 1) % _Layout.values.length]),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.language_rounded, size: 16),
+                        const SizedBox(width: 4),
+                        Text(_layout.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
                     _Key(
                         node: _node('system'),
                         onFocus: (f) {
@@ -234,7 +241,7 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
                         child: const Icon(Icons.mic_none_rounded)),
                     _Key(
                         node: _node('search'),
-                        width: _key * 7 + _gap * 6,
+                        width: _w(6),
                         accent: true,
                         onFocus: (f) {
                           if (f) _lastKey = 'search';
@@ -246,33 +253,6 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
                           Text('Найти', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                         ])),
                   ]),
-                  if (hints.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
-                      child: Text(typing ? 'Подсказки' : 'Вы искали',
-                          style: text.titleSmall?.copyWith(color: colors.onSurfaceVariant)),
-                    ),
-                    for (final h in hints)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: TvButton(
-                          borderRadius: 12,
-                          unfocusedColor: Colors.transparent,
-                          onPressed: (_) => _submit(h),
-                          child: SizedBox(
-                            width: _panel - _gap,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              child: Row(children: [
-                                Icon(typing ? Icons.search_rounded : Icons.history_rounded, size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(h, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              ]),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
                 ]),
               ),
             );
@@ -305,14 +285,45 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
             Padding(padding: const EdgeInsets.only(left: 8), child: keyboard),
             const SizedBox(width: 20),
             Expanded(
-              child: s.query.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text('Наберите запрос — подсказки появятся слева. 🎤 — голосовой ввод',
-                            textAlign: TextAlign.center,
-                            style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
-                      ))
+              // пока печатают — подсказки (крупно, справа от клавиатуры), после «Найти» — результаты
+              child: s.query.isEmpty || typing
+                  ? (hints.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                                s.text.trim().isEmpty
+                                    ? 'Наберите запрос — подсказки появятся здесь. 🎤 — голосовой ввод'
+                                    : 'Нажмите «Найти»',
+                                textAlign: TextAlign.center,
+                                style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
+                          ))
+                      : ListView(padding: EdgeInsets.zero, children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                            child: Text(typing ? 'Подсказки' : 'Вы искали',
+                                style: text.titleSmall?.copyWith(color: colors.onSurfaceVariant)),
+                          ),
+                          for (final h in hints)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: TvButton(
+                                borderRadius: 12,
+                                unfocusedColor: Colors.transparent,
+                                onPressed: (_) => _submit(h),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(typing ? Icons.search_rounded : Icons.history_rounded, size: 22),
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                        child: Text(h,
+                                            maxLines: 1, overflow: TextOverflow.ellipsis, style: text.titleMedium)),
+                                  ]),
+                                ),
+                              ),
+                            ),
+                        ]))
                   : Focus(
                       canRequestFocus: false,
                       skipTraversal: true,
@@ -338,7 +349,6 @@ class _Key extends StatelessWidget {
   final void Function(bool focus)? onFocus;
   final double width;
   final bool autofocus;
-  final bool selected;
   final bool accent;
 
   const _Key(
@@ -348,7 +358,6 @@ class _Key extends StatelessWidget {
       this.onFocus,
       this.width = _TvSearchBodyState._key,
       this.autofocus = false,
-      this.selected = false,
       this.accent = false});
 
   @override
@@ -361,7 +370,7 @@ class _Key extends StatelessWidget {
       onKeyEvent: (n, e) => onTvSelect(e, context, (_) => onPressed()),
       child: Builder(builder: (ctx) {
         final f = Focus.of(ctx).hasFocus;
-        final fg = f ? colors.onPrimary : (accent || selected ? ctAccent(colors) : colors.onSurface);
+        final fg = f ? colors.onPrimary : (accent ? ctAccent(colors) : colors.onSurface);
         return GestureDetector(
           onTap: onPressed,
           child: AnimatedContainer(
@@ -372,7 +381,7 @@ class _Key extends StatelessWidget {
             decoration: BoxDecoration(
               color: f
                   ? ctAccent(colors)
-                  : (selected || accent ? ctAccent(colors).withValues(alpha: 0.14) : colors.surfaceContainerHigh),
+                  : (accent ? ctAccent(colors).withValues(alpha: 0.14) : colors.surfaceContainerHigh),
               border: ctFocusBorder(colors, f),
               borderRadius: BorderRadius.circular(10),
             ),

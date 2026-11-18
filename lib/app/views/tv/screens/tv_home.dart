@@ -33,27 +33,6 @@ const double overlayBlur = 25.0;
 GlobalKey popularTitle = GlobalKey(debugLabel: 'popular title');
 GlobalKey subscriptionTitle = GlobalKey(debugLabel: 'subscription title');
 DateTime _ctLastBack = DateTime(2000);
-GlobalKey? _ctCurRow;
-
-/// Сбросить «текущий ряд» (после прокрутки к шапке экрана), чтобы следующий ряд снова встал вверх.
-void ctTvResetRow() => _ctCurRow = null;
-
-/// Вертикальная прокрутка к ряду — только при смене ряда. Раньше она запускалась на КАЖДОМ
-/// ролике при движении вправо-влево и спорила с горизонтальной прокруткой — отсюда рывки.
-void ctTvScrollToRow(GlobalKey? key) {
-  // мышью: ряд под курсором не двигаем (иначе плитки уезжают из-под него), листают колесом
-  if (ctMouseActive.value) return;
-  if (key == null || identical(key, _ctCurRow)) return;
-  final ctx = key.currentContext;
-  if (ctx == null) return;
-  _ctCurRow = key;
-  // как в SmartTube: выбранный ряд всегда встаёт вверху экрана, плавно
-  Scrollable.ensureVisible(ctx,
-      alignment: 0.0,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic);
-}
-
 final _ctRowKeys = {for (final c in ctSections.skip(1)) c.id: GlobalKey(debugLabel: 'row ${c.id}')};
 
 /// Ряды разделов (Музыка, Новости, Спорт…) под основными лентами стартового экрана.
@@ -62,7 +41,8 @@ List<Widget> _ctSectionRows(BuildContext context) {
   final colors = Theme.of(context).colorScheme;
   return [
     for (final (i, c) in ctSections.skip(1).where((c) => c.id != 'movies').indexed)
-      Column(
+      CtTvRow(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -75,12 +55,9 @@ List<Widget> _ctSectionRows(BuildContext context) {
             // разделы грузятся после главной и подписок, по очереди
             paginatedVideoList: ctSectionList(c.id, fill: false, delay: Duration(milliseconds: 100 + 250 * i)),
             autoFocusedIndex: -1,
-            onItemFocus: (video, index, focus) {
-              if (focus) ctTvScrollToRow(_ctRowKeys[c.id]);
-            },
           ),
         ],
-      ),
+      )),
   ];
 }
 GlobalKey trendingTitle = GlobalKey(debugLabel: 'trending title');
@@ -402,11 +379,8 @@ class _CtTvRows extends StatelessWidget {
                                 (_) => null,
                               };
 
-                              void focusFunction(Video video, int index, bool focus) {
-                                if (focus) ctTvScrollToRow(key);
-                              }
-
-                              return Column(
+                              return CtTvRow(
+                                child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -417,20 +391,13 @@ class _CtTvRows extends StatelessWidget {
                                         style: textTheme.titleMedium!.copyWith(color: colors.onSurfaceVariant)),
                                   ),
                                   switch (e) {
-                                    (HomeDataSource.popular) => Popular(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.subscription) =>
-                                      Subscriptions(
-                                        onItemFocus: focusFunction,
-                                      ),
-                                    (HomeDataSource.trending) => Trending(
-                                        onItemFocus: focusFunction,
-                                      ),
+                                    (HomeDataSource.popular) => const Popular(),
+                                    (HomeDataSource.subscription) => const Subscriptions(),
+                                    (HomeDataSource.trending) => const Trending(),
                                     (_) => const SizedBox.shrink(),
                                   }
                                 ],
-                              );
+                              ));
                             }),
                               // ещё ленты разделов, как в SmartTube: экран заполнен, вниз — новые ряды
                               ..._ctSectionRows(context),

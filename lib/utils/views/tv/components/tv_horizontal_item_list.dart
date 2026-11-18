@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -68,7 +69,16 @@ class TvHorizontalItemList<T> extends StatelessWidget {
                           if (index >= items.length) {
                             child = getPlaceholder();
                           } else {
-                            child = buildItem(context, index, items[index]);
+                            // предзагрузка по направлению движения: при фокусе на плитке —
+                            // картинки следующих плиток и следующая страница заранее
+                            child = Focus(
+                              canRequestFocus: false,
+                              skipTraversal: true,
+                              onFocusChange: (f) {
+                                if (f) _preload(context, cubit, items, index);
+                              },
+                              child: RepaintBoundary(child: buildItem(context, index, items[index])),
+                            );
                           }
                           return Padding(
                             padding: const EdgeInsets.only(right: gap),
@@ -83,6 +93,23 @@ class TvHorizontalItemList<T> extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// Сколько плиток вперёд готовим, и за сколько до конца просим следующую страницу.
+const _ctPreloadAhead = 4, _ctLoadMoreBefore = 6;
+
+void _preload<T>(BuildContext context, ItemListCubit<T> cubit, List<T> items, int index) {
+  if (index >= items.length - _ctLoadMoreBefore) cubit.getMoreItems();
+  for (var i = index + 1; i <= index + _ctPreloadAhead && i < items.length; i++) {
+    final it = items[i];
+    if (it is! Video) continue;
+    final url = it.thumbnails.isEmpty ? null : it.thumbnails.first;
+    // относительные адреса (свой сервер) скачиваем при показе — им нужны заголовки сервера
+    if (url == null || !url.startsWith('http')) continue;
+    // тот же ключ и размер, что у плитки (memCacheWidth 480) — картинка возьмётся из памяти
+    precacheImage(ResizeImage(CachedNetworkImageProvider(url, cacheKey: url), width: 480), context,
+        onError: (_, __) {});
   }
 }
 

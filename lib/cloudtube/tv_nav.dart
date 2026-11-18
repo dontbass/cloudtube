@@ -97,3 +97,36 @@ class CtTvSmoothTraversal extends StatelessWidget {
   Widget build(BuildContext context) =>
       FocusTraversalGroup(policy: ReadingOrderTraversalPolicy(requestFocusCallback: ctTvRequestFocus), child: child);
 }
+
+/// Ряд на экране ТВ (заголовок + горизонтальная лента). Когда фокус входит в ряд
+/// (откуда угодно: стрелкой, мышью, после возврата с другого экрана) — ряд плавно встаёт
+/// к верху экрана, как в SmartTube. Движение вправо-влево внутри ряда вертикальную
+/// прокрутку не трогает (раньше это решалось глобальным «текущим рядом» и сбросами).
+class CtTvRow extends StatefulWidget {
+  final Widget child;
+
+  /// Выравнивание ряда по высоте экрана: 0 — вверху.
+  final double alignment;
+
+  const CtTvRow({super.key, required this.child, this.alignment = 0.0});
+
+  @override
+  State<CtTvRow> createState() => _CtTvRowState();
+}
+
+class _CtTvRowState extends State<CtTvRow> {
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (f) {
+        // мышью ряд под курсором не двигаем (плитки уехали бы из-под него), листают колесом
+        if (!f || ctMouseActive.value) return;
+        Scrollable.ensureVisible(context,
+            alignment: widget.alignment, duration: const Duration(milliseconds: 180), curve: Curves.easeOutCubic);
+      },
+      child: widget.child,
+    );
+  }
+}

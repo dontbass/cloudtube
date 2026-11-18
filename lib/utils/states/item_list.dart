@@ -35,8 +35,10 @@ class ItemListCubit<T> extends Cubit<ItemListState<T>> {
     if (scrollController.hasClients) {
       if (scrollController.position.maxScrollExtent * 0.9 <
           scrollController.offset) {
-        EasyDebounce.debounce('loading-more-videos',
-            const Duration(milliseconds: 500), getMoreItems);
+        // своя метка у каждого списка: раньше общая метка на все ряды ТВ —
+        // догрузка одного ряда отменяла догрузку другого
+        EasyDebounce.debounce('loading-more-${identityHashCode(this)}',
+            const Duration(milliseconds: 300), getMoreItems);
       }
     }
   }

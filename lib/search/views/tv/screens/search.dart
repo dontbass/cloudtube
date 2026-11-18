@@ -15,7 +15,6 @@ import 'package:clipious/utils/views/tv/components/tv_horizontal_item_list.dart'
 import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
 import 'package:clipious/utils/views/tv/components/tv_text_field.dart';
 
-import '../../../../app/views/tv/screens/tv_home.dart' show ctTvScrollToRow, ctTvResetRow;
 import '../../../../channels/models/channel.dart';
 import '../../../../cloudtube/tv_channels.dart';
 import '../../../../cloudtube/tv_nav.dart';
@@ -204,7 +203,6 @@ class _TvRow<T> extends StatefulWidget {
 }
 
 class _TvRowState<T> extends State<_TvRow<T>> {
-  final _key = GlobalKey();
   bool? _has;
   late final _list = PageBasedPaginatedList<T>(
     maxResults: searchPageSize,
@@ -215,21 +213,21 @@ class _TvRowState<T> extends State<_TvRow<T>> {
     },
   );
 
-  void _onFocus(bool f) {
-    if (f) ctTvScrollToRow(_key);
-  }
+  // прокрутку к ряду делает CtTvRow; отдельный обработчик фокуса плиток больше не нужен
+  void _onFocus(bool f) {}
 
   @override
   Widget build(BuildContext context) {
     if (_has == false) return const SizedBox.shrink();
-    return Column(key: _key, crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return CtTvRow(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 4, left: 4),
         child: Text(widget.title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
       ),
       widget.build(_list, _onFocus),
-    ]);
+    ]));
   }
 }
 
@@ -249,7 +247,6 @@ class _TvChannelTile extends StatelessWidget {
         unfocusedColor: Colors.transparent,
         onFocusChanged: onFocus,
         onPressed: (ctx) {
-          ctTvResetRow();
           ctOpenTvChannel(ctx, channel.authorId);
         },
         child: SizedBox(

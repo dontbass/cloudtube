@@ -1,6 +1,5 @@
 import 'package:auto_route/annotations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:clipious/app/views/tv/screens/tv_home.dart';
 import 'package:clipious/channels/states/channel.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/subscription_management/view/tv/tv_subscribe_button.dart';
@@ -73,7 +72,6 @@ class _TvChannelBodyState extends State<_TvChannelBody> {
 
   void _toTop(bool focus) {
     if (!focus || !_scroll.hasClients) return;
-    ctTvResetRow();
     _scroll.animateTo(0, duration: const Duration(milliseconds: 180), curve: Curves.easeOutCubic);
   }
 
@@ -180,7 +178,6 @@ class _TvVideoRow extends StatefulWidget {
 }
 
 class _TvVideoRowState extends State<_TvVideoRow> {
-  final _key = GlobalKey();
   bool _has = false;
   late final _list = ContinuationList<Video>((c) async {
     final page = await widget.load(c);
@@ -190,16 +187,11 @@ class _TvVideoRowState extends State<_TvVideoRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(key: _key, crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return CtTvRow(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _RowTitle(title: widget.title, visible: _has),
-      TvHorizontalVideoList(
-        autoFocusedIndex: -1,
-        paginatedVideoList: _list,
-        onItemFocus: (v, i, focus) {
-          if (focus) ctTvScrollToRow(_key);
-        },
-      ),
-    ]);
+      TvHorizontalVideoList(autoFocusedIndex: -1, paginatedVideoList: _list),
+    ]));
   }
 }
 
@@ -214,7 +206,6 @@ class _TvPlaylistRow extends StatefulWidget {
 }
 
 class _TvPlaylistRowState extends State<_TvPlaylistRow> {
-  final _key = GlobalKey();
   bool _has = false;
   late final _list = ContinuationList<Playlist>((c) async {
     final page = await service.getChannelPlaylists(widget.channelId, continuation: c);
@@ -224,23 +215,17 @@ class _TvPlaylistRowState extends State<_TvPlaylistRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(key: _key, crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return CtTvRow(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _RowTitle(title: widget.title, visible: _has),
       TvHorizontalItemList<Playlist>(
         getPlaceholder: () => const TvPlaylistPlaceHolder(),
         paginatedList: _list,
-        buildItem: (context, index, item) => Focus(
-          canRequestFocus: false,
-          skipTraversal: true,
-          onFocusChange: (f) {
-            if (f) ctTvScrollToRow(_key);
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: PlaylistInList(playlist: item, canDeleteVideos: false, isTv: true),
-          ),
+        buildItem: (context, index, item) => Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: PlaylistInList(playlist: item, canDeleteVideos: false, isTv: true),
         ),
       ),
-    ]);
+    ]));
   }
 }

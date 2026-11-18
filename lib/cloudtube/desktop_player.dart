@@ -280,7 +280,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     _savedAt = DateTime.now();
     var progress = pos.inSeconds / len;
     if (progress >= 0.9) progress = 1; // 90 % и больше — просмотрено
-    unawaited(db.saveProgress(db_progress.Progress.named(progress: progress, videoId: v.videoId)));
+    db.saveProgress(db_progress.Progress.named(progress: progress, videoId: v.videoId));
     if (progress > 0.1) {
       // в историю аккаунта — не чаще раза в 10 минут на ролик, как на телефоне
       EasyThrottle.throttle('invidious-progress-sync-${v.videoId}', const Duration(minutes: 10), () async {

@@ -38,7 +38,7 @@ class TvButton extends StatelessWidget {
           bool hasFocus = Focus.of(ctx).hasFocus;
 
           final light = brightness != Brightness.dark;
-          // светлая и мягкая темы: раньше фон в фокусе был тёмным (primary), а текст тоже тёмным —
+          // светлая тема и «Пергамент»: раньше фон в фокусе был тёмным (primary), а текст тоже тёмным —
           // пункт почти не читался. Теперь светлая подсветка акцентом и текст цветом акцента.
           final fg = hasFocus && focusedColor == null
               ? (light ? ctAccent(colors) : colors.onPrimaryContainer)

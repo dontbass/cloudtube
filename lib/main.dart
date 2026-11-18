@@ -257,7 +257,13 @@ class MyApp extends StatelessWidget {
                 const SliderThemeData(inactiveTrackColor: Colors.blue);
 
             return MaterialApp.router(
-              builder: isTv ? (context, child) => CtTvScale(child: CtTvMouse(child: CtTvSmoothTraversal(child: child ?? const SizedBox()))) : null,
+              // ТВ: масштаб, мышь, плавные переходы. Телефон/ПК: «зерно» бумаги в теме «Пергамент»
+              // (на ТВ его с дивана не видно, а лишний слой на слабой приставке ни к чему)
+              builder: isTv
+                  ? (context, child) => CtTvScale(child: CtTvMouse(child: CtTvSmoothTraversal(child: child ?? const SizedBox())))
+                  : (context, child) => ctIsPaper(Theme.of(context).colorScheme)
+                      ? CtPaperGrain(child: child ?? const SizedBox())
+                      : child ?? const SizedBox(),
               routerConfig: appRouter.config(
                   navigatorObservers: () => [MyRouteObserver()],
                   includePrefixMatches: true),

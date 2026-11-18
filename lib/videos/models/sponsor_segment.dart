@@ -1,4 +1,4 @@
-import 'package:clipious/videos/models/sponsor_segment_types.dart';
+import 'package:cloudtube/videos/models/sponsor_segment_types.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 /*

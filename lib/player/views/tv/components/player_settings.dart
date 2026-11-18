@@ -1,13 +1,13 @@
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/player/states/tv_player_controls.dart';
-import 'package:clipious/player/states/tv_player_settings.dart';
-import 'package:clipious/player/states/video_player.dart';
-import 'package:clipious/player/views/tv/components/sleep_timer.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/utils/views/tv/components/tv_button.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/player/states/tv_player_controls.dart';
+import 'package:cloudtube/player/states/tv_player_settings.dart';
+import 'package:cloudtube/player/states/video_player.dart';
+import 'package:cloudtube/player/views/tv/components/sleep_timer.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 
 class TvPlayerSettings extends StatelessWidget {
   const TvPlayerSettings({super.key});

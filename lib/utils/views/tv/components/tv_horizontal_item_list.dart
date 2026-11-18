@@ -1,10 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/utils/states/item_list.dart';
-import 'package:clipious/utils/views/components/placeholders.dart';
-import 'package:clipious/videos/views/tv/components/video_item.dart';
+import 'package:cloudtube/utils/states/item_list.dart';
+import 'package:cloudtube/utils/views/components/placeholders.dart';
+import 'package:cloudtube/videos/views/tv/components/video_item.dart';
 
 import '../../../../utils.dart';
 import '../../../../cloudtube/tv_mouse.dart';

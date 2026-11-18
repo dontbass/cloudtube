@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:clipious/cloudtube/download.dart';
-import 'package:clipious/cloudtube/net.dart';
+import 'package:cloudtube/cloudtube/download.dart';
+import 'package:cloudtube/cloudtube/net.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

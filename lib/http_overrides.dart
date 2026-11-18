@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:clipious/cloudtube/platform.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/settings/models/db/settings.dart';
+import 'package:cloudtube/cloudtube/platform.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/settings/models/db/settings.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override

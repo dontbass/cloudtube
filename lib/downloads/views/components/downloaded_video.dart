@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:clipious/downloads/models/downloaded_video.dart';
-import 'package:clipious/downloads/states/download_manager.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/downloads/models/downloaded_video.dart';
+import 'package:cloudtube/downloads/states/download_manager.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

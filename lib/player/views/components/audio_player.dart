@@ -1,6 +1,6 @@
-import 'package:clipious/player/views/components/player_controls.dart';
-import 'package:clipious/settings/states/settings.dart';
-import 'package:clipious/videos/views/components/offline_video_thumbnail.dart';
+import 'package:cloudtube/player/views/components/player_controls.dart';
+import 'package:cloudtube/settings/states/settings.dart';
+import 'package:cloudtube/videos/views/components/offline_video_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

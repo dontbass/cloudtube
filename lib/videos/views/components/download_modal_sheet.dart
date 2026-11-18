@@ -1,8 +1,8 @@
-import 'package:clipious/globals.dart';
-import 'package:clipious/main.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/videos/models/adaptive_format.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/main.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/videos/models/adaptive_format.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

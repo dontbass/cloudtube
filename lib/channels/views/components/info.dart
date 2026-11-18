@@ -1,5 +1,5 @@
-import 'package:clipious/channels/models/channel.dart';
-import 'package:clipious/utils/views/components/thumbnail.dart';
+import 'package:cloudtube/channels/models/channel.dart';
+import 'package:cloudtube/utils/views/components/thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:intl/intl.dart';

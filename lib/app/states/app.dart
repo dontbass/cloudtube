@@ -1,10 +1,10 @@
-import 'package:clipious/cloudtube/direct.dart';
-import 'package:clipious/cloudtube/yt_account.dart';
+import 'package:cloudtube/cloudtube/direct.dart';
+import 'package:cloudtube/cloudtube/yt_account.dart';
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/router.dart';
+import 'package:cloudtube/router.dart';
 import 'package:logging/logging.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 

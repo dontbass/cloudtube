@@ -1,11 +1,11 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/downloads/models/downloaded_video.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/utils/models/image_object.dart';
-import 'package:clipious/videos/states/compact_video.dart';
-import 'package:clipious/videos/views/components/video_thumbnail.dart';
+import 'package:cloudtube/downloads/models/downloaded_video.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/utils/models/image_object.dart';
+import 'package:cloudtube/videos/states/compact_video.dart';
+import 'package:cloudtube/videos/views/components/video_thumbnail.dart';
 
 import 'offline_video_thumbnail.dart';
 

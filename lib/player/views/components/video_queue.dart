@@ -1,12 +1,12 @@
-import 'package:clipious/videos/models/ided_video.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/ided_video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
-import 'package:clipious/downloads/models/downloaded_video.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/player/states/video_queue.dart';
-import 'package:clipious/videos/views/components/compact_video.dart';
+import 'package:cloudtube/downloads/models/downloaded_video.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/player/states/video_queue.dart';
+import 'package:cloudtube/videos/views/components/compact_video.dart';
 
 import '../../../globals.dart';
 

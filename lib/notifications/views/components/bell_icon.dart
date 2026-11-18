@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/notifications/state/bell_icon.dart';
-import 'package:clipious/settings/states/settings.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/notifications/state/bell_icon.dart';
+import 'package:cloudtube/settings/states/settings.dart';
 
 import '../../../utils.dart';
 

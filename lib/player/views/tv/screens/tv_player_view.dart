@@ -1,10 +1,10 @@
 import 'package:auto_route/annotations.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/player/views/components/video_player.dart';
-import 'package:clipious/settings/states/settings.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/player/views/components/video_player.dart';
+import 'package:cloudtube/settings/states/settings.dart';
 
 import '../../../../main.dart';
 

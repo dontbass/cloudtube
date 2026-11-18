@@ -1,6 +1,6 @@
-import 'package:clipious/globals.dart';
-import 'package:clipious/settings/models/db/server.dart';
-import 'package:clipious/utils/sembast_sqflite_database.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/settings/models/db/server.dart';
+import 'package:cloudtube/utils/sembast_sqflite_database.dart';
 
 import '../globals.dart';
 

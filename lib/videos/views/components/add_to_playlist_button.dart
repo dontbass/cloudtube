@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/settings/models/errors/invidious_service_error.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/videos/states/add_to_playlist.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/settings/models/errors/invidious_service_error.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/videos/states/add_to_playlist.dart';
 
 import 'add_to_playlist_dialog.dart';
 

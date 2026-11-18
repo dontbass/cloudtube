@@ -1,5 +1,5 @@
 import 'package:sembast/sembast.dart';
-import 'package:clipious/utils/sembast_sqflite_database.dart';
+import 'package:cloudtube/utils/sembast_sqflite_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

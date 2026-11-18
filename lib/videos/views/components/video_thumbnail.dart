@@ -1,4 +1,4 @@
-import 'package:clipious/utils/views/components/thumbnail.dart';
+import 'package:cloudtube/utils/views/components/thumbnail.dart';
 import 'package:flutter/material.dart';
 
 class VideoThumbnailView extends StatelessWidget {

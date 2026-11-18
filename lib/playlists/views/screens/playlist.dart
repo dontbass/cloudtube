@@ -1,13 +1,13 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/notifications/views/components/bell_icon.dart';
-import 'package:clipious/player/states/player.dart';
-import 'package:clipious/settings/models/errors/invidious_service_error.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/videos/views/components/compact_video.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/notifications/views/components/bell_icon.dart';
+import 'package:cloudtube/player/states/player.dart';
+import 'package:cloudtube/settings/models/errors/invidious_service_error.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/videos/views/components/compact_video.dart';
 
 import '../../../cloudtube/theme.dart';
 import '../../../globals.dart';

@@ -1,4 +1,4 @@
-import 'package:clipious/settings/states/settings.dart';
+import 'package:cloudtube/settings/states/settings.dart';
 
 class TestSettingsCubit extends SettingsCubit{
   TestSettingsCubit(super.initialState, super.appCubit);

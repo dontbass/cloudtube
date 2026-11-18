@@ -1,11 +1,11 @@
 import 'package:auto_route/annotations.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/utils/models/paginated_list.dart';
-import 'package:clipious/utils/views/components/placeholders.dart';
-import 'package:clipious/utils/views/tv/components/tv_overscan.dart';
-import 'package:clipious/videos/views/tv/components/video_item.dart';
+import 'package:cloudtube/utils/models/paginated_list.dart';
+import 'package:cloudtube/utils/views/components/placeholders.dart';
+import 'package:cloudtube/utils/views/tv/components/tv_overscan.dart';
+import 'package:cloudtube/videos/views/tv/components/video_item.dart';
 
 import '../../../../cloudtube/tv_nav.dart';
 import '../../../../cloudtube/tv_channels.dart';

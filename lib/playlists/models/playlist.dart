@@ -78,7 +78,7 @@
     }
  */
 
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../utils/models/image_object.dart';

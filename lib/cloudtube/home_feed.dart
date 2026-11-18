@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'perf.dart';
 import 'direct.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/utils/models/paginated_list.dart';
-import 'package:clipious/videos/models/video.dart';
-import 'package:clipious/videos/views/components/video_list.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/utils/models/paginated_list.dart';
+import 'package:cloudtube/videos/models/video.dart';
+import 'package:cloudtube/videos/views/components/video_list.dart';
 import 'package:flutter/material.dart';
 
 import 'server_caps.dart';

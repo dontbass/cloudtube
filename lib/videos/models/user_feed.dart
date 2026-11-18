@@ -1,4 +1,4 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'user_feed.g.dart';

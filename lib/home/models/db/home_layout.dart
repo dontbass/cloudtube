@@ -1,11 +1,11 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/router.dart';
+import 'package:cloudtube/router.dart';
 
 import '../../../downloads/states/download_manager.dart';
 import '../../../globals.dart';

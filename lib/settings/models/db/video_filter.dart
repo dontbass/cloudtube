@@ -1,9 +1,9 @@
-import 'package:clipious/videos/models/video.dart';
+import 'package:cloudtube/videos/models/video.dart';
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/utils.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 

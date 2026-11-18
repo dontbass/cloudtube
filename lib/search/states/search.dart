@@ -1,10 +1,10 @@
 import 'package:bloc/bloc.dart';
 import 'package:easy_debounce/easy_debounce.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/search/models/db/search_history_item.dart';
-import 'package:clipious/search/models/search_date.dart';
-import 'package:clipious/search/models/search_duration.dart';
-import 'package:clipious/search/models/search_sort_by.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/search/models/db/search_history_item.dart';
+import 'package:cloudtube/search/models/search_date.dart';
+import 'package:cloudtube/search/models/search_duration.dart';
+import 'package:cloudtube/search/models/search_sort_by.dart';
 
 import '../../settings/states/settings.dart';
 

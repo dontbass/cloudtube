@@ -1,5 +1,5 @@
-import 'package:clipious/settings/models/db/video_filter.dart';
-import 'package:clipious/videos/models/dearrow.dart';
+import 'package:cloudtube/settings/models/db/video_filter.dart';
+import 'package:cloudtube/videos/models/dearrow.dart';
 import 'package:logging/logging.dart';
 
 import '../videos/models/video.dart';

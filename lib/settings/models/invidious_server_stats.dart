@@ -1,4 +1,4 @@
-import 'package:clipious/settings/models/invidious_server_software.dart';
+import 'package:cloudtube/settings/models/invidious_server_software.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'invidious_server_stats.g.dart';

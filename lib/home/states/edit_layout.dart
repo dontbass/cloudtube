@@ -1,6 +1,6 @@
 import 'package:bloc/bloc.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/home/models/db/home_layout.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/home/models/db/home_layout.dart';
 
 const int maxSmallSources = 2;
 

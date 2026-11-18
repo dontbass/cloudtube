@@ -1,5 +1,5 @@
-import 'package:clipious/playlists/models/playlist.dart';
-import 'package:clipious/utils/models/item_with_continuation.dart';
+import 'package:cloudtube/playlists/models/playlist.dart';
+import 'package:cloudtube/utils/models/item_with_continuation.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'channel_playlists.g.dart';

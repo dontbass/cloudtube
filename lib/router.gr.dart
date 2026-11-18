@@ -88,43 +88,6 @@ class BrowsingSettingsRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [ChannelInfoTab]
-class ChannelInfoRoute extends PageRouteInfo<ChannelInfoRouteArgs> {
-  ChannelInfoRoute({Key? key, Channel? channel, List<PageRouteInfo>? children})
-      : super(
-          ChannelInfoRoute.name,
-          args: ChannelInfoRouteArgs(key: key, channel: channel),
-          initialChildren: children,
-          argsEquality: false,
-        );
-
-  static const String name = 'ChannelInfoRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<ChannelInfoRouteArgs>(
-        orElse: () => const ChannelInfoRouteArgs(),
-      );
-      return ChannelInfoTab(key: args.key, channel: args.channel);
-    },
-  );
-}
-
-class ChannelInfoRouteArgs {
-  const ChannelInfoRouteArgs({this.key, this.channel});
-
-  final Key? key;
-
-  final Channel? channel;
-
-  @override
-  String toString() {
-    return 'ChannelInfoRouteArgs{key: $key, channel: $channel}';
-  }
-}
-
-/// generated route for
 /// [ChannelPlaylistsTab]
 class ChannelPlaylistsRoute extends PageRouteInfo<ChannelPlaylistsRouteArgs> {
   ChannelPlaylistsRoute({
@@ -1676,44 +1639,6 @@ class TvTimePickerRouteArgs {
   @override
   String toString() {
     return 'TvTimePickerRouteArgs{key: $key, value: $value, onTimePicked: $onTimePicked}';
-  }
-}
-
-/// generated route for
-/// [TvVideoScreen]
-class TvVideoRoute extends PageRouteInfo<TvVideoRouteArgs> {
-  TvVideoRoute({
-    Key? key,
-    required String videoId,
-    List<PageRouteInfo>? children,
-  }) : super(
-          TvVideoRoute.name,
-          args: TvVideoRouteArgs(key: key, videoId: videoId),
-          initialChildren: children,
-          argsEquality: false,
-        );
-
-  static const String name = 'TvVideoRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<TvVideoRouteArgs>();
-      return TvVideoScreen(key: args.key, videoId: args.videoId);
-    },
-  );
-}
-
-class TvVideoRouteArgs {
-  const TvVideoRouteArgs({this.key, required this.videoId});
-
-  final Key? key;
-
-  final String videoId;
-
-  @override
-  String toString() {
-    return 'TvVideoRouteArgs{key: $key, videoId: $videoId}';
   }
 }
 

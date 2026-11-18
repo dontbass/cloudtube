@@ -1,4 +1,4 @@
-import 'package:clipious/app/states/app.dart';
+import 'package:cloudtube/app/states/app.dart';
 
 class TestAppCubit extends AppCubit{
   TestAppCubit(super.initialState);

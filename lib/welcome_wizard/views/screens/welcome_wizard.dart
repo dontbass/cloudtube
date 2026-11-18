@@ -1,17 +1,17 @@
-import 'package:clipious/cloudtube/connect.dart';
-import 'package:clipious/cloudtube/deploy.dart';
-import 'package:clipious/cloudtube/connect_screen.dart';
-import 'package:clipious/cloudtube/theme.dart';
+import 'package:cloudtube/cloudtube/connect.dart';
+import 'package:cloudtube/cloudtube/deploy.dart';
+import 'package:cloudtube/cloudtube/connect_screen.dart';
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/app/states/app.dart';
-import 'package:clipious/router.dart';
-import 'package:clipious/settings/states/server_list_settings.dart';
-import 'package:clipious/settings/views/components/manager_server_inner.dart';
-import 'package:clipious/utils/views/components/app_icon.dart';
-import 'package:clipious/welcome_wizard/states/welcome_wizard.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/app/states/app.dart';
+import 'package:cloudtube/router.dart';
+import 'package:cloudtube/settings/states/server_list_settings.dart';
+import 'package:cloudtube/settings/views/components/manager_server_inner.dart';
+import 'package:cloudtube/utils/views/components/app_icon.dart';
+import 'package:cloudtube/welcome_wizard/states/welcome_wizard.dart';
 
 import '../../../settings/models/db/server.dart';
 

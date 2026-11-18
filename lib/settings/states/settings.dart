@@ -5,10 +5,10 @@ import 'package:bloc/bloc.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/app/states/app.dart';
-import 'package:clipious/workmanager.dart';
+import 'package:cloudtube/app/states/app.dart';
+import 'package:cloudtube/workmanager.dart';
 import 'package:locale_names/locale_names.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 

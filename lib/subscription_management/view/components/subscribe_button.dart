@@ -1,8 +1,8 @@
-import 'package:clipious/utils.dart';
+import 'package:cloudtube/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:clipious/l10n/generated/app_localizations.dart';
-import 'package:clipious/subscription_management/states/subscribe_button.dart';
+import 'package:cloudtube/l10n/generated/app_localizations.dart';
+import 'package:cloudtube/subscription_management/states/subscribe_button.dart';
 
 import '../../../notifications/views/components/bell_icon.dart';
 

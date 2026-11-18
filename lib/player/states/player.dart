@@ -1,7 +1,7 @@
 import '../../cloudtube/sponsor_toast.dart';
 import '../../cloudtube/up_next.dart';
-import 'package:clipious/cloudtube/platform.dart';
-import 'package:clipious/cloudtube/desktop_player.dart';
+import 'package:cloudtube/cloudtube/platform.dart';
+import 'package:cloudtube/cloudtube/desktop_player.dart';
 import 'dart:async';
 import 'dart:collection';
 
@@ -9,19 +9,19 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:bloc/bloc.dart';
-import 'package:clipious/player/models/sleep_timer.dart';
-import 'package:clipious/videos/models/ided_video.dart';
+import 'package:cloudtube/player/models/sleep_timer.dart';
+import 'package:cloudtube/videos/models/ided_video.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/player/models/media_command.dart';
-import 'package:clipious/player/models/media_event.dart';
-import 'package:clipious/player/states/interfaces/media_player.dart';
-import 'package:clipious/utils.dart';
-import 'package:clipious/utils/models/image_object.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/player/models/media_command.dart';
+import 'package:cloudtube/player/models/media_event.dart';
+import 'package:cloudtube/player/states/interfaces/media_player.dart';
+import 'package:cloudtube/utils.dart';
+import 'package:cloudtube/utils/models/image_object.dart';
 import 'package:logging/logging.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
 

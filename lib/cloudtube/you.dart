@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:clipious/app/states/app.dart';
-import 'package:clipious/globals.dart';
-import 'package:clipious/home/models/db/home_layout.dart';
-import 'package:clipious/router.dart';
-import 'package:clipious/settings/models/db/server.dart';
+import 'package:cloudtube/app/states/app.dart';
+import 'package:cloudtube/globals.dart';
+import 'package:cloudtube/home/models/db/home_layout.dart';
+import 'package:cloudtube/router.dart';
+import 'package:cloudtube/settings/models/db/server.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

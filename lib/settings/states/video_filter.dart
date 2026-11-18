@@ -1,6 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:clipious/globals.dart';
+import 'package:cloudtube/globals.dart';
 import 'package:logging/logging.dart';
 
 import '../models/db/video_filter.dart';

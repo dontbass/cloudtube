@@ -28,6 +28,8 @@ class CtTvMouse extends StatefulWidget {
 
 class _CtTvMouseState extends State<CtTvMouse> {
   Offset? _down;
+  DateTime _downAt = DateTime(2000);
+  Offset? _rightDown;
   DateTime _lastHover = DateTime(2000);
 
   /// Фокусируемый элемент под курсором — только реально видимый (через hit-test:
@@ -97,6 +99,12 @@ class _CtTvMouseState extends State<CtTvMouse> {
     if ((e.position - down).distance > 14) return; // это было перетаскивание списка
     final n = _nodeAt(e.position, e.viewId);
     if (n == null) return;
+    // долгое нажатие левой кнопкой = кнопка «Меню» пульта (меню ролика: канал, подписка)
+    if (DateTime.now().difference(_downAt) >= const Duration(milliseconds: 550) && !_isText(n)) {
+      n.requestFocus();
+      _send(n, LogicalKeyboardKey.contextMenu, PhysicalKeyboardKey.contextMenu, e.timeStamp);
+      return;
+    }
     if (_isText(n)) {
       n.requestFocus();
       return;
@@ -106,14 +114,24 @@ class _CtTvMouseState extends State<CtTvMouse> {
     final whole = n.rect.width * n.rect.height > screen.width * screen.height * 0.7;
     if (!whole) n.requestFocus();
     final key = whole ? LogicalKeyboardKey.mediaPlayPause : LogicalKeyboardKey.select;
-    final ev = KeyUpEvent(
-        physicalKey: whole ? PhysicalKeyboardKey.mediaPlayPause : PhysicalKeyboardKey.select,
-        logicalKey: key,
-        timeStamp: e.timeStamp);
-    // как настоящее нажатие OK: от элемента вверх по дереву, пока кто-то не обработает
+    _send(n, key, whole ? PhysicalKeyboardKey.mediaPlayPause : PhysicalKeyboardKey.select, e.timeStamp);
+  }
+
+  /// Как настоящее нажатие кнопки пульта: от элемента вверх по дереву, пока кто-то не обработает.
+  void _send(FocusNode n, LogicalKeyboardKey key, PhysicalKeyboardKey phys, Duration ts) {
+    final ev = KeyUpEvent(physicalKey: phys, logicalKey: key, timeStamp: ts);
     for (final t in [n, ...n.ancestors]) {
       if (t.onKeyEvent?.call(t, ev) == KeyEventResult.handled) break;
     }
+  }
+
+  /// Правая кнопка мыши = «Назад» пульта (как принято на Android TV):
+  /// выйти из ролика, из канала, вернуться на главную, закрыть меню.
+  void _back(PointerUpEvent e) {
+    final down = _rightDown;
+    _rightDown = null;
+    if (down == null || (e.position - down).distance > 14) return;
+    WidgetsBinding.instance.handlePopRoute();
   }
 
   @override
@@ -128,9 +146,21 @@ class _CtTvMouseState extends State<CtTvMouse> {
           if (e.kind != PointerDeviceKind.mouse) return;
           ctMouseActive.value = true;
           _down = e.buttons == kPrimaryButton ? e.position : null;
+          _downAt = DateTime.now();
+          _rightDown = e.buttons == kSecondaryMouseButton ? e.position : null;
         },
-        onPointerUp: _up,
-        onPointerCancel: (_) => _down = null,
+        onPointerUp: (e) {
+          if (e.kind != PointerDeviceKind.mouse) return;
+          if (_rightDown != null) {
+            _back(e);
+          } else {
+            _up(e);
+          }
+        },
+        onPointerCancel: (_) {
+          _down = null;
+          _rightDown = null;
+        },
         child: widget.child,
       ),
     );

@@ -11,12 +11,10 @@ import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../globals.dart';
-import '../settings/models/db/settings.dart';
+import 'prefs.dart';
 
 final _log = Logger('CtUpdater');
 const _channel = MethodChannel('cloudtube/update');
-const _skipKey = 'ct-update-skip';
 
 /// Откуда брать обновления: релизы GitHub публичного репозитория.
 /// В своём форке поменяйте на свой owner/repo.
@@ -88,7 +86,7 @@ class CtUpdater {
       }
       // «Позже» откладывает напоминание об этой версии на сутки (раньше — навсегда)
       if (!manual) {
-        final skip = (db.getSettings(_skipKey)?.value ?? '').split('|');
+        final skip = CtPrefs.updateSkip.value.split('|');
         final at = skip.length > 1 ? int.tryParse(skip[1]) ?? 0 : 0;
         if (skip.first == rel.version &&
             DateTime.now().millisecondsSinceEpoch - at < const Duration(hours: 24).inMilliseconds) {
@@ -105,7 +103,7 @@ class CtUpdater {
           actions: [
             TextButton(
                 onPressed: () {
-                  db.saveSetting(SettingsValue(_skipKey, '${rel.version}|${DateTime.now().millisecondsSinceEpoch}'));
+                  CtPrefs.updateSkip.set('${rel.version}|${DateTime.now().millisecondsSinceEpoch}');
                   Navigator.pop(ctx, false);
                 },
                 child: const Text('Позже')),

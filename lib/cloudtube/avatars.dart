@@ -10,9 +10,9 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:clipious/globals.dart';
 import 'package:clipious/settings/models/db/server.dart';
-import 'package:clipious/settings/models/db/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'prefs.dart';
 
 final _log = Logger('CtAvatars');
 
@@ -26,7 +26,6 @@ class CtAvatars {
 
   static final CtAvatars instance = CtAvatars._();
 
-  static const _key = 'ct-avatars';
   static const _keepDays = 30;
 
   final Map<String, String?> _cache = {};
@@ -43,8 +42,8 @@ class CtAvatars {
     if (_loaded) return;
     _loaded = true;
     try {
-      final raw = db.getSettings(_key)?.value;
-      if (raw == null || raw.isEmpty) return;
+      final raw = CtPrefs.avatars.value;
+      if (raw.isEmpty) return;
       final m = jsonDecode(raw) as Map<String, dynamic>;
       final today = _today;
       m.forEach((id, v) {
@@ -71,7 +70,7 @@ class CtAvatars {
           if (_cache[i] != null) i: [_cache[i]!, _savedDay[i]!]
       };
       try {
-        await db.saveSetting(SettingsValue(_key, jsonEncode(m)));
+        await CtPrefs.avatars.set(jsonEncode(m));
       } catch (_) {}
     });
   }

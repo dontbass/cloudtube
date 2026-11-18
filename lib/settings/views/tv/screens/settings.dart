@@ -3,7 +3,6 @@ import 'package:clipious/cloudtube/connect.dart';
 import 'package:clipious/cloudtube/direct.dart';
 import 'package:clipious/cloudtube/updater.dart';
 import 'package:clipious/cloudtube/tv_scale.dart';
-import 'package:clipious/settings/models/db/settings.dart';
 import 'package:clipious/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:clipious/app/states/app.dart';
@@ -21,6 +20,7 @@ import 'package:logging/logging.dart';
 
 import '../../../../globals.dart';
 import '../../../states/settings.dart';
+import '../../../../cloudtube/prefs.dart';
 
 var log = Logger('TvSettings');
 
@@ -412,7 +412,7 @@ class TVSettingsScreen extends StatelessWidget {
                       onSelected: (context) async {
                         final next = cur.next;
                         ctSoftTheme.value = next.isSoft;
-                        await db.saveSetting(SettingsValue(ctSoftThemeKey, '${next.isSoft}'));
+                        await CtPrefs.softTheme.set(next.isSoft);
                         await cubit.setThemeMode(next.isDark ? ThemeMode.dark : ThemeMode.light);
                       },
                     );

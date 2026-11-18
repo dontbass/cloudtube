@@ -155,7 +155,6 @@ final ColorScheme ctDimScheme = ctDarkScheme.copyWith(
 
 /// true — промежуточный вариант текущей яркости (мягкая светлая / сумерки).
 final ValueNotifier<bool> ctSoftTheme = ValueNotifier(false);
-const ctSoftThemeKey = 'ct-theme-soft';
 
 /// Темы по кругу для кнопки в шапке.
 enum CtTheme {

@@ -1,6 +1,5 @@
 import 'direct.dart';
 import 'net.dart';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:auto_route/auto_route.dart';
@@ -8,7 +7,6 @@ import 'package:clipious/globals.dart';
 import 'package:clipious/player/states/player.dart';
 import 'package:clipious/router.dart';
 import 'package:clipious/settings/models/db/server.dart';
-import 'package:clipious/settings/models/db/settings.dart';
 import 'package:clipious/utils/models/image_object.dart';
 import 'package:clipious/videos/models/video.dart';
 import 'package:clipious/videos/views/components/add_to_playlist_dialog.dart';
@@ -22,11 +20,10 @@ import 'avatars.dart';
 import 'comments.dart';
 import 'server_caps.dart';
 import 'theme.dart';
+import 'prefs.dart';
 
 final _log = Logger('CtShorts');
 final _cdn = RegExp(r'https://(.+)googlevideo.com/');
-const _seenKey = 'ct-shorts-seen';
-const _blockKey = 'ct-shorts-blocked-channels';
 
 /// Shorts: вертикальное листание как в YouTube.
 /// Подборка ct:shorts с сервера, перемешивается, уже просмотренные уходят в конец.
@@ -56,16 +53,8 @@ class _CtShortsPageState extends State<CtShortsPage> {
     try {
       context.read<PlayerCubit>().pause();
     } catch (_) {}
-    try {
-      _seen = List<String>.from(jsonDecode(db.getSettings(_seenKey)?.value ?? '[]') as List);
-    } catch (_) {
-      _seen = [];
-    }
-    try {
-      _blocked = Set<String>.from(jsonDecode(db.getSettings(_blockKey)?.value ?? '[]') as List);
-    } catch (_) {
-      _blocked = {};
-    }
+    _seen = [...CtPrefs.shortsSeen.value];
+    _blocked = {...CtPrefs.shortsBlocked.value};
     _load();
   }
 
@@ -83,7 +72,7 @@ class _CtShortsPageState extends State<CtShortsPage> {
   void _blockChannel(String channelId) {
     if (channelId.isEmpty) return;
     _blocked.add(channelId);
-    db.saveSetting(SettingsValue(_blockKey, jsonEncode(_blocked.toList())));
+    CtPrefs.shortsBlocked.set(_blocked.toList());
     setState(() {
       final cur = _videos[_current];
       _videos.removeWhere((v) => v.authorId == channelId && v != cur);
@@ -95,7 +84,7 @@ class _CtShortsPageState extends State<CtShortsPage> {
     _seen.remove(id);
     _seen.add(id);
     if (_seen.length > 600) _seen.removeRange(0, _seen.length - 600);
-    db.saveSetting(SettingsValue(_seenKey, jsonEncode(_seen)));
+    CtPrefs.shortsSeen.set(_seen);
   }
 
   /// Берём две страницы подборки за раз, перемешиваем; просмотренные — в конец.

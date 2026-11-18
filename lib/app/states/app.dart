@@ -36,7 +36,7 @@ class AppCubit extends Cubit<AppState> {
     bool isLoggedIn = (server?.authToken?.isNotEmpty ?? false) ||
         (server?.sidCookie?.isNotEmpty ?? false);
 
-    var firstIndex = int.parse(db.getSettings(onOpenSettingName)?.value ?? '0');
+    var firstIndex = int.tryParse(db.getSettings(onOpenSettingName)?.value ?? '') ?? 0;
     if (!isLoggedIn && firstIndex > 1 || firstIndex < 0) {
       firstIndex = 0;
     }

@@ -459,7 +459,7 @@ sealed class SettingsState with _$SettingsState {
 
   bool get sponsorBlock => _get(useSponsorBlock)?.value == 'true';
 
-  int get onOpen => int.parse(_get(onOpenSettingName)?.value ?? '0');
+  int get onOpen => _int(onOpenSettingName, 0);
 
   bool get useProxy => _get(useProxySettingName)?.value == 'true';
 
@@ -473,16 +473,16 @@ sealed class SettingsState with _$SettingsState {
 
   String? get locale => _get(localeSettingName)?.value;
 
-  int get searchHistoryLimit => int.parse(
-      _get(searchHistoryLimitSettingName)?.value ?? searchHistoryDefaultLength);
+  int get searchHistoryLimit => _int(searchHistoryLimitSettingName, int.parse(searchHistoryDefaultLength));
 
-  double get lastSpeed =>
-      double.parse(_get(lastSpeedSettingName)?.value ?? "1.0");
+  double get lastSpeed => _double(lastSpeedSettingName, 1.0);
 
   bool get playerShuffleMode => _get(playerShuffle)?.value == "true";
 
-  PlayerRepeat get playerRepeatMode =>
-      PlayerRepeat.values[int.parse(_get(playerRepeat)?.value ?? '0')];
+  PlayerRepeat get playerRepeatMode {
+    final i = _int(playerRepeat, 0);
+    return i >= 0 && i < PlayerRepeat.values.length ? PlayerRepeat.values[i] : PlayerRepeat.noRepeat;
+  }
 
   String get lastSubtitles => _get(lastSubtitle)?.value ?? '';
 
@@ -505,8 +505,7 @@ sealed class SettingsState with _$SettingsState {
   String get returnYoutubeDislikeUrl =>
       _get(returnYoutubeDislikeUrlSettingName)?.value ?? '';
 
-  double get subtitleSize =>
-      double.parse(_get(subtitleSizeSettingName)?.value ?? subtitleDefaultSize);
+  double get subtitleSize => _double(subtitleSizeSettingName, double.parse(subtitleDefaultSize));
 
   bool get skipSslVerification =>
       _get(skipSslVerificationSettingName)?.value == 'true';
@@ -514,8 +513,7 @@ sealed class SettingsState with _$SettingsState {
   bool get forceLandscapeFullScreen =>
       _get(lockOrientationFullScreen)?.value == 'true';
 
-  int get skipStep =>
-      int.parse(_get(skipStepSettingName)?.value ?? defaultStep.toString());
+  int get skipStep => _int(skipStepSettingName, defaultStep);
 
   bool get skipExponentially =>
       (_get(skipExponentialSettingName)?.value ?? 'true') == 'true';
@@ -540,16 +538,16 @@ sealed class SettingsState with _$SettingsState {
     return (savedLayout ?? defaultLayout.map((e) => e.name).join(","))
         .split(',')
         .where((element) => element.isNotEmpty)
-        .map((e) =>
-            HomeDataSource.values.firstWhere((element) => element.name == e))
+        // источник, которого больше нет (после обновления), просто пропускаем — раньше падало
+        .map((e) => HomeDataSource.values.where((element) => element.name == e).firstOrNull)
+        .whereType<HomeDataSource>()
         .toList();
   }
 
   NavigationDestinationLabelBehavior get navigationBarLabelBehavior =>
-      NavigationDestinationLabelBehavior.values.firstWhere((e) =>
-          e.name ==
-          (_get(navigationBarLabelBehaviorSettingName)?.value ??
-              NavigationDestinationLabelBehavior.onlyShowSelected.name));
+      NavigationDestinationLabelBehavior.values.firstWhere(
+          (e) => e.name == _get(navigationBarLabelBehaviorSettingName)?.value,
+          orElse: () => NavigationDestinationLabelBehavior.onlyShowSelected);
 
   bool get distractionFreeMode =>
       _get(distractionFreeModeSettingName)?.value == "true";
@@ -557,8 +555,7 @@ sealed class SettingsState with _$SettingsState {
   bool get backgroundNotifications =>
       _get(backgroundNotificationsSettingName)?.value == 'true';
 
-  int get backgroundNotificationFrequency =>
-      int.parse(_get(backgroundCheckFrequency)?.value ?? "1");
+  int get backgroundNotificationFrequency => _int(backgroundCheckFrequency, 1);
 
   bool get subtitlesBackground => _get(subtitleBackground)?.value == 'true';
 
@@ -569,6 +566,11 @@ sealed class SettingsState with _$SettingsState {
 
   bool get fullscreenOnRotate =>
       (_get(fullScreenOnLandscapeSettingName)?.value ?? "true") == "true";
+
+  /// Числа читаем бережно: испорченное значение — умолчание, а не падение приложения.
+  int _int(String name, int def) => int.tryParse(_get(name)?.value ?? '') ?? def;
+
+  double _double(String name, double def) => double.tryParse(_get(name)?.value ?? '') ?? def;
 
   SettingsValue? _get(String settingName) {
     if (settings.containsKey(settingName)) {

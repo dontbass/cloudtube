@@ -6,12 +6,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
-import '../globals.dart';
-import '../settings/models/db/settings.dart';
+import 'prefs.dart';
 
 final _log = Logger('CtYtCookies');
-const _key = 'ct_yt_web_cookie';
-const _idKey = 'ct_yt_web_identity';
 
 /// Канал, от имени которого действуем (у одного Google-аккаунта их может быть несколько,
 /// плюс в окне входа можно войти в несколько Google-аккаунтов).
@@ -41,19 +38,19 @@ class CtYtCookies {
 
   static void load() {
     try {
-      cookie = db.getSettings(_key)?.value;
-      if (cookie != null && cookie!.isEmpty) cookie = null;
-      final id = db.getSettings(_idKey)?.value;
-      if (id != null && id.isNotEmpty) identity = CtYtIdentity.fromJson(jsonDecode(id));
+      cookie = CtPrefs.ytWebCookie.value;
+      if (cookie!.isEmpty) cookie = null;
+      final id = CtPrefs.ytWebIdentity.value;
+      if (id.isNotEmpty) identity = CtYtIdentity.fromJson(jsonDecode(id));
     } catch (_) {}
   }
 
   static Future<void> setIdentity(CtYtIdentity? id) async {
     identity = id;
     if (id == null) {
-      await db.deleteSetting(_idKey);
+      await CtPrefs.ytWebIdentity.clear();
     } else {
-      await db.saveSetting(SettingsValue(_idKey, jsonEncode(id.toJson())));
+      await CtPrefs.ytWebIdentity.set(jsonEncode(id.toJson()));
     }
   }
 
@@ -246,9 +243,9 @@ class CtYtCookies {
   static Future<void> save(String? c) async {
     cookie = c;
     if (c == null) {
-      await db.deleteSetting(_key);
+      await CtPrefs.ytWebCookie.clear();
     } else {
-      await db.saveSetting(SettingsValue(_key, c));
+      await CtPrefs.ytWebCookie.set(c);
     }
   }
 

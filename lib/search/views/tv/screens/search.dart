@@ -13,9 +13,11 @@ import 'package:cloudtube/utils/views/components/thumbnail.dart';
 import 'package:cloudtube/utils/views/tv/components/tv_button.dart';
 import 'package:cloudtube/utils/views/tv/components/tv_horizontal_item_list.dart';
 import 'package:cloudtube/utils/views/tv/components/tv_overscan.dart';
-import 'package:cloudtube/utils/views/tv/components/tv_text_field.dart';
 
 import '../../../../channels/models/channel.dart';
+import '../../../../cloudtube/theme.dart';
+import '../../../../router.dart';
+import '../../../../utils.dart';
 import '../../../../cloudtube/tv_channels.dart';
 import '../../../../cloudtube/tv_nav.dart';
 import '../../../../globals.dart';
@@ -23,8 +25,8 @@ import '../../../../settings/states/settings.dart';
 import '../../../states/search.dart';
 import '../../screens/search.dart' show searchPageSize;
 
-/// Поиск на ТВ: поле сверху, слева подсказки/история, справа ряды
-/// Видео / Каналы / Плейлисты. «Назад» из результатов — к полю ввода.
+/// Поиск на ТВ: строка запроса сверху, слева своя клавиатура и подсказки по ходу набора,
+/// справа ряды Видео / Каналы / Плейлисты. «Назад» из результатов — к клавиатуре.
 @RoutePage()
 class TvSearchScreen extends StatelessWidget {
   const TvSearchScreen({super.key});
@@ -45,10 +47,31 @@ class _TvSearchBody extends StatefulWidget {
   State<_TvSearchBody> createState() => _TvSearchBodyState();
 }
 
+/// Раскладки экранной клавиатуры: по алфавиту, как в YouTube на ТВ — с пульта так быстрее, чем ЙЦУКЕН.
+enum _Layout {
+  ru('RU', 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'),
+  en('EN', 'abcdefghijklmnopqrstuvwxyz'),
+  digits('123', "1234567890-'.,!?&:+#@\"()");
+
+  final String label;
+  final String keys;
+  const _Layout(this.label, this.keys);
+}
+
 class _TvSearchBodyState extends State<_TvSearchBody> {
+  // Раньше набор шёл на отдельном экране системной клавиатуры: подсказки появлялись только после
+  // «Поиск» — уже бесполезные. Теперь своя клавиатура прямо на экране поиска, подсказки — по ходу.
   final _controller = TextEditingController();
-  final _field = FocusNode();
   final _scroll = ScrollController();
+  final _keyNodes = <String, FocusNode>{};
+  var _layout = _Layout.ru;
+  var _resultsFocused = false;
+  String _lastKey = 'а';
+
+  static const _cols = 7;
+  static const _key = 40.0;
+  static const _gap = 4.0;
+  static const _panel = _cols * (_key + _gap);
 
   @override
   void initState() {
@@ -59,19 +82,64 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
   @override
   void dispose() {
     _controller.dispose();
-    _field.dispose();
     _scroll.dispose();
+    for (final n in _keyNodes.values) {
+      n.dispose();
+    }
     super.dispose();
   }
 
+  FocusNode _node(String id) => _keyNodes.putIfAbsent(id, () => FocusNode(debugLabel: 'key $id'));
+
+  void _setText(String t) => _controller.value = TextEditingValue(text: t, selection: TextSelection.collapsed(offset: t.length));
+
+  void _type(String ch) => _setText(_controller.text + ch);
+
+  void _backspace() {
+    final t = _controller.text.characters;
+    if (t.isNotEmpty) _setText(t.skipLast(1).toString());
+  }
+
   void _submit(String t) {
-    _controller.value = TextEditingValue(text: t, selection: TextSelection.collapsed(offset: t.length));
+    if (t.trim().isEmpty) return;
+    _setText(t.trim());
     context.read<SearchCubit>().submit(t);
   }
 
-  KeyEventResult _back(FocusNode node, KeyEvent e) {
+  /// Системная клавиатура (в том числе голосовой ввод с пульта) — прежний экран ввода.
+  void _systemKeyboard() {
+    AutoRouter.of(context).push(TvTextFieldRoute(
+        controller: _controller, autocorrect: true, textInputAction: TextInputAction.search, onSubmitted: _submit));
+  }
+
+  /// Вернуться на клавиатуру: сначала показать её (в результатах она свёрнута), потом поставить фокус
+  /// на последнюю нажатую клавишу.
+  void _focusKeyboard() {
+    if (_resultsFocused) setState(() => _resultsFocused = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      (_keyNodes[_lastKey] ?? _node('search')).requestFocus();
+    });
+  }
+
+  /// Физическая клавиатура / цифры на пульте — печатают сразу, пока фокус на экранной клавиатуре.
+  KeyEventResult _hardwareKeys(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (e.logicalKey == LogicalKeyboardKey.backspace) {
+      _backspace();
+      return KeyEventResult.handled;
+    }
+    final ch = e.character;
+    if (ch != null && ch.length == 1 && RegExp(r"[\p{L}\p{N} \-'.,!?&:+#@]", unicode: true).hasMatch(ch)) {
+      _type(ch.toLowerCase());
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _backFromResults(FocusNode node, KeyEvent e) {
     if (e is KeyUpEvent && (e.logicalKey == LogicalKeyboardKey.goBack || e.logicalKey == LogicalKeyboardKey.escape)) {
-      _field.requestFocus();
+      _focusKeyboard();
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -83,63 +151,238 @@ class _TvSearchBodyState extends State<_TvSearchBody> {
     final colors = Theme.of(context).colorScheme;
     return BlocBuilder<SearchCubit, SearchState>(builder: (context, s) {
       final typing = s.text.trim().isNotEmpty && s.text.trim() != s.query;
-      final hints = typing ? s.suggestions : s.history;
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        TvTextField(
-          leading: Icon(Icons.search_rounded, color: colors.onSurfaceVariant),
-          controller: _controller,
-          autofocus: true,
-          autocorrect: true,
-          focusNode: _field,
-          onSubmitted: _submit,
-          textInputAction: TextInputAction.search,
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: FocusScope(
-            onKeyEvent: _back,
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SizedBox(
-                width: 280,
-                child: ListView(children: [
-                  if (hints.isNotEmpty)
+      final hints = (typing ? s.suggestions : (s.text.trim().isEmpty ? s.history : const <String>[])).take(8).toList();
+      final keyboard = _resultsFocused && s.query.isNotEmpty
+          // в результатах клавиатура прячется в узкую полоску — рядам достаётся вся ширина
+          ? SizedBox(
+              width: 56,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: _Key(
+                  node: _node('rail'),
+                  width: 48,
+                  onFocus: (f) {
+                    if (f) _focusKeyboard();
+                  },
+                  onPressed: _focusKeyboard,
+                  child: const Icon(Icons.keyboard_rounded),
+                ),
+              ),
+            )
+          : SizedBox(
+              width: _panel,
+              child: Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: _hardwareKeys,
+                child: ListView(padding: EdgeInsets.zero, children: [
+                  Wrap(spacing: _gap, runSpacing: _gap, children: [
+                    for (final ch in _layout.keys.characters)
+                      _Key(
+                        node: _node(ch),
+                        autofocus: ch == _Layout.ru.keys[0] && _layout == _Layout.ru && s.query.isEmpty,
+                        onFocus: (f) {
+                          if (f) _lastKey = ch;
+                        },
+                        onPressed: () => _type(ch),
+                        child: Text(ch, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                      ),
+                  ]),
+                  const SizedBox(height: _gap * 2),
+                  Wrap(spacing: _gap, runSpacing: _gap, children: [
+                    _Key(
+                        node: _node('space'),
+                        width: _key * 3 + _gap * 2,
+                        onFocus: (f) {
+                          if (f) _lastKey = 'space';
+                        },
+                        onPressed: () => _type(' '),
+                        child: const Icon(Icons.space_bar_rounded)),
+                    _Key(
+                        node: _node('bs'),
+                        width: _key * 2 + _gap,
+                        onFocus: (f) {
+                          if (f) _lastKey = 'bs';
+                        },
+                        onPressed: _backspace,
+                        child: const Icon(Icons.backspace_outlined)),
+                    _Key(
+                        node: _node('clear'),
+                        width: _key * 2 + _gap,
+                        onFocus: (f) {
+                          if (f) _lastKey = 'clear';
+                        },
+                        onPressed: () => _setText(''),
+                        child: const Text('Стереть', style: TextStyle(fontSize: 13))),
+                    for (final l in _Layout.values)
+                      _Key(
+                        node: _node('layout-${l.name}'),
+                        width: _key * 2 + _gap,
+                        selected: l == _layout,
+                        onFocus: (f) {
+                          if (f) _lastKey = 'layout-${l.name}';
+                        },
+                        onPressed: () => setState(() => _layout = l),
+                        child: Text(l.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      ),
+                    _Key(
+                        node: _node('system'),
+                        onFocus: (f) {
+                          if (f) _lastKey = 'system';
+                        },
+                        onPressed: _systemKeyboard,
+                        child: const Icon(Icons.mic_none_rounded)),
+                    _Key(
+                        node: _node('search'),
+                        width: _key * 7 + _gap * 6,
+                        accent: true,
+                        onFocus: (f) {
+                          if (f) _lastKey = 'search';
+                        },
+                        onPressed: () => _submit(_controller.text),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.search_rounded, size: 20),
+                          SizedBox(width: 6),
+                          Text('Найти', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        ])),
+                  ]),
+                  if (hints.isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                      padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
                       child: Text(typing ? 'Подсказки' : 'Вы искали',
                           style: text.titleSmall?.copyWith(color: colors.onSurfaceVariant)),
                     ),
-                  for (final h in hints)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: TvButton(
-                        borderRadius: 14,
-                        unfocusedColor: Colors.transparent,
-                        onPressed: (_) => _submit(h),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                          child: Row(children: [
-                            Icon(typing ? Icons.search_rounded : Icons.history_rounded, size: 22),
-                            const SizedBox(width: 10),
-                            Flexible(child: Text(h, maxLines: 2, overflow: TextOverflow.ellipsis)),
-                          ]),
+                    for (final h in hints)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: TvButton(
+                          borderRadius: 12,
+                          unfocusedColor: Colors.transparent,
+                          onPressed: (_) => _submit(h),
+                          child: SizedBox(
+                            width: _panel - _gap,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                              child: Row(children: [
+                                Icon(typing ? Icons.search_rounded : Icons.history_rounded, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(child: Text(h, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              ]),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                  ],
                 ]),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: s.query.isEmpty
-                    ? Center(
-                        child: Text('Наберите запрос и нажмите «Поиск» на клавиатуре',
-                            style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant)))
-                    : _TvResults(key: ValueKey('${s.query}|${s.filters.key}'), query: s.query, scroll: _scroll),
-              ),
-            ]),
-          ),
+            );
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // строка запроса: только показывает набранное (печатают на клавиатуре ниже)
+        Container(
+          margin: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(color: colors.surfaceContainerHigh, borderRadius: BorderRadius.circular(12)),
+          child: Row(children: [
+            Icon(Icons.search_rounded, color: colors.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: s.text.isEmpty
+                  ? Text('Поиск', style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant))
+                  : Text.rich(
+                      TextSpan(children: [
+                        TextSpan(text: s.text),
+                        TextSpan(text: '▏', style: TextStyle(color: ctAccent(colors))),
+                      ]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleMedium),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(padding: const EdgeInsets.only(left: 8), child: keyboard),
+            const SizedBox(width: 20),
+            Expanded(
+              child: s.query.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text('Наберите запрос — подсказки появятся слева. 🎤 — голосовой ввод',
+                            textAlign: TextAlign.center,
+                            style: text.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
+                      ))
+                  : Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: _backFromResults,
+                      onFocusChange: (f) {
+                        if (f != _resultsFocused) setState(() => _resultsFocused = f);
+                      },
+                      child: _TvResults(key: ValueKey('${s.query}|${s.filters.key}'), query: s.query, scroll: _scroll),
+                    ),
+            ),
+          ]),
         ),
       ]);
     });
+  }
+}
+
+/// Клавиша экранной клавиатуры.
+class _Key extends StatelessWidget {
+  final FocusNode node;
+  final Widget child;
+  final VoidCallback onPressed;
+  final void Function(bool focus)? onFocus;
+  final double width;
+  final bool autofocus;
+  final bool selected;
+  final bool accent;
+
+  const _Key(
+      {required this.node,
+      required this.child,
+      required this.onPressed,
+      this.onFocus,
+      this.width = _TvSearchBodyState._key,
+      this.autofocus = false,
+      this.selected = false,
+      this.accent = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Focus(
+      focusNode: node,
+      autofocus: autofocus,
+      onFocusChange: onFocus,
+      onKeyEvent: (n, e) => onTvSelect(e, context, (_) => onPressed()),
+      child: Builder(builder: (ctx) {
+        final f = Focus.of(ctx).hasFocus;
+        final fg = f ? colors.onPrimary : (accent || selected ? ctAccent(colors) : colors.onSurface);
+        return GestureDetector(
+          onTap: onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 90),
+            width: width,
+            height: _TvSearchBodyState._key,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: f
+                  ? ctAccent(colors)
+                  : (selected || accent ? ctAccent(colors).withValues(alpha: 0.14) : colors.surfaceContainerHigh),
+              border: ctFocusBorder(colors, f),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconTheme.merge(
+                data: IconThemeData(color: fg, size: 22),
+                child: DefaultTextStyle.merge(style: TextStyle(color: fg), child: child)),
+          ),
+        );
+      }),
+    );
   }
 }
 

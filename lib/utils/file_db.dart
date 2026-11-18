@@ -35,6 +35,8 @@ const _subNotifsFile = 'subscription_notifications.json',
     _channelNotifFile = 'channel_notifications.json',
     _playlistNotifsFile = "playlist_notifications.json",
     _genericSettings = "generic_settings.json",
+    _offlineSubsFile = "offline_subscriptions.json",
+    _offlineSeenFile = "offline_subscriptions_seen.json",
     _fileDbFolder = 'fileDb';
 
 final _log = Logger('FileDb');
@@ -278,6 +280,11 @@ class FileDB extends IDbClient {
 
   Future<void> syncWithDb() async {
     _log.fine('Syncing file settings with DB');
+    try {
+      await setOfflineSubscriptions(await db.getOfflineSubscriptions());
+    } catch (err) {
+      _log.fine('offline subs mirror: $err');
+    }
     var fileSettings = await getGenericSettings();
     fileSettings.locale = db.getSettings(localeSettingName)?.value;
     try {
@@ -482,10 +489,29 @@ class FileDB extends IDbClient {
     throw UnimplementedError();
   }
 
+  /// Подписки «на устройстве» — копия для фоновой проверки (основная база не работает
+  /// в фоновом изоляте). Обновляется при каждой подписке/отписке и при запуске.
   @override
-  Future<List<OfflineSubscription>> getOfflineSubscriptions() {
-    // TODO: implement getOfflineSubscriptions
-    throw UnimplementedError();
+  Future<List<OfflineSubscription>> getOfflineSubscriptions() async {
+    final m = await _readFileAsMap(await _openAppFile(_offlineSubsFile));
+    return [
+      for (final e in m.entries) OfflineSubscription(channelId: e.key, channelName: '${e.value}'),
+    ];
+  }
+
+  Future<void> setOfflineSubscriptions(List<OfflineSubscription> subs) async {
+    await _writeMapToFile(
+        await _openAppFile(_offlineSubsFile), {for (final s in subs) s.channelId: s.channelName});
+  }
+
+  /// Последний известный ролик каждого канала из подписок на устройстве: канал → id ролика.
+  Future<Map<String, String>> getOfflineSeen() async {
+    final m = await _readFileAsMap(await _openAppFile(_offlineSeenFile));
+    return m.map((k, v) => MapEntry(k, '$v'));
+  }
+
+  Future<void> setOfflineSeen(Map<String, String> seen) async {
+    await _writeMapToFile(await _openAppFile(_offlineSeenFile), seen);
   }
 
   @override

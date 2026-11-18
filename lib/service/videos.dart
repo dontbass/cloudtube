@@ -87,25 +87,19 @@ mixin VideoApi on ServiceBase {
     return results;
   }
 
-  Future<List<SponsorSegment>> getSponsorSegments(
-      String videoId, List<SponsorSegmentType> categories) async {
-    try {
-      String url = urlGetSponsorSegments.replaceAll(":id", videoId);
-
-      if (categories.isNotEmpty) {
-        url +=
-            '&categories=[${categories.map((e) => '"${e.segmentName}"').join(",")}]';
-      }
-
-      log.info('Calling $url');
-      final response = await httpClient.get(Uri.parse(url));
-      final i = (await handleResponse(response)) as List<dynamic>;
-      return List<SponsorSegment>.from(
-          i.map((e) => SponsorSegment.fromJson(e as Map<String, dynamic>)));
-    } catch (err) {
-      return [];
+  /// Фрагменты SponsorBlock. 404 у SponsorBlock значит «фрагментов нет».
+  /// Сетевые ошибки пробрасываются — вызывающий пишет их в журнал (раньше молча было «нет фрагментов»).
+  Future<List<CtSponsorSeg>> getSponsorSegments(String videoId, List<SponsorSegmentType> categories) async {
+    var url = urlGetSponsorSegments.replaceAll(':id', videoId);
+    if (categories.isNotEmpty) {
+      url += '&categories=${Uri.encodeQueryComponent('[${categories.map((e) => '"${e.segmentName}"').join(',')}]')}';
     }
+    final response = await httpClient.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+    if (response.statusCode == 404) return const [];
+    if (response.statusCode != 200) throw 'SponsorBlock ответил ${response.statusCode}';
+    return CtSponsorSkipper.parse(jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>);
   }
+
 
   Future<DeArrow?> getDeArrow(String videoId) async {
     try {

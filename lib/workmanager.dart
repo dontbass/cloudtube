@@ -112,6 +112,8 @@ Future<void> _handlePlaylistNotifications() async {
         await sendNotification(locals.playlistNotificationTitle(n.playlistName),
             pl.videos.isNotEmpty && fresh == 1 ? (pl.videos.last.title ?? '') : locals.playlistNotificationContent(n.playlistName, fresh),
             type: NotificationTypes.playlist, payload: {playlistId: n.playlistId}, id: n.playlistId.hashCode);
+        // запомнить: раньше то же уведомление приходило при каждой проверке, пока плейлист не откроют
+        await fileDb.setPlaylistNotificationLastViewedVideo(n.playlistId, pl.videoCount);
       }
     } catch (e) {
       log.info('плейлист ${n.playlistId}: $e');
@@ -135,6 +137,8 @@ Future<void> _handleChannelNotifications() async {
           type: NotificationTypes.channel,
           payload: {channelId: n.channelId, lastSeenVideo: videos.videos.first.videoId},
           id: n.channelId.hashCode);
+      // запомнить: раньше то же уведомление приходило при каждой проверке, пока канал не откроют
+      await fileDb.setChannelNotificationLastViewedVideo(n.channelId, videos.videos.first.videoId);
     } catch (e) {
       log.info('канал ${n.channelId}: $e');
     }
@@ -194,9 +198,14 @@ Future<void> _handleSubscriptionsNotifications() async {
 /// проверкой. Первый раз только запоминаем (иначе пришло бы уведомление обо всём сразу).
 /// Не больше 60 каналов за раз и 3 запросов одновременно — бережно к YouTube и серверу.
 Future<void> _handleOfflineSubscriptions() async {
-  final subs = (await fileDb.getOfflineSubscriptions()).take(60).toList();
-  if (subs.isEmpty) return;
+  final all = (await fileDb.getOfflineSubscriptions()).toList();
+  if (all.isEmpty) return;
   final seen = await fileDb.getOfflineSeen();
+  // по кругу: каждый запуск — следующие 60 каналов (раньше всегда первые 60, остальные не проверялись)
+  const cursorKey = '__cursor';
+  final start = (int.tryParse(seen[cursorKey] ?? '') ?? 0) % all.length;
+  final subs = [for (var k = 0; k < all.length && k < 60; k++) all[(start + k) % all.length]];
+  seen[cursorKey] = '${(start + subs.length) % all.length}';
   final fresh = <(String channel, Video video)>[];
   var i = 0;
   Future<void> worker() async {

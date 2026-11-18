@@ -156,9 +156,10 @@ class CtAvatars {
     _timer = null;
     final ids = _queue.take(40).toList();
     _queue.removeAll(ids);
-    if (_queue.isNotEmpty) _timer = Timer(const Duration(milliseconds: 50), _flush);
+    if (_queue.isNotEmpty) _timer = Timer(const Duration(milliseconds: 50), () => _flush(slowFallback: slowFallback));
     Map<String, dynamic> res = {};
     var batch = false;
+    var answered = true; // сервер ответил (иначе «нет аватарки» не запоминаем — спросим ещё раз)
     try {
       if (!ctDirectActive && await CtServer.hasAddons()) {
         batch = true;
@@ -166,9 +167,12 @@ class CtAvatars {
         final r = await service.httpClient.get(req.uri, headers: req.headers).timeout(const Duration(seconds: 10));
         if (r.statusCode == 200) {
           res = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        } else {
+          answered = false;
         }
       }
     } catch (e) {
+      answered = false;
       _log.fine('avatars failed: $e');
     }
     for (final id in ids) {
@@ -176,6 +180,9 @@ class CtAvatars {
       if (u == null && !batch && slowFallback) {
         // свой Invidious без дополнений и короткий список (ТВ) — по одному
         unawaited(_slowOneServer(id));
+      } else if (u == null && batch && !answered) {
+        // сбой сети: раньше пустой ответ запоминался до перезапуска и аватарки пропадали
+        _waiting.remove(id)?.complete(null);
       } else {
         _done(id, u);
       }

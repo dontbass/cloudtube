@@ -2,9 +2,31 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:logging/logging.dart';
+
 import '../globals.dart';
+import '../player/core/sponsor.dart';
 import '../settings/models/db/settings.dart';
 import '../videos/models/sponsor_segment_types.dart';
+
+final _log = Logger('SponsorBlock');
+
+/// Фрагменты ролика по включённым в настройках категориям. Если сервис не ответил —
+/// пишем в журнал и смотрим без пропусков (раньше ошибка терялась молча).
+Future<List<CtSponsorSeg>> ctLoadSponsorSegments(String videoId) async {
+  final types = SponsorSegmentType.values.where((e) => db.getSettings(e.settingsName())?.value == 'true').toList();
+  if (types.isEmpty || videoId.isEmpty) return const [];
+  try {
+    final segs = await service.getSponsorSegments(videoId, types);
+    _log.fine('$videoId: фрагментов ${segs.length}');
+    return segs;
+  } catch (e) {
+    _log.info('SponsorBlock недоступен для $videoId: $e');
+    return const [];
+  }
+}
+
+String ctSponsorSkipText(CtSponsorSeg s) => 'Пропущен фрагмент «${ctSponsorLabel(s.type)}»';
 
 /// Сообщение в кадре о пропущенном фрагменте SponsorBlock (как в SmartTube).
 final ctSponsorToast = ValueNotifier<String?>(null);

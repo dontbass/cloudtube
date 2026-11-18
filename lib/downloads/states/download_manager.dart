@@ -18,6 +18,7 @@ import 'package:path/path.dart' as p;
 import '../../player/states/player.dart';
 import '../../videos/models/adaptive_format.dart';
 import '../../videos/models/video.dart';
+import '../../settings/models/db/server.dart';
 
 part 'download_manager.freezed.dart';
 
@@ -47,6 +48,8 @@ class DownloadProgress {
 
 class DownloadManagerCubit extends Cubit<DownloadManagerState> {
   final PlayerCubit player;
+
+  final _starting = <String>{};
 
   DownloadManagerCubit(super.initialState, this.player) {
     onReady();
@@ -100,7 +103,9 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
             Map<String, DownloadProgress>.from(state.downloadProgresses);
         final dp = progresses[video.videoId];
         if (dp != null) {
-          dp
+          // новый объект: состояние сравнивается по значению, и с тем же объектом
+          // обновление отбрасывалось — полоска прогресса стояла до конца загрузки
+          progresses[video.videoId] = DownloadProgress(dp.cancelToken)
             ..count = count
             ..total = total
             ..step = step
@@ -113,22 +118,30 @@ class DownloadManagerCubit extends Cubit<DownloadManagerState> {
 
   Future<bool> addDownload(String videoId,
       {String quality = '720p', bool audioOnly = false}) async {
-    if (state.videos.any((element) => element.videoId == videoId)) {
+    // повторное нажатие, пока ролик ещё готовится, — раньше шли две загрузки в одни и те же файлы
+    if (state.videos.any((element) => element.videoId == videoId) ||
+        db.getAllDownloads().any((e) => e.videoId == videoId) ||
+        !_starting.add(videoId)) {
       return false;
     } else {
-      Video vid = await service.getVideo(videoId);
-
-      final server = await db.getCurrentlySelectedServer();
-
-      var downloadedVideo = DownloadedVideo(
-          videoId: vid.videoId,
-          title: vid.title ?? '',
-          author: vid.author,
-          authorUrl: vid.authorUrl,
-          audioOnly: audioOnly,
-          lengthSeconds: vid.lengthSeconds ?? 0,
-          quality: quality);
-      await db.upsertDownload(downloadedVideo);
+      final Video vid;
+      final Server server;
+      final DownloadedVideo downloadedVideo;
+      try {
+        vid = await service.getVideo(videoId);
+        server = await db.getCurrentlySelectedServer();
+        downloadedVideo = DownloadedVideo(
+            videoId: vid.videoId,
+            title: vid.title ?? '',
+            author: vid.author,
+            authorUrl: vid.authorUrl,
+            audioOnly: audioOnly,
+            lengthSeconds: vid.lengthSeconds ?? 0,
+            quality: quality);
+        await db.upsertDownload(downloadedVideo);
+      } finally {
+        _starting.remove(videoId);
+      }
 
       String? videoUrl;
 

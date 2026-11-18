@@ -31,8 +31,7 @@ import '../../media_handler.dart';
 import '../../settings/states/settings.dart';
 import '../../utils/models/pair.dart';
 import '../../videos/models/db/progress.dart' as db_progress;
-import '../../videos/models/sponsor_segment.dart';
-import '../../videos/models/sponsor_segment_types.dart';
+import '../core/sponsor.dart';
 import '../../cloudtube/trace.dart';
 import '../../videos/models/video.dart';
 
@@ -284,11 +283,12 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
 */
 
   Future<void> saveProgress(int timeInSeconds) async {
-    if (state.currentlyPlaying != null) {
+    final length = state.currentlyPlaying?.lengthSeconds ?? 0;
+    // трансляции и ролики без длительности: раньше деление на 0/1 сразу помечало их «просмотренными»
+    if (state.currentlyPlaying != null && length > 0 && state.currentlyPlaying!.liveNow != true) {
       int currentPosition = timeInSeconds;
       // saving progress
-      var currentProgress =
-          currentPosition / (state.currentlyPlaying!.lengthSeconds ?? 1);
+      var currentProgress = currentPosition / length;
       if (currentProgress >= 0.9) {
         currentProgress =
             1; // we consider a video with 90%+ progress as watched
@@ -361,53 +361,14 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     emit(state.copyWith(position: newPosition));
     if (isTv) _ctUpdateUpNext();
 
-    // if we're already within the last 5 seconds we don't skip to avoid infinite skip loop on late outro segment
-    if (state.sponsorSegments.isNotEmpty &&
-        state.position.inSeconds <
-            (state.currentlyPlaying?.lengthSeconds ?? maxInt) - 5) {
-      log.fine('sponsor skipped');
-      double positionInMs = currentPosition * 1000;
-      Pair<int> nextSegment = state.sponsorSegments.firstWhere(
-          (e) => e.first <= positionInMs && positionInMs <= e.last,
-          orElse: () => const Pair<int>(-1, -1));
-
-      if (nextSegment.first != -1) {
-        // sometimes when reaching the end of a video, the sponsor skip keeps on being triggered
-        // we remove on second of last segment if it is the case
-        var skipTo = nextSegment.last + 1000;
-        final segIndex = state.sponsorSegments.indexOf(nextSegment);
-        final segType = segIndex >= 0 && segIndex < _ctSegTypes.length ? _ctSegTypes[segIndex] : null;
-        // одно сообщение на фрагмент (если перемотка не сразу сработала — не повторяем)
-        final now = DateTime.now();
-        if (_ctLastSkipStart != nextSegment.first || now.difference(_ctLastSkipAt) > const Duration(seconds: 15)) {
-          ctShowSponsorToast(segType != null
-              ? 'Пропущен фрагмент «${ctSponsorLabel(segType)}»'
-              : 'Пропущен фрагмент SponsorBlock');
-        }
-        _ctLastSkipStart = nextSegment.first;
-        _ctLastSkipAt = now;
-
-        emit(state.copyWith(
-            mediaEvent: const MediaEvent(
-                state: MediaState.playing,
-                type: MediaEventType.sponsorSkipped)));
-        //for some reasons this needs to be last
-        seek(Duration(milliseconds: skipTo + 1000));
-/*
-        final ScaffoldMessengerState? scaffold = scaffoldKey.currentState;
-
-
-        if (scaffold != null) {
-          var locals = AppLocalizations.of(scaffold.context)!;
-          scaffold.showSnackBar(SnackBar(
-            content: Text(locals.sponsorSkipped),
-            duration: const Duration(seconds: 1),
-          ));
-        }
-*/
-
-        // log.info('SPONSOR SKIPPED');
-      }
+    // SponsorBlock: правила — в общем модуле (тот же, что у Windows-плеера)
+    final skip = _ctSponsor.check(newPosition, duration);
+    if (skip != null) {
+      if (skip.announce) ctShowSponsorToast(ctSponsorSkipText(skip.seg));
+      emit(state.copyWith(
+          mediaEvent: const MediaEvent(state: MediaState.playing, type: MediaEventType.sponsorSkipped)));
+      // раньше перематывало на 2 с дальше конца фрагмента — съедало начало следующей фразы
+      seek(skip.to);
     }
   }
 
@@ -564,6 +525,8 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
 
   /// Switches to a video without changing the queue
   Future<void> _switchToVideo(IdedVideo video, {Duration? startAt}) async {
+    // последнее переключение побеждает: пока грузились данные одного ролика, могли выбрать другой
+    final gen = ++_ctSwitchGen;
     try {
       // we move the existing video to the stack of played video
       await audioSession.setActive(true);
@@ -610,6 +573,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
           CtTrace.mark('запрос данных видео');
           v = await service.getVideo(video.videoId);
           CtTrace.mark('данные видео получены');
+          if (gen != _ctSwitchGen || isClosed) return;
         }
         currentlyPlaying = v;
         mediaCommand = MediaCommand(MediaCommandType.switchVideo,
@@ -634,6 +598,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
         mediaHandler.skipToQueueItem(currentIndex);
       }
     } catch (err) {
+      if (gen != _ctSwitchGen) return; // ошибка уже неактуального ролика
       if (state.videos.length == 1) {
         // if we can't get video details, we need to stop everything
         log.severe(
@@ -765,6 +730,9 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     var videos = List<Video>.from(state.videos);
     var offlineVideos = List<DownloadedVideo>.from(state.offlineVideos);
     var listToUpdate = videos.isNotEmpty ? videos : offlineVideos;
+    // ReorderableListView даёт индекс «до удаления»: при перетаскивании вниз он на 1 больше
+    // (раньше перенос в самый конец падал с RangeError, остальные — вставали на место ниже)
+    if (newItemIndex > oldItemIndex) newItemIndex--;
     var movedItem = listToUpdate.removeAt(oldItemIndex);
 
     listToUpdate.insert(newItemIndex, movedItem);
@@ -802,10 +770,8 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     }
   }
 
-  // категории сегментов в том же порядке, что и state.sponsorSegments (для сообщения в кадре)
-  List<SponsorSegmentType> _ctSegTypes = const [];
-  int _ctLastSkipStart = -1;
-  DateTime _ctLastSkipAt = DateTime(2000);
+  final _ctSponsor = CtSponsorSkipper();
+  int _ctSwitchGen = 0;
 
   // рекомендации текущего ролика для автоперехода (без сервера они иногда догружаются позже)
   String? _ctRecsFor;
@@ -881,29 +847,17 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
   }
 
   Future<void> setSponsorBlock() async {
-    List<Pair<int>> newSegments = [];
-    _ctSegTypes = const [];
-    if (state.currentlyPlaying != null) {
-      List<SponsorSegmentType> types = SponsorSegmentType.values
-          .where((e) => db.getSettings(e.settingsName())?.value == 'true')
-          .toList();
-
-      if (types.isNotEmpty) {
-        List<SponsorSegment> sponsorSegments = await service.getSponsorSegments(
-            state.currentlyPlaying!.videoId, types);
-        _ctSegTypes = sponsorSegments.map((e) => e.category).toList();
-        List<Pair<int>> segments = List.from(sponsorSegments.map((e) {
-          Duration start = Duration(seconds: e.segment[0].floor());
-          Duration end = Duration(seconds: e.segment[1].floor());
-          Pair<int> segment = Pair(start.inMilliseconds, end.inMilliseconds);
-          return segment;
-        }));
-
-        newSegments = segments;
-        log.fine('we found ${segments.length} segments to skip');
-      }
+    final id = state.currentlyPlaying?.videoId;
+    _ctSponsor.clear();
+    if (id == null) {
+      emit(state.copyWith(sponsorSegments: const []));
+      return;
     }
-    emit(state.copyWith(sponsorSegments: newSegments));
+    final segs = await ctLoadSponsorSegments(id);
+    // ролик уже сменился, пока ждали ответ
+    if (isClosed || state.currentlyPlaying?.videoId != id) return;
+    _ctSponsor.setSegments(segs);
+    emit(state.copyWith(sponsorSegments: [for (final s in segs) Pair(s.startMs, s.endMs)]));
   }
 
   void seek(Duration duration) {
@@ -914,7 +868,8 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
     var videoLength = state.currentlyPlaying?.lengthSeconds ??
         state.offlineCurrentlyPlaying?.lengthSeconds ??
         1;
-    if (duration.inSeconds > (videoLength)) {
+    // у трансляции длительность 0 — не прижимаем (раньше перемотка уводила в начало)
+    if (videoLength > 0 && state.currentlyPlaying?.liveNow != true && duration.inSeconds > (videoLength)) {
       duration = Duration(seconds: videoLength);
     }
 
@@ -1051,7 +1006,7 @@ class PlayerCubit extends Cubit<PlayerState> with WidgetsBindingObserver {
           1));
 
   double get progress =>
-      state.position.inMilliseconds / duration.inMilliseconds;
+      duration.inMilliseconds > 0 ? state.position.inMilliseconds / duration.inMilliseconds : 0;
 
   void switchAudio(bool value) {
     if (state.currentlyPlaying != null) {

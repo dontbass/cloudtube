@@ -7,6 +7,8 @@ import 'package:river_player/river_player.dart';
 
 import '../../../videos/models/video.dart';
 import '../../states/player.dart';
+import '../../../cloudtube/sponsor_toast.dart';
+import '../../../main.dart' show isTv;
 
 class VideoPlayer extends StatefulWidget {
   final Video? video;
@@ -67,10 +69,15 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 .handleCommand(state.mediaCommand!),
             child: cubit.videoController == null
                 ? const SizedBox.shrink()
-                : BetterPlayer(
-                    controller: cubit.videoController!,
-                    key: _betterPlayerKey,
-                  ),
+                : Stack(children: [
+                    BetterPlayer(
+                      controller: cubit.videoController!,
+                      key: _betterPlayerKey,
+                    ),
+                    // телефон: «Пропущен фрагмент …» поверх видео (на ТВ — в панели управления)
+                    if (!isTv && !widget.miniPlayer)
+                      const Positioned(left: 12, bottom: 44, child: IgnorePointer(child: CtSponsorToast())),
+                  ]),
           );
         },
       ),

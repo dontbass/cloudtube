@@ -70,6 +70,9 @@ abstract final class CtPrefs {
   /// «Мягкая» тема (тёплые цвета).
   static final softTheme = _bool('ct-theme-soft', false);
 
+  /// Последний свой сервер (адрес) — к нему возвращает переключатель «Свой сервер».
+  static final lastServer = _string('ct-last-server');
+
   /// Пропущенная версия обновления: «версия|время».
   static final updateSkip = _string('ct-update-skip');
 

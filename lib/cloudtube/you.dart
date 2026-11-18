@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'updater.dart';
 import 'direct.dart';
-import 'connect.dart';
+import 'mode_switch.dart';
 import 'connect_screen.dart';
 import 'deploy.dart';
 import 'onboarding.dart';
@@ -130,6 +130,11 @@ class CtYouPage extends StatelessWidget {
             ]),
           ),
         ]),
+        if (server != null) ...[
+          const SizedBox(height: 14),
+          // режим работы — одним нажатием, без захода в настройки
+          const CtModeSwitch(),
+        ],
         if (!loggedIn) ...[
           const SizedBox(height: 12),
           Text(
@@ -193,24 +198,18 @@ class CtYouPage extends StatelessWidget {
     ];
 
     final watch = <Widget>[
-      if (server != null && direct)
-        CtCard(
-            icon: Icons.dns_outlined,
-            title: 'Подключить свой сервер',
-            subtitle: 'Свой Invidious — без рекламы для всей семьи',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen()))),
-      if (server != null && !direct) ...[
-        CtCard(
-            icon: Icons.play_circle_outline,
-            title: 'Смотреть без сервера',
-            subtitle: 'YouTube напрямую',
-            onTap: () => ctConnectDirect(context.read<AppCubit>())),
+      if (server != null && !direct)
         CtCard(
             icon: Icons.dns_outlined,
             title: 'Сервер и пароль сайта',
             subtitle: server.url.replaceFirst('https://', ''),
             onTap: () => AutoRouter.of(context).push(ManageSingleServerRoute(server: server))),
-      ],
+      if (direct)
+        CtCard(
+            icon: Icons.add_link,
+            title: 'Подключить другой сервер',
+            subtitle: 'Адрес своего Invidious и пароль сайта',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CtConnectScreen()))),
       CtCard(
           icon: Icons.rocket_launch_outlined,
           title: 'Развернуть свой сервер',

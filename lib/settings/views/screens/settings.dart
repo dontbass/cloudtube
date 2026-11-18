@@ -1,5 +1,4 @@
-import 'package:cloudtube/cloudtube/connect_screen.dart';
-import 'package:cloudtube/cloudtube/connect.dart';
+import 'package:cloudtube/cloudtube/mode_switch.dart';
 import 'package:cloudtube/cloudtube/direct.dart';
 import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:cloudtube/cloudtube/updater.dart';
@@ -45,13 +44,12 @@ class SettingsScreen extends StatelessWidget {
           CtCard(
             icon: Icons.swap_horiz,
             title: 'Режим работы',
-            subtitle: ctDirectActive ? 'Сейчас: без сервера, YouTube напрямую' : 'Сейчас: свой сервер',
+            subtitle: ctDirectActive
+                ? 'Сейчас: YouTube напрямую. Нажмите — свой сервер'
+                : 'Сейчас: свой сервер. Нажмите — YouTube напрямую',
+            // одним нажатием туда и обратно: к своему серверу — тот же адрес и вход, что были
             onTap: () async {
-              if (ctDirectActive) {
-                await Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => const CtConnectScreen()));
-              } else {
-                await ctConnectDirect(ctx.read<AppCubit>());
-              }
+              await ctToggleMode(ctx, toDirect: !ctDirectActive);
               if (ctx.mounted) (ctx as Element).markNeedsBuild();
             },
           ),

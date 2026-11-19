@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'dart:math';
 
 import 'package:cloudtube/globals.dart';
@@ -229,7 +230,7 @@ class PlayerControls extends StatelessWidget {
               inactiveTrackColor: darkColorScheme.secondaryContainer),
           progressIndicatorTheme: ProgressIndicatorThemeData(
               circularTrackColor:
-                  darkColorScheme.secondaryContainer.withValues(alpha: 0.8))),
+                  ctAlpha(darkColorScheme.secondaryContainer, 0.8))),
       child: BlocProvider(
         create: (context) =>
             PlayerControlsCubit(const PlayerControlsState(), player),

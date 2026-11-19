@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import '../../../../cloudtube/updater.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -161,7 +162,7 @@ class TvHomeScreen extends StatelessWidget {
                       duration: animationDuration ~/ 2,
                       curve: Curves.easeInOutQuad,
                       decoration: BoxDecoration(
-                          color: colors.surfaceContainer.withValues(alpha: 0.97),
+                          color: ctIsGlass(colors) ? ctGlassPanel(colors) : colors.surfaceContainer.withValues(alpha: 0.97),
                           boxShadow: const [BoxShadow(blurRadius: 24, color: Colors.black54)]),
                       // меню как в SmartTube: скрыто, выезжает поверх лент по стрелке «влево»
                       child: ClipRect(child: OverflowBox(

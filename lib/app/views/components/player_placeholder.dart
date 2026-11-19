@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloudtube/globals.dart';
@@ -24,7 +25,7 @@ class PlayerPlaceHolder extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 7),
               child: Container(
                 decoration: BoxDecoration(
-                  color: colors.secondaryContainer.withValues(alpha: 0.5),
+                  color: ctAlpha(colors.secondaryContainer, 0.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(

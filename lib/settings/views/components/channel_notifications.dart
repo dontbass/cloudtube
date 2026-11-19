@@ -40,7 +40,7 @@ class ChannelNotificationList extends StatelessWidget {
                       const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                   decoration: BoxDecoration(
                       color: index % 2 != 0
-                          ? colors.secondaryContainer.withValues(alpha: 0.5)
+                          ? ctAlpha(colors.secondaryContainer, 0.5)
                           : ctBg(colors),
                       borderRadius: BorderRadius.circular(10)),
                   child: InkWell(

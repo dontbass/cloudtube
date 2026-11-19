@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -232,8 +233,7 @@ class VideoFilterSetupScreen extends StatelessWidget {
                                           shape: BoxShape.circle,
                                           color: isSelected
                                               ? colors.primaryContainer
-                                              : colors.primaryContainer
-                                                  .withValues(alpha: 0.4)),
+                                              : ctAlpha(colors.primaryContainer, 0.4)),
                                       duration: animationDuration,
                                       curve: Curves.easeInOutQuad,
                                       child: Row(

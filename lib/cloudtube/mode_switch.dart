@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -95,7 +96,7 @@ class CtModeSwitch extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(color: ctAlpha(colors.outlineVariant, 0.5)),
         ),
         // StackFit.expand: и бегунок, и надписи — на всю высоту, надписи ровно по центру
         child: Stack(fit: StackFit.expand, children: [

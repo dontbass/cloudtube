@@ -1,5 +1,5 @@
-// import 'package:cloudtube/cloudtube/theme.dart';
-import 'package:video_player/video_player.dart';
+// import 'package:video_player/video_player.dart';
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

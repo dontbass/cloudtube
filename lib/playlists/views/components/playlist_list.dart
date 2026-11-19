@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_fadein/flutter_fadein.dart';
@@ -41,7 +42,7 @@ class PlaylistList extends StatelessWidget {
               state.error.isNotEmpty
                   ? Container(
                       alignment: Alignment.center,
-                      color: colorScheme.surface,
+                      color: ctBg(colorScheme),
                       child: Visibility(
                           visible: state.error.isNotEmpty,
                           child: InkWell(

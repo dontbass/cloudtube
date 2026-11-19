@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,7 +41,7 @@ class ChannelNotificationList extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: index % 2 != 0
                           ? colors.secondaryContainer.withValues(alpha: 0.5)
-                          : colors.surface,
+                          : ctBg(colors),
                       borderRadius: BorderRadius.circular(10)),
                   child: InkWell(
                     onTap: () => AutoRouter.of(context)

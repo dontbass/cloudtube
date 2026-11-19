@@ -90,8 +90,10 @@ const ColorScheme ctDarkScheme = ColorScheme(
 /// Акцент для переключателей, чекбоксов и фокуса пульта (синий, как у YouTube) —
 /// хорошо виден и на белом, и на тёмном фоне.
 Color ctAccent(ColorScheme c) => c.brightness == Brightness.dark
-    ? const Color(0xFF3EA6FF)
-    : (c.surface == ctPaperSurface ? ctPaperTerracotta : const Color(0xFF065FD4));
+    ? (c.surface == ctGlassDarkBase ? const Color(0xFFFF4D6D) : const Color(0xFF3EA6FF))
+    : (c.surface == ctPaperSurface
+        ? ctPaperTerracotta
+        : (c.surface == ctGlassLightBase ? const Color(0xFFE0002D) : const Color(0xFF065FD4)));
 
 /// Рамка выделения для Android TV: заметная рамка вокруг элемента в фокусе.
 /// Прозрачная рамка той же толщины без фокуса — чтобы элемент не «прыгал».
@@ -189,26 +191,191 @@ final ColorScheme ctDimScheme = ctDarkScheme.copyWith(
   onSurfaceVariant: const Color(0xFFB0B2B6),
 );
 
-/// true — промежуточный вариант текущей яркости (пергамент / сумерки).
-final ValueNotifier<bool> ctSoftTheme = ValueNotifier(false);
+/// Вариант оформления при той же яркости: обычный / мягкий (пергамент, сумерки) / стекло.
+enum CtVariant { normal, soft, glass }
 
-/// Темы по кругу для кнопки в шапке.
+final ValueNotifier<CtVariant> ctThemeVariant = ValueNotifier(CtVariant.normal);
+
+/// Темы по кругу для кнопки в шапке и пункта в настройках ТВ.
 enum CtTheme {
-  light('Светлая', Icons.light_mode_outlined),
-  soft('Пергамент', Icons.history_edu_outlined),
-  dim('Сумерки', Icons.nights_stay_outlined),
-  dark('Тёмная', Icons.dark_mode_outlined);
+  light('Светлая', Icons.light_mode_outlined, false, CtVariant.normal),
+  soft('Пергамент', Icons.history_edu_outlined, false, CtVariant.soft),
+  glassLight('Стекло светлое', Icons.water_drop_outlined, false, CtVariant.glass),
+  dim('Сумерки', Icons.nights_stay_outlined, true, CtVariant.soft),
+  dark('Тёмная', Icons.dark_mode_outlined, true, CtVariant.normal),
+  glassDark('Стекло тёмное', Icons.bubble_chart_outlined, true, CtVariant.glass);
 
   final String label;
   final IconData icon;
-  const CtTheme(this.label, this.icon);
+  final bool isDark;
+  final CtVariant variant;
+  const CtTheme(this.label, this.icon, this.isDark, this.variant);
 
-  bool get isDark => this == dim || this == dark;
-  bool get isSoft => this == soft || this == dim;
   CtTheme get next => CtTheme.values[(index + 1) % CtTheme.values.length];
 
-  static CtTheme of(bool darkNow, bool soft) =>
-      darkNow ? (soft ? dim : dark) : (soft ? CtTheme.soft : light);
+  static CtTheme of(bool darkNow, CtVariant v) =>
+      CtTheme.values.firstWhere((t) => t.isDark == darkNow && t.variant == v);
+}
+
+// ================= «Стекло» (liquid glass) =================
+// Три базовых цвета — красный CloudTube, фиолетовый, сине-голубой: из них цветные пятна фона
+// (стеклу нужно, что «преломлять»), блики и акценты. Перекрасить тему — поменять эти три значения.
+const ctGlassRed = CtColors.red;
+const ctGlassViolet = Color(0xFF7B2FF7);
+const ctGlassBlue = Color(0xFF1FA2FF);
+
+/// Основа под пятнами (на ней же — непрозрачный фон там, где он нужен).
+const ctGlassDarkBase = Color(0xFF0C0A12);
+const ctGlassLightBase = Color(0xFFF3F0F6);
+
+bool ctIsGlass(ColorScheme c) => c.surface == ctGlassDarkBase || c.surface == ctGlassLightBase;
+
+/// Фон страниц/списков: в «Стекле» — прозрачный (видно пятна), иначе обычный.
+Color ctBg(ColorScheme c) => ctIsGlass(c) ? Colors.transparent : c.surface;
+
+// Поверхности — полупрозрачная «вставка» на стекле (без собственного размытия).
+final ColorScheme ctGlassDarkScheme = ctDarkScheme.copyWith(
+  surface: ctGlassDarkBase,
+  surfaceDim: ctGlassDarkBase,
+  surfaceBright: const Color(0x33FFFFFF),
+  surfaceContainerLowest: const Color(0x0AFFFFFF),
+  surfaceContainerLow: const Color(0x0FFFFFFF),
+  surfaceContainer: const Color(0x14FFFFFF),
+  surfaceContainerHigh: const Color(0x1CFFFFFF),
+  surfaceContainerHighest: const Color(0x26FFFFFF),
+  primaryContainer: const Color(0x1FFFFFFF),
+  secondaryContainer: const Color(0x24FFFFFF),
+  tertiaryContainer: const Color(0x40FF0033),
+  outline: const Color(0x40FFFFFF),
+  outlineVariant: const Color(0x24FFFFFF),
+  onSurface: const Color(0xFFF5F3F8),
+  onSurfaceVariant: const Color(0xFFC2BCCB),
+);
+
+final ColorScheme ctGlassLightScheme = ctLightScheme.copyWith(
+  surface: ctGlassLightBase,
+  surfaceDim: const Color(0xFFE6E1EC),
+  surfaceBright: const Color(0xCCFFFFFF),
+  surfaceContainerLowest: const Color(0x8CFFFFFF),
+  surfaceContainerLow: const Color(0x99FFFFFF),
+  surfaceContainer: const Color(0xA6FFFFFF),
+  surfaceContainerHigh: const Color(0xB3FFFFFF),
+  surfaceContainerHighest: const Color(0xC7FFFFFF),
+  primaryContainer: const Color(0xB3FFFFFF),
+  secondaryContainer: const Color(0xBFFFFFFF),
+  tertiaryContainer: const Color(0x33FF0033),
+  outline: const Color(0x33201A2B),
+  outlineVariant: const Color(0x1F201A2B),
+  onSurface: const Color(0xFF17131F),
+  onSurfaceVariant: const Color(0xFF574F63),
+);
+
+/// Матовая панель поверх содержимого (меню, диалоги, шторки, верхняя панель):
+/// почти непрозрачная, чтобы текст читался над любыми превью.
+Color ctGlassPanel(ColorScheme c) =>
+    c.brightness == Brightness.dark ? const Color(0xE61A1724) : const Color(0xEBFBFAFD);
+
+/// Светлый блик по верхнему краю стекла.
+BorderSide ctGlassEdge(ColorScheme c) => BorderSide(
+    color: c.brightness == Brightness.dark ? const Color(0x2EFFFFFF) : const Color(0xB3FFFFFF), width: 1);
+
+/// Цветные пятна под интерфейсом «Стекла»: три размытых пятна из базовых цветов на основе.
+/// Рисуется один раз (статично, без анимации) — не тратит батарею и не грузит ТВ-приставку.
+class CtGlassBackdrop extends StatelessWidget {
+  final Widget child;
+  const CtGlassBackdrop({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(fit: StackFit.passthrough, children: [
+      Positioned.fill(
+        child: RepaintBoundary(child: CustomPaint(painter: _AuraPainter(dark), isComplex: true)),
+      ),
+      child,
+    ]);
+  }
+}
+
+class _AuraPainter extends CustomPainter {
+  final bool dark;
+  const _AuraPainter(this.dark);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    canvas.drawRect(r, Paint()..color = dark ? ctGlassDarkBase : ctGlassLightBase);
+    final big = size.longestSide;
+    void blob(Offset c, double radius, Color color, double alpha) {
+      canvas.drawRect(
+          r,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              color.withValues(alpha: alpha),
+              color.withValues(alpha: alpha * 0.45),
+              color.withValues(alpha: 0),
+            ], stops: const [0, 0.45, 1])
+                .createShader(Rect.fromCircle(center: c, radius: radius)));
+    }
+
+    // светлая тема: пятна бледнее (на белом стекле насыщенный цвет «кричит»)
+    final k = dark ? 1.0 : 0.55;
+    blob(Offset(size.width * 0.05, size.height * 0.08), big * 0.55, ctGlassRed, 0.42 * k);
+    blob(Offset(size.width * 0.98, size.height * 0.35), big * 0.5, ctGlassViolet, 0.40 * k);
+    blob(Offset(size.width * 0.25, size.height * 0.98), big * 0.6, ctGlassBlue, 0.32 * k);
+  }
+
+  @override
+  bool shouldRepaint(_AuraPainter old) => old.dark != dark;
+}
+
+/// Переходы между экранами в «Стекле»: каждый экран несёт свои пятна (непрозрачен),
+/// иначе во время перехода сквозь прозрачный фон новой страницы видна старая.
+class CtGlassPageTransitions extends PageTransitionsBuilder {
+  final PageTransitionsBuilder inner;
+  const CtGlassPageTransitions(this.inner);
+
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation,
+          Animation<double> secondaryAnimation, Widget child) =>
+      inner.buildTransitions(route, context, animation, secondaryAnimation, CtGlassBackdrop(child: child));
+}
+
+/// Добавки темы для «Стекла»: прозрачный фон экранов, матовые панели, блик по краю.
+ThemeData ctGlassTheme(ThemeData t) {
+  final c = t.colorScheme;
+  if (!ctIsGlass(c)) return t;
+  final panel = ctGlassPanel(c);
+  final edge = ctGlassEdge(c);
+  RoundedRectangleBorder shape(double r) => RoundedRectangleBorder(borderRadius: BorderRadius.circular(r), side: edge);
+  const base = PageTransitionsTheme();
+  return t.copyWith(
+    scaffoldBackgroundColor: Colors.transparent,
+    canvasColor: panel,
+    pageTransitionsTheme: PageTransitionsTheme(builders: {
+      for (final p in TargetPlatform.values)
+        p: CtGlassPageTransitions(base.builders[p] ?? const ZoomPageTransitionsBuilder()),
+    }),
+    appBarTheme: t.appBarTheme.copyWith(
+        backgroundColor: c.brightness == Brightness.dark ? const Color(0xCC1A1724) : const Color(0xD9FBFAFD)),
+    navigationBarTheme: t.navigationBarTheme.copyWith(
+        backgroundColor: c.brightness == Brightness.dark ? const Color(0x80140F1C) : const Color(0x99FFFFFF)),
+    navigationRailTheme: t.navigationRailTheme.copyWith(backgroundColor: Colors.transparent),
+    cardTheme: CardThemeData(color: c.surfaceContainer, elevation: 0, shape: shape(16)),
+    dialogTheme: DialogThemeData(backgroundColor: panel, shape: shape(24)),
+    bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: panel,
+        modalBackgroundColor: panel,
+        shape: RoundedRectangleBorder(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)), side: edge)),
+    popupMenuTheme: PopupMenuThemeData(color: panel, shape: shape(16)),
+    menuTheme: MenuThemeData(
+        style: MenuStyle(
+            backgroundColor: WidgetStatePropertyAll(panel),
+            shape: WidgetStatePropertyAll(shape(16)))),
+    chipTheme: t.chipTheme.copyWith(backgroundColor: c.surfaceContainerHigh, side: edge),
+    dividerTheme: DividerThemeData(color: c.outlineVariant),
+  );
 }
 
 

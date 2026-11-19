@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:cloudtube/videos/models/ided_video.dart';
 import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
@@ -75,7 +76,7 @@ class VideoList<T extends IdedVideo> extends StatelessWidget {
               state.error != ItemListErrors.none
                   ? Container(
                       alignment: Alignment.center,
-                      color: colorScheme.surface,
+                      color: ctBg(colorScheme),
                       child: InkWell(
                           onTap: () => cubit.getItems(),
                           child: Text(

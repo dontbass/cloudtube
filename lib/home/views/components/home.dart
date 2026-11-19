@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -81,7 +82,7 @@ class HomeView extends StatelessWidget {
           child: Container(
               // only left because we don't want to cut horizontal scrolling lists
               padding: const EdgeInsets.only(left: innerHorizontalPadding),
-              color: colors.surface,
+              color: ctBg(colors),
               child: layout.smallSources.isEmpty && !layout.showBigSource
                   ? const Opacity(
                       opacity: 0.2,

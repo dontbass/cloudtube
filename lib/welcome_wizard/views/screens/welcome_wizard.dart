@@ -60,7 +60,7 @@ class WelcomeWizardScreen extends StatelessWidget {
         );
 
     return Scaffold(
-      backgroundColor: colors.surface,
+      backgroundColor: ctBg(colors),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

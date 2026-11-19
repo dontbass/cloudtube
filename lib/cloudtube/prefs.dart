@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../globals.dart';
 import '../settings/models/db/settings.dart';
+import 'theme.dart';
 
 /// Типизированная настройка CloudTube: ключ, значение по умолчанию и разбор.
 /// Испорченное или старое значение не роняет приложение — возвращается умолчание.
@@ -72,6 +73,23 @@ abstract final class CtPrefs {
 
   /// Промежуточная тема: «Пергамент» (светлая) / «Сумерки» (тёмная).
   static final softTheme = _bool('ct-theme-soft', false);
+
+  /// Вариант темы: normal / soft / glass (заменяет [softTheme], тот читается для перехода).
+  static final themeVariant = _string('ct-theme-variant');
+
+  /// Текущий вариант темы с учётом старой настройки «мягкая».
+  static CtVariant get variant {
+    final v = themeVariant.value;
+    for (final x in CtVariant.values) {
+      if (x.name == v) return x;
+    }
+    return softTheme.value ? CtVariant.soft : CtVariant.normal;
+  }
+
+  static Future<void> setVariant(CtVariant v) async {
+    ctThemeVariant.value = v;
+    await themeVariant.set(v.name);
+  }
 
   /// Последний свой сервер (адрес) — к нему возвращает переключатель «Свой сервер».
   static final lastServer = _string('ct-last-server');

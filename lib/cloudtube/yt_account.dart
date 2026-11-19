@@ -203,6 +203,9 @@ class CtTvPage {
         if (tile is Map) {
           final v = _tile(tile);
           if (v != null && seenV.add('${v['videoId']}')) p.videos.add(v);
+          // плитка канала (страница «Все подписки» и т. п.)
+          final c = _channelTile(tile);
+          if (c != null && seenC.add('${c['authorId']}')) p.channels.add(c);
         }
         final next = n['nextContinuationData'] ?? n['reloadContinuationData'];
         if (p.continuation == null && next is Map && next['continuation'] is String) p.continuation = next['continuation'] as String;
@@ -262,6 +265,8 @@ class CtTvPage {
     }
     final ch = _findWhere(tile, (k, v) => k == 'browseId' && v is String && v.startsWith('UC'));
     final views = RegExp(r'([\d\s ,.]+)\s*(тыс|млн|млрд|K|M|B)?\.?\s*(просм|view)', caseSensitive: false).firstMatch(info);
+    final publishedText =
+        info.split(' • ').lastWhere((s) => !s.contains(RegExp('просм|view', caseSensitive: false)), orElse: () => '');
     final v = {
       'type': 'video',
       'videoId': id,
@@ -271,8 +276,8 @@ class CtTvPage {
       'authorUrl': ch == null ? '' : '/channel/$ch',
       'lengthSeconds': duration,
       'viewCount': views == null ? 0 : _num(views.group(1)!, views.group(2)),
-      'published': 0,
-      'publishedText': info.split(' • ').lastWhere((s) => !s.contains(RegExp('просм|view', caseSensitive: false)), orElse: () => ''),
+      'published': ctApproxPublished(publishedText),
+      'publishedText': publishedText,
       'liveNow': type.contains('LIVE'),
       'videoThumbnails': [
         {'quality': 'high', 'url': 'https://i.ytimg.com/vi/$id/hqdefault.jpg', 'width': 480, 'height': 360},
@@ -283,6 +288,40 @@ class CtTvPage {
     ctDirectBriefs[id] = v;
     if (ctDirectBriefs.length > 2000) ctDirectBriefs.remove(ctDirectBriefs.keys.first);
     return v;
+  }
+
+  /// Плитка канала: id из browseEndpoint, название из метаданных, аватар из шапки.
+  static Map<String, dynamic>? _channelTile(Map tile) {
+    final type = '${tile['contentType'] ?? ''}';
+    if (!type.contains('CHANNEL')) return null;
+    final id = _findWhere(tile['onSelectCommand'], (k, v) => k == 'browseId' && v is String && v.startsWith('UC'));
+    if (id is! String) return null;
+    final meta = (tile['metadata'] as Map?)?['tileMetadataRenderer'] as Map?;
+    final title = _text(meta?['title']);
+    if (title.isEmpty) return null;
+    final thumbs = _find(tile['header'], 'thumbnails');
+    return {'author': title, 'authorId': id, 'authorThumbnails': thumbs is List ? thumbs : const []};
+  }
+
+  /// «2 часа назад» / «3 days ago» → примерное время (сек). В ленте аккаунта точной даты нет,
+  /// а без неё не работают порядок каналов и счётчики новых роликов на плитках.
+  static int ctApproxPublished(String text) {
+    final m = RegExp(r'(\d+)\s*(сек|мин|час|дн|день|дня|недел|нед|мес|год|лет|second|minute|hour|day|week|month|year)',
+            caseSensitive: false)
+        .firstMatch(text);
+    if (m == null) return 0;
+    final n = int.parse(m.group(1)!);
+    final u = m.group(2)!.toLowerCase();
+    final sec = switch (u) {
+      _ when u.startsWith('сек') || u.startsWith('second') => 1,
+      _ when u.startsWith('мин') || u.startsWith('minute') => 60,
+      _ when u.startsWith('час') || u.startsWith('hour') => 3600,
+      _ when u.startsWith('д') || u.startsWith('day') => 86400,
+      _ when u.startsWith('нед') || u.startsWith('week') => 7 * 86400,
+      _ when u.startsWith('мес') || u.startsWith('month') => 30 * 86400,
+      _ => 365 * 86400,
+    };
+    return DateTime.now().millisecondsSinceEpoch ~/ 1000 - n * sec;
   }
 
   static int _num(String n, String? unit) {

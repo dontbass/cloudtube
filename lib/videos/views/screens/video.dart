@@ -1,4 +1,5 @@
 // import 'package:video_player/video_player.dart';
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -223,7 +224,7 @@ class VideoScreen extends StatelessWidget {
                                 AddToPlayListButton(videoId: videoState.videoId)
                               ],
                       ),
-                      backgroundColor: colorScheme.surface,
+                      backgroundColor: ctBg(colorScheme),
                       bottomNavigationBar: showTabletView ||
                               videoState.loadingVideo ||
                               distractionFreeMode
@@ -244,7 +245,7 @@ class VideoScreen extends StatelessWidget {
                               right: innerHorizontalPadding,
                               top: 8),
                           child: Container(
-                            color: colorScheme.surface,
+                            color: ctBg(colorScheme),
                             width: double.infinity,
                             height: double.infinity,
                             child: AnimatedSwitcher(

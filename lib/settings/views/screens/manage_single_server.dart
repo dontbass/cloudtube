@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -157,7 +158,7 @@ class ManageSingleServerScreen extends StatelessWidget {
               appBar: AppBar(
                 title: Text(server.url),
               ),
-              backgroundColor: colorScheme.surface,
+              backgroundColor: ctBg(colorScheme),
               body: SafeArea(
                 bottom: false,
                 child: SettingsList(

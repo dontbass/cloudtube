@@ -549,6 +549,44 @@ class _CtDirect {
     return page <= pg.pages.length ? pg.pages[page - 1] : [];
   }
 
+  /// Все подписки аккаунта YouTube: страница «Все подписки» (FEchannels, с продолжениями)
+  /// + каналы из левой колонки «Подписок». Раньше бралась только колонка — там бывают не все.
+  Future<List<Map<String, dynamic>>> _accountChannels() async {
+    final refresh = _refresh!;
+    final out = <String, Map<String, dynamic>>{};
+    void add(List<Map<String, dynamic>> list) {
+      for (final c in list) {
+        final id = '${c['authorId']}';
+        if (id.startsWith('UC')) out.putIfAbsent(id, () => c);
+      }
+    }
+
+    try {
+      var page = await CtYtAccount.browse(refresh, browseId: 'FEchannels');
+      add(page.channels);
+      for (var i = 0; i < 20 && page.continuation != null; i++) {
+        final before = out.length;
+        page = await CtYtAccount.browse(refresh, continuation: page.continuation);
+        add(page.channels);
+        if (out.length == before) break;
+      }
+    } catch (e) {
+      _log.warning('подписки аккаунта (FEchannels): $e');
+      if (e is CtYtAuthError) rethrow;
+    }
+    try {
+      _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
+      await _tvPage('FEsubscriptions', 1); // заполняет _subsCache каналами из колонки
+      add(_subsCache ?? const []);
+    } catch (e) {
+      _log.warning('подписки аккаунта (колонка): $e');
+      if (out.isEmpty) rethrow;
+    }
+    final list = out.values.toList()
+      ..sort((a, b) => '${a['author']}'.toLowerCase().compareTo('${b['author']}'.toLowerCase()));
+    return list;
+  }
+
   Future<Object?> _auth(String method, List<String> p, Map<String, String> q) async {
     if (_refresh == null) throw _Http(401, 'Войдите в аккаунт YouTube (вкладка «Профиль»)');
     final page = int.tryParse(q['page'] ?? '1') ?? 1;
@@ -567,8 +605,8 @@ class _CtDirect {
           return null;
         }
         if (_subsCache == null || DateTime.now().difference(_subsAt) > const Duration(minutes: 10)) {
-          _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
-          await _tvPage('FEsubscriptions', 1);
+          _subsCache = await _accountChannels();
+          _subsAt = DateTime.now();
         }
         return _subsCache ?? [];
       case 'history':

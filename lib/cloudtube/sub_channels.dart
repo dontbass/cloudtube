@@ -33,14 +33,23 @@ List<CtSubChannel> ctRankSubChannels(List<(String, String)> subs, List<Video> fe
   final since = now - _freshWindow.inSeconds;
   final fresh = <String, int>{};
   final latest = <String, int>{};
+  final names = <String, String>{};
   for (final v in feed) {
     final id = v.authorId;
     final p = v.published;
-    if (id == null || id.isEmpty || p == null) continue;
+    if (id == null || id.isEmpty) continue;
+    // это лента подписок: автор ролика — подписка, даже если списка каналов не пришло
+    if ((v.author ?? '').isNotEmpty) names.putIfAbsent(id, () => v.author!);
+    if (p == null || p <= 0) continue;
     if (p > (latest[id] ?? 0)) latest[id] = p;
     if (p >= since && db.getVideoProgress(v.videoId) <= 0) fresh[id] = (fresh[id] ?? 0) + 1;
   }
-  final out = [for (final (id, name) in subs) CtSubChannel(id, name, fresh[id] ?? 0, latest[id] ?? 0)];
+  final known = {for (final (id, _) in subs) id};
+  final out = [
+    for (final (id, name) in subs) CtSubChannel(id, name, fresh[id] ?? 0, latest[id] ?? 0),
+    for (final e in names.entries)
+      if (!known.contains(e.key)) CtSubChannel(e.key, e.value, fresh[e.key] ?? 0, latest[e.key] ?? 0),
+  ];
   out.sort((a, b) {
     final f = (b.fresh > 0 ? 1 : 0).compareTo(a.fresh > 0 ? 1 : 0);
     if (f != 0) return f;
@@ -55,13 +64,22 @@ class CtFeedTap extends PaginatedVideoList {
   final PaginatedVideoList inner;
   final ValueNotifier<List<Video>> feed;
 
-  CtFeedTap(this.inner, this.feed);
+  /// Лента загружена с начала (первый раз или «потянуть вниз») — повод обновить и список каналов.
+  final VoidCallback? onReload;
+
+  CtFeedTap(this.inner, this.feed, {this.onReload});
 
   @override
-  Future<List<Video>> getItems() async => feed.value = await inner.getItems();
+  Future<List<Video>> getItems() async {
+    onReload?.call();
+    return feed.value = await inner.getItems();
+  }
 
   @override
-  Future<List<Video>> refresh() async => feed.value = await inner.refresh();
+  Future<List<Video>> refresh() async {
+    onReload?.call();
+    return feed.value = await inner.refresh();
+  }
 
   @override
   Future<List<Video>> getMoreItems() async {

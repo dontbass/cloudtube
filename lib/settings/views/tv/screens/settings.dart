@@ -410,18 +410,17 @@ class TVSettingsScreen extends StatelessWidget {
                   leading: const Icon(Icons.system_update),
                   onSelected: (context) => CtUpdater.check(context, manual: true),
                 ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: ctSoftTheme,
-                  builder: (context, soft, _) {
-                    final cur = CtTheme.of(Theme.of(context).brightness == Brightness.dark, soft);
+                ValueListenableBuilder<CtVariant>(
+                  valueListenable: ctThemeVariant,
+                  builder: (context, variant, _) {
+                    final cur = CtTheme.of(Theme.of(context).brightness == Brightness.dark, variant);
                     return SettingsTile(
                       title: 'Тема CloudTube',
                       description: '${cur.label} — нажмите, чтобы переключить: ${cur.next.label}',
                       leading: Icon(cur.icon),
                       onSelected: (context) async {
                         final next = cur.next;
-                        ctSoftTheme.value = next.isSoft;
-                        await CtPrefs.softTheme.set(next.isSoft);
+                        await CtPrefs.setVariant(next.variant);
                         await cubit.setThemeMode(next.isDark ? ThemeMode.dark : ThemeMode.light);
                       },
                     );

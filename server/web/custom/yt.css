@@ -721,3 +721,20 @@ html.ct-sec-shorts #main-content article .thumbnail-details > .video-title > nav
 html.ct-sec-shorts #main-content article a.video-title span.bold { font-size: 14px !important; line-height: 20px !important; }
 html.ct-sec-shorts #main-content article .author-details a.author { display: none !important; }
 html.ct-sec-shorts #main-content article .author-details, html.ct-sec-shorts #main-content article .author-details span { font-size: 12px !important; }
+
+/* ================= PLAYER chips: dark translucent, in any site theme =================
+   Rule «#main-content nav .chip» (sort filters) is more specific than the player rules and
+   painted the time and the settings values (Выключить / 480p / 1x / Russian) as light pills.
+   #main-content prefix + extra id raises specificity above it. */
+#main-content #player-controls .chip, #main-content #player-controls p.chip, #main-content #player-controls button.chip {
+  background: transparent !important; color: #fff !important; border: 0 !important; box-shadow: none !important;
+  height: auto !important; padding: 0 8px !important; font-size: 13px !important; font-weight: 500 !important;
+  text-shadow: 0 0 2px rgba(0,0,0,.5); }
+#main-content #player-controls button.chip:hover { background: rgba(255,255,255,.14) !important; }
+#main-content #mobile-time .chip { background: rgba(0,0,0,.6) !important; color: #fff !important; border-radius: 6px !important; padding: 2px 8px !important; }
+#main-content menu.player-settings .chip, #main-content #cc-menu .chip,
+#main-content #player-controls menu .chip {
+  background: transparent !important; color: rgba(255,255,255,.7) !important; border: 0 !important; box-shadow: none !important;
+  padding: 0 !important; height: auto !important; font-size: 13px !important; font-weight: 400 !important; }
+#main-content menu.player-settings li.selected, #main-content #cc-menu li.selected { background: rgba(255,255,255,.1) !important; color: #fff !important; }
+#main-content menu.player-settings li.selected i, #main-content #cc-menu li.selected i { color: #fff !important; }

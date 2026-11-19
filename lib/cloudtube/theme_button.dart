@@ -6,17 +6,17 @@ import 'theme.dart';
 import 'prefs.dart';
 
 /// Кнопка в шапке: одно нажатие — следующая тема по кругу
-/// Светлая → Пергамент → Сумерки → Тёмная → Светлая.
+/// Светлая → Пергамент → Стекло светлое → Сумерки → Тёмная → Стекло тёмное → Светлая.
 class CtThemeButton extends StatelessWidget {
   const CtThemeButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return ValueListenableBuilder<bool>(
-      valueListenable: ctSoftTheme,
-      builder: (context, soft, _) {
-        final cur = CtTheme.of(dark, soft);
+    return ValueListenableBuilder<CtVariant>(
+      valueListenable: ctThemeVariant,
+      builder: (context, variant, _) {
+        final cur = CtTheme.of(dark, variant);
         final next = cur.next;
         return IconButton(
           tooltip: 'Тема: ${cur.label} → ${next.label}',
@@ -26,8 +26,7 @@ class CtThemeButton extends StatelessWidget {
             child: Icon(cur.icon, key: ValueKey(cur)),
           ),
           onPressed: () async {
-            ctSoftTheme.value = next.isSoft;
-            await CtPrefs.softTheme.set(next.isSoft);
+            await CtPrefs.setVariant(next.variant);
             if (!context.mounted) return;
             await context
                 .read<SettingsCubit>()

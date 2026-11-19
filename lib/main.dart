@@ -92,7 +92,7 @@ Future<void> main() async {
     }
   }
 
-  ctSoftTheme.value = CtPrefs.softTheme.value;
+  ctThemeVariant.value = CtPrefs.variant;
 
   // автотест сборки (CI): режим без сервера и, при желании, сразу открыть видео
   if (ctDesktop && Platform.environment['CT_SMOKE_DIRECT'] == '1') {
@@ -198,15 +198,23 @@ class MyApp extends StatelessWidget {
           var navigationBarBehavior = context
               .select((SettingsCubit s) => s.state.navigationBarLabelBehavior);
 
-          return ValueListenableBuilder<bool>(
-              valueListenable: ctSoftTheme,
-              builder: (context, soft, _) => Builder(
+          return ValueListenableBuilder<CtVariant>(
+              valueListenable: ctThemeVariant,
+              builder: (context, variant, _) => Builder(
               builder: (context) {
             // CloudTube: фиксированная палитра как у сайта (динамические цвета Android не используем)
-            final ColorScheme lightColorScheme = soft ? ctSoftScheme : ctLightScheme;
-            darkColorScheme = soft ? ctDimScheme : ctDarkScheme;
+            final ColorScheme lightColorScheme = switch (variant) {
+              CtVariant.soft => ctSoftScheme,
+              CtVariant.glass => ctGlassLightScheme,
+              CtVariant.normal => ctLightScheme,
+            };
+            darkColorScheme = switch (variant) {
+              CtVariant.soft => ctDimScheme,
+              CtVariant.glass => ctGlassDarkScheme,
+              CtVariant.normal => ctDarkScheme,
+            };
 
-            if (useBlackBackground) {
+            if (useBlackBackground && variant != CtVariant.glass) {
               darkColorScheme = darkColorScheme.copyWith(
                   surface: Colors.black, surfaceContainerLowest: Colors.black);
             }
@@ -259,11 +267,17 @@ class MyApp extends StatelessWidget {
             return MaterialApp.router(
               // ТВ: масштаб, мышь, плавные переходы. Телефон/ПК: «зерно» бумаги в теме «Пергамент»
               // (на ТВ его с дивана не видно, а лишний слой на слабой приставке ни к чему)
+              // «Стекло»: цветные пятна под всем приложением (и под каждым экраном — см. ctGlassTheme)
               builder: isTv
-                  ? (context, child) => CtTvScale(child: CtTvMouse(child: CtTvSmoothTraversal(child: child ?? const SizedBox())))
-                  : (context, child) => ctIsPaper(Theme.of(context).colorScheme)
-                      ? CtPaperGrain(child: child ?? const SizedBox())
-                      : child ?? const SizedBox(),
+                  ? (context, child) {
+                      final app = CtTvScale(child: CtTvMouse(child: CtTvSmoothTraversal(child: child ?? const SizedBox())));
+                      return ctIsGlass(Theme.of(context).colorScheme) ? CtGlassBackdrop(child: app) : app;
+                    }
+                  : (context, child) {
+                      final c = Theme.of(context).colorScheme;
+                      if (ctIsGlass(c)) return CtGlassBackdrop(child: child ?? const SizedBox());
+                      return ctIsPaper(c) ? CtPaperGrain(child: child ?? const SizedBox()) : child ?? const SizedBox();
+                    },
               routerConfig: appRouter.config(
                   navigatorObservers: () => [MyRouteObserver()],
                   includePrefixMatches: true),
@@ -309,7 +323,7 @@ class MyApp extends StatelessWidget {
                   (element) => element.name == themeMode.name,
                   orElse: () => ThemeMode.system),
               title: 'CloudTube',
-              theme: ThemeData(
+              theme: ctGlassTheme(ThemeData(
                   useMaterial3: true,
                   colorScheme: lightColorScheme,
                   navigationBarTheme: navigationBarTheme,
@@ -333,8 +347,8 @@ class MyApp extends StatelessWidget {
                       inactiveTrackColor: lightColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
                       circularTrackColor: lightColorScheme.secondaryContainer
-                          .withValues(alpha: 0.8))),
-              darkTheme: ThemeData(
+                          .withValues(alpha: 0.8)))),
+              darkTheme: ctGlassTheme(ThemeData(
                   useMaterial3: true,
                   colorScheme: darkColorScheme,
                   appBarTheme: appBarTheme,
@@ -358,7 +372,7 @@ class MyApp extends StatelessWidget {
                       inactiveTrackColor: darkColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
                       circularTrackColor: darkColorScheme.secondaryContainer
-                          .withValues(alpha: 0.8))),
+                          .withValues(alpha: 0.8)))),
             );
           }));
         });

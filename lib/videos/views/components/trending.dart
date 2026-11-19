@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:cloudtube/globals.dart';
@@ -25,7 +26,7 @@ class TrendingState extends State<Trending> {
   Widget build(BuildContext context) {
     var colorScheme = Theme.of(context).colorScheme;
     return Container(
-      color: colorScheme.surface,
+      color: ctBg(colorScheme),
       child: isTv
           ? TvHorizontalVideoList(
               onItemFocus: widget.onItemFocus,

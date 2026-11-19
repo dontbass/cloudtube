@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:cloudtube/videos/models/video.dart';
 import 'package:flutter/material.dart';
 import 'package:cloudtube/globals.dart';
@@ -16,7 +17,7 @@ class Popular extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: ctBg(Theme.of(context).colorScheme),
       child: isTv
           ? TvHorizontalVideoList(
               // та же лента, что и «Главная» на телефоне (без сервера — бесконечная)

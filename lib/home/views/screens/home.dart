@@ -38,6 +38,11 @@ class MainContentScreen extends StatefulWidget {
 
 /// В Shorts нижнее меню всегда тёмное, как в YouTube, даже в светлой теме.
 Widget _ctNavTheme(BuildContext context, bool dark, Widget nav) {
+  final c = Theme.of(context).colorScheme;
+  // «Стекло»: светлый блик по верхнему краю панели
+  if (!dark && ctIsGlass(c)) {
+    return DecoratedBox(decoration: BoxDecoration(border: Border(top: ctGlassEdge(c))), child: nav);
+  }
   if (!dark) return nav;
   final t = Theme.of(context);
   return Theme(
@@ -179,7 +184,7 @@ class _MainScreenState extends State<MainContentScreen> {
                 return Scaffold(
                     // so we rebuild the view if the server changes
                     backgroundColor:
-                        _ct == 1 ? Colors.black : colorScheme.surface,
+                        _ct == 1 ? Colors.black : ctBg(colorScheme),
                     bottomNavigationBar: ctPhone
                         ? _ctNavTheme(context, _ct == 1, KeyedSubtree(key: CtTourKeys.navBar, child: NavigationBar(
                             labelBehavior: NavigationDestinationLabelBehavior

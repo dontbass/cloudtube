@@ -16,8 +16,8 @@ import '../../states/settings.dart';
 
 /// Оформление вложенных экранов настроек (плеер, просмотр, внешний вид…) в цветах CloudTube.
 SettingsThemeData settingsTheme(ColorScheme colorScheme) => SettingsThemeData(
-    settingsSectionBackground: colorScheme.surface,
-    settingsListBackground: colorScheme.surface,
+    settingsSectionBackground: ctBg(colorScheme),
+    settingsListBackground: ctBg(colorScheme),
     titleTextColor: ctAccent(colorScheme),
     dividerColor: colorScheme.outlineVariant,
     tileDescriptionTextColor: colorScheme.onSurfaceVariant,
@@ -101,7 +101,7 @@ class SettingsScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(title: Text(locals.settings)),
-          backgroundColor: colors.surface,
+          backgroundColor: ctBg(colors),
           body: SafeArea(
             child: LayoutBuilder(builder: (context, c) {
               // магнитола и планшет — две колонки, телефон — одна

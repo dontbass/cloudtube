@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'dart:async';
 
 import 'package:cloudtube/videos/models/video.dart';
@@ -23,7 +24,7 @@ class ChannelVideosView extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: innerHorizontalPadding),
       child: Container(
-        color: colorScheme.surface,
+        color: ctBg(colorScheme),
         child: VideoList(
           paginatedVideoList: ContinuationList<Video>(
               (continuation) => getVideos(channel.authorId, continuation)),

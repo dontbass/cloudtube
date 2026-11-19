@@ -41,11 +41,10 @@ class _SubscriptionsWithChannelsState extends State<_SubscriptionsWithChannels> 
   final _feed = ValueNotifier<List<Video>>(const []);
   List<(String, String)> _subs = const [];
   String? _selected;
-  late PaginatedVideoList _list = CtFeedTap(SubscriptionVideoList(), _feed);
+  late PaginatedVideoList _list = CtFeedTap(SubscriptionVideoList(), _feed, onReload: _loadSubs);
 
-  @override
-  void initState() {
-    super.initState();
+  // список каналов обновляется вместе с лентой (первая загрузка, «потянуть вниз», возврат к «Все»)
+  void _loadSubs() {
     ctSubscribedChannels().then((v) {
       if (mounted) setState(() => _subs = v);
     });
@@ -62,7 +61,7 @@ class _SubscriptionsWithChannelsState extends State<_SubscriptionsWithChannels> 
     setState(() {
       _selected = id;
       // «Все» — заново с первой страницы; канал — его последние ролики
-      _list = id == null ? CtFeedTap(SubscriptionVideoList(), _feed) : ctChannelLatest(id);
+      _list = id == null ? CtFeedTap(SubscriptionVideoList(), _feed, onReload: _loadSubs) : ctChannelLatest(id);
     });
   }
 

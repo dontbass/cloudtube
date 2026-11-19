@@ -37,17 +37,14 @@ class _TvGridScreenState extends State<TvGridScreen> {
   List<(String, String)> _subs = const [];
   String? _selected;
   late PaginatedList<Video> _list = widget.showChannels && widget.paginatedVideoList is PaginatedVideoList
-      ? CtFeedTap(widget.paginatedVideoList as PaginatedVideoList, _feed)
+      ? CtFeedTap(widget.paginatedVideoList as PaginatedVideoList, _feed, onReload: _loadSubs)
       : widget.paginatedVideoList;
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.showChannels) {
-      ctSubscribedChannels().then((v) {
-        if (mounted) setState(() => _subs = v);
-      });
-    }
+  // список каналов обновляется вместе с лентой (первая загрузка, «потянуть вниз», возврат к «Все»)
+  void _loadSubs() {
+    ctSubscribedChannels().then((v) {
+      if (mounted) setState(() => _subs = v);
+    });
   }
 
   @override
@@ -60,7 +57,7 @@ class _TvGridScreenState extends State<TvGridScreen> {
     if (id == _selected) return;
     setState(() {
       _selected = id;
-      _list = id == null ? CtFeedTap(SubscriptionVideoList(), _feed) : ctChannelLatest(id);
+      _list = id == null ? CtFeedTap(SubscriptionVideoList(), _feed, onReload: _loadSubs) : ctChannelLatest(id);
     });
   }
 

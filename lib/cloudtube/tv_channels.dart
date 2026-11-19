@@ -7,8 +7,6 @@ import '../router.dart';
 import '../subscription_management/states/subscribe_button.dart';
 import '../subscription_management/view/components/subscribe_button.dart';
 import '../utils/views/tv/components/tv_button.dart';
-import 'avatars.dart';
-import 'tv_nav.dart';
 
 /// ТВ: переход на канал, подписка и ряд подписанных каналов — общие кусочки
 /// для плиток, плеера и экрана «Подписки».
@@ -140,68 +138,4 @@ Future<void> ctShowTvVideoMenu(BuildContext context,
       );
     },
   );
-}
-
-/// Ряд подписанных каналов (аватар + имя) — сверху экрана «Подписки».
-class CtTvChannelsRow extends StatefulWidget {
-  final void Function(bool focus)? onFocus;
-
-  const CtTvChannelsRow({super.key, this.onFocus});
-
-  @override
-  State<CtTvChannelsRow> createState() => _CtTvChannelsRowState();
-}
-
-class _CtTvChannelsRowState extends State<CtTvChannelsRow> {
-  List<(String, String)>? _items;
-
-  @override
-  void initState() {
-    super.initState();
-    ctSubscribedChannels().then((v) {
-      if (mounted) setState(() => _items = v);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final items = _items;
-    if (items == null || items.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 158,
-      child: CtTvSmoothTraversal(
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.none,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (context, i) {
-            final (id, name) = items[i];
-            return TvButton(
-              borderRadius: 20,
-              unfocusedColor: Colors.transparent,
-              onFocusChanged: widget.onFocus,
-              onPressed: (ctx) => ctOpenTvChannel(ctx, id),
-              child: SizedBox(
-                width: 128,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    CtChannelAvatar(channelId: id, author: name, size: 84, slow: true),
-                    const SizedBox(height: 8),
-                    Text(name,
-                        maxLines: 2,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, height: 1.2)),
-                  ]),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
 }

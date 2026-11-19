@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/audio_tracks.dart';
 import 'package:cloudtube/cloudtube/direct.dart';
 import 'dart:async';
 import 'package:cloudtube/videos/models/ided_video.dart';
@@ -650,8 +651,15 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
     return -1;
   }
 
+  /// Дорожки ролика (оригинал / дубляжи), если их несколько — выбор через перезапуск потока.
+  List<CtAudioTrack> get _ctAudio => state.video == null ? const [] : CtAudio.tracks(state.video!.videoId);
+
+  /// Есть выбор звуковой дорожки (оригинал / дубляжи).
+  bool get ctHasAudioChoice => _ctAudio.length > 1;
+
   @override
   List<String> getAudioTracks() {
+    if (_ctAudio.length > 1) return _ctAudio.map((t) => t.label).toList();
     if (state.video != null) {
       if (videoController?.betterPlayerAsmsAudioTracks?.isNotEmpty ?? false) {
         return videoController?.betterPlayerAsmsAudioTracks
@@ -666,6 +674,11 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   int selectedAudioTrack() {
+    final t = _ctAudio;
+    if (t.length > 1) {
+      final id = CtAudio.pickedId(state.video!.videoId);
+      return t.indexWhere((x) => x.id == id);
+    }
     if (state.video != null) {
       if (settings.state.useDash) {
         var tracks = getAudioTracks();
@@ -699,6 +712,19 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
 
   @override
   selectAudioTrack(int index) {
+    final t = _ctAudio;
+    if (t.length > 1) {
+      if (index < 0 || index >= t.length) return;
+      final id = state.video!.videoId;
+      if (CtAudio.pickedId(id) == t[index].id) return;
+      final pos = videoController?.videoPlayerController?.value.position;
+      CtTrace.mark('плеер: звук «${t[index].label}»');
+      CtAudio.choose(id, t[index]).then((_) {
+        if (isClosed || state.video?.videoId != id) return;
+        playVideo(false, startAt: pos != null && pos > const Duration(seconds: 1) ? pos : null);
+      });
+      return;
+    }
     var betterPlayerAsmsTrack =
         videoController?.betterPlayerAsmsAudioTracks?[index];
     log.fine("Selected audio track, ${betterPlayerAsmsTrack?.label}");

@@ -140,13 +140,17 @@ Future<CtStreamChoice> ctPickStream(CtStreamRequest r) async {
     }
   }
   if (r.tvDirect && isHls && r.hlsSingle) {
-    final local = await CtHlsLocal.single(url, headers, cap: r.cap);
+    final local = await CtHlsLocal.single(url, headers, cap: r.cap, videoId: r.videoId);
     if (local != null) {
       return CtStreamChoice(
           kind: CtStreamKind.hlsSingle, url: local.$1, headers: headers, height: local.$2, qualityLabel: '${local.$2}p');
     }
   }
-  if (isHls) return CtStreamChoice(kind: CtStreamKind.hls, url: url, headers: headers);
+  if (isHls) {
+    // несколько звуковых дорожек — плееру только выбранная (по умолчанию оригинал)
+    final a = await CtHlsLocal.audioFiltered(r.videoId, url, headers);
+    return CtStreamChoice(kind: CtStreamKind.hls, url: a ?? url, headers: headers);
+  }
   if (r.useServerDash) return CtStreamChoice(kind: CtStreamKind.serverDash, url: url, headers: headers);
   return CtStreamChoice(
     kind: CtStreamKind.progressive,

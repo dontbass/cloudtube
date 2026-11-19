@@ -22,6 +22,8 @@ import '../utils/models/image_object.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'sponsor_toast.dart';
 import 'prefs.dart';
+import 'audio_tracks.dart';
+import 'hls_local.dart';
 import 'watch.dart';
 import '../videos/views/components/compact_video.dart';
 
@@ -223,8 +225,11 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     String url;
     String? audio;
     if (ctDirectActive && (v.hlsUrl ?? '').isNotEmpty) {
-      // без сервера: HLS от YouTube — один поток со звуком, стартует быстро
-      url = v.hlsUrl!;
+      // без сервера: HLS от YouTube — один поток со звуком, стартует быстро; при нескольких
+      // звуковых дорожках — только выбранная (по умолчанию оригинал, а не автодубляж)
+      url = await CtHlsLocal.audioFiltered(v.videoId, v.hlsUrl!, ctDirectStreamHeaders(v.hlsUrl!)) ?? v.hlsUrl!;
+      if (stale()) return;
+      if (CtAudio.tracks(v.videoId).length > 1) setState(() {}); // показать меню «Звук»
       audio = null;
     } else if (ctDirectActive && _quality != null && _audioItag != null) {
       url = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _quality!.videoItag).url;
@@ -368,6 +373,24 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
       appBar: AppBar(
         title: Text(v.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          // звуковая дорожка: оригинал / дубляжи (если у ролика их несколько)
+          if (CtAudio.tracks(v.videoId).length > 1)
+            PopupMenuButton<CtAudioTrack>(
+              tooltip: 'Звук',
+              icon: const Icon(Icons.record_voice_over_outlined),
+              onSelected: (t) async {
+                final pos = _player.state.position;
+                await CtAudio.choose(v.videoId, t);
+                if (!mounted) return;
+                setState(() {});
+                await _play(at: pos);
+              },
+              itemBuilder: (_) => [
+                for (final t in CtAudio.tracks(v.videoId))
+                  CheckedPopupMenuItem(
+                      value: t, checked: t.id == CtAudio.pickedId(v.videoId), child: Text(t.label)),
+              ],
+            ),
           if (_qualities.isNotEmpty && !(ctDirectActive && (_full?.hlsUrl ?? '').isNotEmpty))
             PopupMenuButton<_Quality>(
               tooltip: 'Качество',

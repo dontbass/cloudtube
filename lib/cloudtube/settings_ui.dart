@@ -1,4 +1,3 @@
-import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:flutter/material.dart';
 
 import 'theme.dart';

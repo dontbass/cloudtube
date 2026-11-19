@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:cloudtube/videos/models/video.dart';
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:flutter/material.dart';
+import 'package:cloudtube/videos/views/components/subscriptions.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -151,7 +152,10 @@ enum HomeDataSource {
             animateDownload: true,
             paginatedVideoList: SingleEndpointList(service.getTrending),
           )),
-      (HomeDataSource.subscription) => SizedBox(
+      // вкладка «Подписки»: плитки каналов над лентой (на главной — только ряд роликов)
+      (HomeDataSource.subscription) => !small
+          ? const Subscriptions()
+          : SizedBox(
           height: small ? smallVideoViewHeight : null,
           child: VideoList(
             scrollDirection: small ? Axis.horizontal : Axis.vertical,

@@ -91,6 +91,9 @@ abstract final class CtPrefs {
     await themeVariant.set(v.name);
   }
 
+  /// Предпочитаемый язык звука: '' / 'original' — оригинал, иначе код языка ('ru', 'en').
+  static final audioLang = _string('ct-audio-lang');
+
   /// Последний свой сервер (адрес) — к нему возвращает переключатель «Свой сервер».
   static final lastServer = _string('ct-last-server');
 

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 import '../videos/models/adaptive_format.dart';
+import 'audio_tracks.dart';
 
 final _log = Logger('CtHlsLocal');
 
@@ -41,11 +42,14 @@ class CtHlsLocal {
   /// Мастер-плейлист с ОДНИМ вариантом видео — лучшим не выше [cap] (при равной высоте —
   /// 30 к/с, затем больший битрейт). ExoPlayer не может сам уйти на низкое качество.
   /// (адрес, высота) или null.
-  static Future<(String, int)?> single(String masterUrl, Map<String, String> headers, {int cap = 2160}) async {
+  static Future<(String, int)?> single(String masterUrl, Map<String, String> headers,
+      {int cap = 2160, String? videoId}) async {
     try {
       final r = await http.get(Uri.parse(masterUrl), headers: headers).timeout(const Duration(seconds: 6));
       if (r.statusCode != 200 || !r.body.contains('#EXT-X-STREAM-INF')) return null;
-      final lines = r.body.split('\n');
+      // несколько звуковых дорожек — только выбранная (по умолчанию оригинал, не автодубляж)
+      final body = videoId == null ? r.body : CtAudio.filterHls(videoId, r.body);
+      final lines = body.split('\n');
       int h(String l) => int.tryParse(RegExp(r'RESOLUTION=\d+x(\d+)').firstMatch(l)?.group(1) ?? '') ?? 0;
       double fps(String l) => double.tryParse(RegExp(r'FRAME-RATE=([\d.]+)').firstMatch(l)?.group(1) ?? '') ?? 30;
       int bw(String l) => int.tryParse(RegExp(r'[^-]BANDWIDTH=(\d+)').firstMatch(l)?.group(1) ?? '') ?? 0;
@@ -81,6 +85,26 @@ class CtHlsLocal {
       return ('http://127.0.0.1:$port/$id', h(lines[best]));
     } catch (e) {
       _log.info('HLS single: $e');
+      return null;
+    }
+  }
+
+  /// Мастер-плейлист как есть, но только с выбранной звуковой дорожкой. null — дорожка одна
+  /// (или плейлист не получен): играть исходный адрес.
+  static Future<String?> audioFiltered(String videoId, String masterUrl, Map<String, String> headers) async {
+    try {
+      final r = await http.get(Uri.parse(masterUrl), headers: headers).timeout(const Duration(seconds: 6));
+      if (r.statusCode != 200 || !r.body.contains('#EXT-X-STREAM-INF')) return null;
+      if (CtAudio.fromHls(videoId, r.body).length < 2) return null;
+      final body = CtAudio.filterHls(videoId, r.body);
+      final out = body.split('\n').map((l) => _abs(masterUrl, l)).join('\n');
+      final id = 'a${++_n}.m3u8';
+      _lists[id] = out;
+      if (_lists.length > 20) _lists.remove(_lists.keys.first);
+      final port = await _port();
+      return 'http://127.0.0.1:$port/$id';
+    } catch (e) {
+      _log.info('HLS audio: $e');
       return null;
     }
   }
@@ -225,9 +249,8 @@ class CtDashLocal {
     final all = e.$1.whereType<Map>().where(_ok).toList();
     final byH = _byHeight(id);
     final hs = byH.keys.where((h) => h <= cap).toList()..sort((a, b) => b.compareTo(a));
-    final audios = all
-        .where((f) => '${f['mimeType']}'.startsWith('audio/mp4'))
-        .toList()
+    // несколько звуковых дорожек (оригинал, автодубляж…) — только выбранная, по умолчанию оригинал
+    final audios = CtAudio.filterFormats(id, all.where((f) => '${f['mimeType']}'.startsWith('audio/mp4')).toList())
       ..sort((a, b) => _br(b).compareTo(_br(a)));
     if (audios.isEmpty) return null;
     Map? v = itag == null ? null : formats(id).where((f) => '${f['itag']}' == itag).firstOrNull;

@@ -107,7 +107,8 @@ class TvPlayerSettings extends StatelessWidget {
                     ),
                   ),
                   Visibility(
-                    visible: settings.state.useDash,
+                    // оригинал / дубляжи — выбор есть и без DASH сервера
+                    visible: settings.state.useDash || cubit.player.ctHasAudioChoice,
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: TvButton(

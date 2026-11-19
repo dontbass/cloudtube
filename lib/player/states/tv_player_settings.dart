@@ -61,7 +61,17 @@ class TvPlayerSettingsCubit extends Cubit<TvPlayerSettingsState> {
     return [for (var i = 0; i < names.length; i++) i == sel ? '✓ ${names[i]}' : names[i]];
   }
 
-  List<String> get audioTrackNames => settings.state.useDash
+  List<String> get audioTrackNames {
+    // несколько дорожек ролика (оригинал / дубляжи) — свой список с отметкой выбранной
+    if (player.ctHasAudioChoice) {
+      final own = player.getAudioTracks();
+      final sel = player.selectedAudioTrack();
+      return [for (var i = 0; i < own.length; i++) i == sel ? '✓ ${own[i]}' : own[i]];
+    }
+    return _asmsAudioNames;
+  }
+
+  List<String> get _asmsAudioNames => settings.state.useDash
       ? player.videoController?.betterPlayerAsmsAudioTracks
               ?.map((e) => '${e.label}')
               .toList() ??
@@ -131,7 +141,12 @@ class TvPlayerSettingsCubit extends Cubit<TvPlayerSettingsState> {
   }
 
   changeChangeAudioTrack(String selected) {
+    selected = selected.replaceFirst('✓ ', '');
     log.fine('Audio quality selected $selected');
+    if (player.ctHasAudioChoice) {
+      player.selectAudioTrack(player.getAudioTracks().indexOf(selected));
+      return;
+    }
     BetterPlayerAsmsAudioTrack? track = videoController
         ?.betterPlayerAsmsAudioTracks
         ?.firstWhere((e) => '${e.label}' == selected);

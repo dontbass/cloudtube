@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/theme.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
@@ -40,7 +41,7 @@ class PlayButton extends StatelessWidget {
           },
           style: ButtonStyle(
               backgroundColor: WidgetStateColor.resolveWith((states) =>
-                  colorScheme.primaryContainer.withValues(alpha: 1))),
+                  ctIsGlass(colorScheme) ? ctGlassPanel(colorScheme) : colorScheme.primaryContainer)),
           icon: Icon(
             icon ?? Icons.play_arrow,
             size: 75,

@@ -275,6 +275,10 @@ final ColorScheme ctGlassLightScheme = ctLightScheme.copyWith(
 Color ctGlassPanel(ColorScheme c) =>
     c.brightness == Brightness.dark ? const Color(0xE61A1724) : const Color(0xEBFBFAFD);
 
+/// Прозрачность «поверх» цвета: в «Стекле» поверхности уже полупрозрачные, и прямое
+/// withValues(alpha: 0.97) превращало белую дымку 8 % в почти непрозрачный белый.
+Color ctAlpha(Color c, double a) => c.withValues(alpha: c.a * a);
+
 /// Светлый блик по верхнему краю стекла.
 BorderSide ctGlassEdge(ColorScheme c) => BorderSide(
     color: c.brightness == Brightness.dark ? const Color(0x2EFFFFFF) : const Color(0xB3FFFFFF), width: 1);

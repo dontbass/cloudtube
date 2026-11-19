@@ -346,8 +346,7 @@ class MyApp extends StatelessWidget {
                   sliderTheme: sliderTheme.copyWith(
                       inactiveTrackColor: lightColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
-                      circularTrackColor: lightColorScheme.secondaryContainer
-                          .withValues(alpha: 0.8)))),
+                      circularTrackColor: ctAlpha(lightColorScheme.secondaryContainer, 0.8)))),
               darkTheme: ctGlassTheme(ThemeData(
                   useMaterial3: true,
                   colorScheme: darkColorScheme,
@@ -371,8 +370,7 @@ class MyApp extends StatelessWidget {
                   sliderTheme: sliderTheme.copyWith(
                       inactiveTrackColor: darkColorScheme.secondaryContainer),
                   progressIndicatorTheme: ProgressIndicatorThemeData(
-                      circularTrackColor: darkColorScheme.secondaryContainer
-                          .withValues(alpha: 0.8)))),
+                      circularTrackColor: ctAlpha(darkColorScheme.secondaryContainer, 0.8)))),
             );
           }));
         });

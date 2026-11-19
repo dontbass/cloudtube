@@ -71,7 +71,7 @@ class SettingsSection extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final items = <Widget>[];
     for (var i = 0; i < tiles.length; i++) {
-      if (i > 0) items.add(Divider(height: 1, indent: 72, endIndent: 16, color: colors.outlineVariant.withValues(alpha: 0.5)));
+      if (i > 0) items.add(Divider(height: 1, indent: 72, endIndent: 16, color: ctAlpha(colors.outlineVariant, 0.5)));
       items.add(tiles[i]);
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

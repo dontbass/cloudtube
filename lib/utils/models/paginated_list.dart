@@ -150,6 +150,7 @@ class SubscriptionVideoList extends PaginatedVideoList {
 
     final offlineSubs = await db.getOfflineSubscriptions();
     List<Future<VideosWithContinuation>> futures = [];
+    final futureIds = <String>[];
 
     for (final offlineSub in offlineSubs) {
       var hasContinuation = continuations.containsKey(offlineSub.channelId);
@@ -157,6 +158,7 @@ class SubscriptionVideoList extends PaginatedVideoList {
       // if there is a continuation but it's null, then there's no more videos to fetch
       if (!hasContinuation ||
           (hasContinuation && continuations[offlineSub.channelId] != _done)) {
+        futureIds.add(offlineSub.channelId);
         futures.add(service.getChannelVideos(offlineSub.channelId,
             hasContinuation ? continuations[offlineSub.channelId] : null));
       }
@@ -165,13 +167,12 @@ class SubscriptionVideoList extends PaginatedVideoList {
     if (futures.isNotEmpty) {
       List<VideosWithContinuation> offlineSubVideos =
           await Future.wait(futures);
-      for (final v in offlineSubVideos) {
-        if (v.videos.isNotEmpty) {
-          videos.addAll(v.videos);
-          if (v.videos[0].authorUrl != null) {
-            continuations[v.videos[0].authorUrl!] = v.continuation ?? _done;
-          }
-        }
+      // продолжение — по id канала (раньше ключом был authorUrl «/channel/…», он не совпадал
+      // с id, и «ещё» каждый раз заново грузило первые страницы всех каналов)
+      for (var i = 0; i < offlineSubVideos.length; i++) {
+        final v = offlineSubVideos[i];
+        videos.addAll(v.videos);
+        continuations[futureIds[i]] = v.videos.isEmpty ? _done : (v.continuation ?? _done);
       }
     }
 

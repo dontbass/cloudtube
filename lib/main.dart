@@ -40,6 +40,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'settings/models/db/app_logs.dart';
 import 'cloudtube/prefs.dart';
+import 'cloudtube/compact.dart';
 
 const brandColor = Color(0xFF4f0096);
 
@@ -93,6 +94,7 @@ Future<void> main() async {
   }
 
   ctThemeVariant.value = CtPrefs.variant;
+  ctCompactMode.value = ctCompactModeFromPrefs();
 
   // автотест сборки (CI): режим без сервера и, при желании, сразу открыть видео
   if (ctDesktop && Platform.environment['CT_SMOKE_DIRECT'] == '1') {
@@ -198,7 +200,9 @@ class MyApp extends StatelessWidget {
           var navigationBarBehavior = context
               .select((SettingsCubit s) => s.state.navigationBarLabelBehavior);
 
-          return ValueListenableBuilder<CtVariant>(
+          return ValueListenableBuilder<CtCompactMode>(
+              valueListenable: ctCompactMode,
+              builder: (context, _, __) => ValueListenableBuilder<CtVariant>(
               valueListenable: ctThemeVariant,
               builder: (context, variant, _) => Builder(
               builder: (context) {
@@ -372,7 +376,7 @@ class MyApp extends StatelessWidget {
                   progressIndicatorTheme: ProgressIndicatorThemeData(
                       circularTrackColor: ctAlpha(darkColorScheme.secondaryContainer, 0.8)))),
             );
-          }));
+          })));
         });
   }
 }

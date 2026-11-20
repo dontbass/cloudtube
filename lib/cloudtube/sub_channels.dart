@@ -144,13 +144,23 @@ class CtSubStrip extends StatelessWidget {
   final String? selected;
   final ValueChanged<String?> onSelect;
 
-  const CtSubStrip({super.key, required this.channels, required this.selected, required this.onSelect});
+  /// Компактный вид (невысокий экран): «таблетки» высотой 52 — аватар слева, название справа.
+  final bool compact;
+
+  const CtSubStrip(
+      {super.key, required this.channels, required this.selected, required this.onSelect, this.compact = false});
 
   static const _w = 84.0, _h = 108.0;
+
+  /// Контрастный цвет текста на выбранной (светлой/тёмной) плитке — не colors.surface:
+  /// в «Стекле» он давал бледную подпись «Все».
+  static Color _onSelected(ColorScheme c) =>
+      c.onSurface.computeLuminance() > 0.5 ? const Color(0xFF111111) : Colors.white;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    if (compact) return _ctCompactStrip(this, context, colors);
     Widget tile({required bool on, required VoidCallback onTap, required Widget top, required String label, int fresh = 0}) {
       return Semantics(
         button: true,
@@ -179,7 +189,7 @@ class CtSubStrip extends StatelessWidget {
                             fontSize: 12,
                             height: 1.2,
                             fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                            color: on ? colors.surface : colors.onSurface)),
+                            color: on ? _onSelected(colors) : colors.onSurface)),
                   ]),
                 ),
                 if (fresh > 0) Positioned(top: 6, right: 6, child: _FreshBadge(fresh)),
@@ -205,7 +215,7 @@ class CtSubStrip extends StatelessWidget {
                 onTap: () => onSelect(null),
                 top: SizedBox(
                     height: 48,
-                    child: Icon(Icons.grid_view_rounded, size: 28, color: on ? colors.surface : colors.onSurface)),
+                    child: Icon(Icons.grid_view_rounded, size: 28, color: on ? _onSelected(colors) : colors.onSurface)),
                 label: 'Все');
           }
           final c = channels[i - 1];
@@ -215,6 +225,81 @@ class CtSubStrip extends StatelessWidget {
               top: CtChannelAvatar(channelId: c.id, author: c.name, size: 48),
               label: c.name,
               fresh: c.fresh);
+        },
+      ),
+    );
+  }
+}
+
+Widget _ctCompactStrip(CtSubStrip w, BuildContext context, ColorScheme colors) {
+  final channels = w.channels, selected = w.selected, onSelect = w.onSelect;
+  {
+    Widget pill({required bool on, required VoidCallback onTap, required Widget lead, required String label,
+        int fresh = 0, double? width}) {
+      final fg = on ? CtSubStrip._onSelected(colors) : colors.onSurface;
+      return Semantics(
+        button: true,
+        selected: on,
+        label: label,
+        child: Material(
+          color: on ? colors.onSurface : colors.surfaceContainerHigh,
+          shape: StadiumBorder(side: on ? BorderSide.none : BorderSide(color: colors.outlineVariant, width: 0.6)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 52,
+              width: width,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Stack(clipBehavior: Clip.none, children: [
+                    lead,
+                    if (fresh > 0) Positioned(top: -4, right: -6, child: _FreshBadge(fresh)),
+                  ]),
+                  const SizedBox(width: 9),
+                  Flexible(
+                    child: Text(label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13,
+                            height: 1.2,
+                            color: fg,
+                            fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 64,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        itemCount: channels.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          if (i == 0) {
+            final on = selected == null;
+            return pill(
+                on: on,
+                onTap: () => onSelect(null),
+                lead: Icon(Icons.grid_view_rounded, size: 22, color: on ? CtSubStrip._onSelected(colors) : colors.onSurface),
+                label: 'Все');
+          }
+          final c = channels[i - 1];
+          return pill(
+              on: selected == c.id,
+              onTap: () => onSelect(selected == c.id ? null : c.id),
+              lead: CtChannelAvatar(channelId: c.id, author: c.name, size: 36),
+              label: c.name,
+              fresh: c.fresh,
+              width: 152);
         },
       ),
     );

@@ -281,16 +281,25 @@
     }
   }
   function loadSubs() {
-    var t = auth(); if (!t || loading) return;
+    if (loading) return;
+    var t = auth(), key = 'ct:' + (t ? t.slice(-8) : '-');
     var c = null; try { c = JSON.parse(ls('ctSubsCache') || 'null'); } catch (e) {}
-    if (c && c.k === t.slice(-8) && Date.now() - c.t < 10 * 60e3) { subs = c.l; render(); return; }
+    if (c && c.k === key && Date.now() - c.t < 10 * 60e3) { subs = c.l; render(); return; }
     loading = true;
-    fetch('/api/v1/auth/subscriptions', { headers: hdr(t) })
-      .then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (l) {
-        subs = (l || []).map(function (x) { return { a: x.author, id: x.authorId }; })
-          .sort(function (x, y) { return x.a.localeCompare(y.a, 'ru', { sensitivity: 'base' }); });
-        ls('ctSubsCache', JSON.stringify({ t: Date.now(), k: t.slice(-8), l: subs })); render();
+    function done(l) { subs = l; ls('ctSubsCache', JSON.stringify({ t: Date.now(), k: key, l: subs })); render(); }
+    // список подписок — у сервиса ytsync (знает пользователя по паролю сайта; новые ролики — выше),
+    // запасной путь — API Invidious с токеном Materialious
+    fetch('/ctsubs/api/strip', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (l) { if (!Array.isArray(l)) throw 0; done(l.map(function (x) { return { a: x.author, id: x.id }; })); })
+      .catch(function () {
+        if (!t) return;
+        return fetch('/api/v1/auth/subscriptions', { headers: hdr(t) })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (l) {
+            done((l || []).map(function (x) { return { a: x.author, id: x.authorId }; })
+              .sort(function (x, y) { return x.a.localeCompare(y.a, 'ru', { sensitivity: 'base' }); }));
+          });
       })
       .catch(function () {}).then(function () { loading = false; });
   }
@@ -300,7 +309,7 @@
   function render() {
     var nav = document.getElementById('left-nav'); if (!nav) return;
     var box = nav.querySelector('.ct-subs');
-    if (!subs || !subs.length || !auth()) { if (box) box.remove(); lastKey = ''; return; }
+    if (!subs || !subs.length) { if (box) box.remove(); lastKey = ''; return; }
     var cur = (location.pathname.match(/^\/channel\/([^\/?#]+)/) || [])[1] || '';
     var key = subs.length + '|' + expanded + '|' + cur;
     if (box && key === lastKey) return;
@@ -727,5 +736,52 @@
     if (window.innerHeight + window.scrollY > document.body.scrollHeight - 600) loadVideos();
   }, { passive: true });
   function start() { tick(); setInterval(tick, 500); }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
+/* ---- перевод интерфейса Materialious: строки, которых нет в его русском переводе (ошибки плеера и др.) ---- */
+(function () {
+  var T = {"File saved to Android Downloads folder": "Файл сохранён в папку «Загрузки»", "Login with password": "Войти с паролем", "Login with Quick connect": "Войти по быстрому коду", "Caption styles": "Стиль субтитров", "Very weak": "Очень слабый", "Weak": "Слабый", "Link Invidious account": "Привязать аккаунт Invidious", "Unlink Invidious account": "Отвязать аккаунт Invidious", "Materialious backend": "Сервер Materialious", "Invidious Instance": "Сервер Invidious", "Materialious Instance": "Сервер Materialious", "Remove Materialious instance": "Удалить сервер Materialious", "Login with Materialious account": "Войти через аккаунт Materialious", "Logout of Materialious account": "Выйти из аккаунта Materialious", "Registration currently disabled, contact instance owner.": "Регистрация закрыта — обратитесь к владельцу сервера.", "Your Invidious session is no longer valid. Please log in again.": "Сессия Invidious истекла. Войдите заново.", "Could not check your Invidious session or load notifications. Try again.": "Не удалось проверить сессию Invidious или загрузить уведомления. Попробуйте ещё раз.", "I want to use local video fallback": "Использовать локальный запасной источник видео", "Setup Required": "Требуется настройка", "Invidious is an Self-hostable YouTube interface.": "Invidious — интерфейс YouTube, который можно развернуть на своём сервере.", "Auto scroll": "Автопрокрутка", "Loading transcript": "Загружаю расшифровку", "Unable to load the transcript. Select a language to try again.": "Не удалось загрузить расшифровку. Выберите язык и попробуйте снова.", "Start a watch party": "Начать совместный просмотр", "Watch party": "Совместный просмотр", "Watch videos together in sync.": "Смотрите видео вместе и синхронно.", "Up next": "Далее", "Your queue is empty.": "Очередь пуста.", "Add to queue": "Добавить в очередь", "Remove from queue": "Убрать из очереди", "Move up in queue": "Выше в очереди", "Move down in queue": "Ниже в очереди", "Playlist storage": "Где хранить плейлист", "Private and encrypted with your Materialious account.": "Личный, зашифрован вашим аккаунтом Materialious.", "Video paused due to wifi network change": "Видео на паузе: сменилась сеть Wi-Fi", "Download type": "Что скачать", "Download failed": "Не удалось скачать", "Default subtitle language": "Язык субтитров по умолчанию", "Playback failed": "Не удалось воспроизвести", "The YouTube SABR stream could not be played. The playback session or video source may have expired.": "Поток YouTube (SABR) не воспроизводится: сессия или источник видео могли устареть.", "The video source could not be loaded from Invidious or the companion server.": "Не удалось получить видео от Invidious или сервера-компаньона: YouTube не отдал поток.", "The local YouTube.js video source could not be loaded.": "Не удалось загрузить видео через локальный YouTube.js.", "The video could not be played because of an unexpected error.": "Видео не воспроизводится из-за непредвиденной ошибки.", "Retry": "Повторить", "Retrying…": "Повторяю…", "Retrying...": "Повторяю…", "Hide controls": "Скрыть панель", "Playback controls": "Управление воспроизведением", "Video information": "О видео", "Playback speed": "Скорость воспроизведения", "Font family": "Шрифт", "Loading captions": "Загружаю субтитры", "Subtitle timing": "Сдвиг субтитров", "Quick connect": "Быстрый вход", "No password needed. Enter the 8-character code shown on your signed-in device.": "Без пароля: введите 8-значный код с устройства, где вы уже вошли.", "Find the code in Settings → Account → Quick connect on your signed-in device.": "Код — в «Настройки → Аккаунт → Быстрый вход» на устройстве, где вы вошли.", "Use quick connect": "Войти по коду", "Connecting…": "Подключаюсь…", "Waiting for the other device to send sign-in details…": "Жду, пока другое устройство отправит данные для входа…", "Signed in!": "Вход выполнен!", "That code isn't valid. Check it and try again.": "Код неверный. Проверьте и попробуйте снова.", "That code has already been used.": "Этот код уже использован.", "That code has expired. Ask for a new one.": "Код устарел. Получите новый.", "Press OK, then enter the code": "Нажмите OK и введите код", "Sign in on another device without a password.": "Вход на другом устройстве без пароля.", "Show code": "Показать код", "Couldn't create a code. Try again.": "Не удалось создать код. Попробуйте снова.", "Waiting for a device to enter this code…": "Жду, пока устройство введёт этот код…", "A device connected. Send your sign-in details?": "Устройство подключилось. Отправить ему данные для входа?", "Send sign-in details": "Отправить данные для входа", "Couldn't send sign-in details. Try again.": "Не удалось отправить данные. Попробуйте снова.", "Sign-in details sent.": "Данные для входа отправлены.", "Backend engine": "Движок", "Keybinds": "Горячие клавиши", "Play / Pause": "Пуск / пауза", "Toggle subtitles": "Субтитры вкл/выкл", "Toggle fullscreen": "Во весь экран", "Increase volume": "Громче", "Decrease volume": "Тише", "Decrease playback speed": "Медленнее", "Increase playback speed": "Быстрее", "Frame step backward": "Кадр назад", "Frame step forward": "Кадр вперёд", "Seek backward": "Перемотать назад", "Seek forward": "Перемотать вперёд", "Exit fullscreen / Close player": "Выйти из полноэкранного / закрыть плеер", "Tab 1": "Вкладка 1", "Tab 2": "Вкладка 2", "Tab 3": "Вкладка 3", "Tab 4": "Вкладка 4", "Reset to defaults": "Сбросить по умолчанию", "Are you sure you want to delete this user?": "Удалить этого пользователя?", "User deleted": "Пользователь удалён", "Don't sync settings on this device": "Не синхронизировать настройки на этом устройстве", "Keep this device's settings local instead of updating them from or sending them to your account.": "Хранить настройки только на этом устройстве, не обмениваясь с аккаунтом.", "Export settings to account": "Сохранить настройки в аккаунт", "Import settings from account": "Загрузить настройки из аккаунта", "Settings exported to account": "Настройки сохранены в аккаунт", "Settings imported from account": "Настройки загружены из аккаунта", "Delete account": "Удалить аккаунт", "Enter your current password to permanently delete your account. This action cannot be undone.": "Введите текущий пароль, чтобы удалить аккаунт навсегда. Это нельзя отменить.", "Could not delete your account. Check your current password and connection, then try again.": "Не удалось удалить аккаунт. Проверьте пароль и соединение и попробуйте снова.", "Reset password": "Сбросить пароль", "Current password": "Текущий пароль", "New password": "Новый пароль", "Confirm password": "Повторите пароль", "Passwords do not match": "Пароли не совпадают", "Password reset failed. Check your current password.": "Не удалось сменить пароль. Проверьте текущий пароль.", "Password reset successfully": "Пароль изменён", "Change password": "Сменить пароль", "Save watch history": "Сохранять историю просмотра", "Use original translation": "Оригинальные названия", "On screen navigation controls": "Кнопки навигации на экране", "Advanced theming": "Расширенная настройка темы", "Save as preset": "Сохранить как набор", "Export theme": "Экспорт темы", "Import theme": "Импорт темы", "Theme name": "Название темы", "Theme imported": "Тема загружена", "Failed to import theme": "Не удалось загрузить тему", "Theme exported": "Тема сохранена", "Theme saved": "Тема сохранена", "Delete preset": "Удалить набор", "Border radius": "Скругление углов", "Hide shorts": "Скрывать Shorts", "Advanced settings! For experienced users only. Do not change unless you know what you’re doing.": "Расширенные настройки — только для опытных. Не меняйте, если не уверены.", "Max feed items": "Максимум роликов в ленте", "Re-fetch channel hour cooldown": "Обновлять канал не чаще, ч", "Max amount of channels to parse before feed return": "Сколько каналов разобрать до показа ленты", "Automatic export/import": "Автоэкспорт и импорт", "Export to Invidious from Materialious": "Экспорт из Materialious в Invidious", "Import from Invidious to Materialious": "Импорт из Invidious в Materialious", "Importing to Materialious began": "Импорт в Materialious начат", "Importing to Materialious finished": "Импорт в Materialious завершён", "Exporting to Invidious began": "Экспорт в Invidious начат", "Exporting to Invidious finished": "Экспорт в Invidious завершён", "Fit screen by default": "По размеру экрана", "Automatically fullscreen videos": "Сразу во весь экран", "Rotate fullscreen video when tilting device": "Поворачивать видео при наклоне устройства", "Pause on network change": "Пауза при смене сети", "Automatically enter PiP on app exit": "«Картинка в картинке» при выходе из приложения", "Export to JSON": "Экспорт в JSON", "Non-musical segment": "Немузыкальная часть", "Auto skip": "Пропускать сразу", "Manual skip": "Пропускать по кнопке", "Timeline only": "Только на шкале", "Content Filters": "Фильтры контента", "Import Filters from URL": "Загрузить фильтры по ссылке", "Automatically update filter from URL": "Обновлять фильтры по ссылке автоматически", "Content type": "Тип контента", "Select your option": "Выберите вариант", "Add conditional": "Добавить условие", "Add filter": "Добавить фильтр", "Export/Import": "Экспорт и импорт", "Import subscriptions": "Импорт подписок", "How to export YouTube subscriptions": "Как выгрузить подписки из YouTube", "Importing subscriptions (this will take a moment)": "Импортирую подписки (это займёт немного времени)", "Subscriptions successfully imported": "Подписки импортированы", "Export subscriptions": "Экспорт подписок", "Export to clipboard": "В буфер обмена", "Export to file": "В файл", "Import from file": "Из файла", "Export to share URL": "Ссылкой", "Failed to subscribe": "Не удалось подписаться", "Failed to unsubscribe": "Не удалось отписаться", "Browser companion required": "Нужно расширение-компаньон", "Copy URL": "Скопировать адрес", "Instance URL": "Адрес сервера", "Login with token": "Войти по токену", "Recommended. Sign in on your Invidious instance and authorize Materialious.": "Рекомендуется: войдите на своём сервере Invidious и разрешите доступ Materialious.", "Login failed. Check your Invidious username and password.": "Не удалось войти. Проверьте логин и пароль Invidious.", "Unable to complete login. Check your connection and try again.": "Не удалось войти. Проверьте соединение и попробуйте снова.", "Two-factor authentication": "Двухфакторная защита", "Enable 2FA": "Включить 2FA", "Disable 2FA": "Выключить 2FA", "Authentication code": "Код подтверждения", "Enter the six-digit code from your authenticator app.": "Введите шестизначный код из приложения-аутентификатора.", "Verify and enable": "Проверить и включить", "Cancel setup": "Отменить настройку", "Copy secret": "Скопировать ключ", "Import playlists": "Импорт плейлистов", "Importing playlists…": "Импортирую плейлисты…", "Playlists imported.": "Плейлисты импортированы.", "Export playlists": "Экспорт плейлистов", "Export YouTube CSV": "Экспорт в CSV YouTube", "Exporting playlist…": "Экспортирую плейлист…", "Playlist exported.": "Плейлист экспортирован.", "Bulk actions": "Выбрать несколько", "Manage subscriptions": "Управление подписками"};
+  var P = [["^Ends at (.+)$", "Закончится в $1"], ["^Copy (.+) link$", "Копировать ссылку: $1"], ["^Total users: (\\d+)$", "Всего пользователей: $1"], ["^Expires in (\\d+) seconds$", "Действует ещё $1 с"], ["^Click (\\d+) more time\\(s\\) to delete$", "Нажмите ещё $1 раз(а), чтобы удалить"], ["^(\\d[\\d:]*) of (\\d[\\d:]*)$", "$1 из $2"]].map(function (p) { return [new RegExp(p[0]), p[1]]; });
+  var SKIP = 'a.video-title, .video-title, h5, h6, .description, .comment-info, input, textarea, script, style, .ct-substrip, .ct-subch';
+  function skip(el) { return el.closest(SKIP) && !el.closest('.player-error'); }
+  function tr(s) {
+    var k = s.trim(); if (!k || k.length > 200) return null;
+    if (T.hasOwnProperty(k)) return s.replace(k, T[k]);
+    for (var i = 0; i < P.length; i++) if (P[i][0].test(k)) return s.replace(k, k.replace(P[i][0], P[i][1]));
+    return null;
+  }
+  function fixEl(el) {
+    ['aria-label', 'title', 'placeholder'].forEach(function (a) {
+      var v = el.getAttribute && el.getAttribute(a); if (!v) return;
+      var t = tr(v); if (t && t !== v) el.setAttribute(a, t);
+    });
+  }
+  function walk(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { var p = root.parentElement; if (p && !skip(p)) { var t = tr(root.nodeValue); if (t && t !== root.nodeValue) root.nodeValue = t; } return; }
+    if (root.nodeType !== 1 || skip(root)) return;
+    fixEl(root);
+    root.querySelectorAll('[aria-label],[title],[placeholder]').forEach(fixEl);
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n;
+    while ((n = w.nextNode())) {
+      var pe = n.parentElement; if (!pe || skip(pe)) continue;
+      var t2 = tr(n.nodeValue); if (t2 && t2 !== n.nodeValue) n.nodeValue = t2;
+    }
+  }
+  var q = [], sch = false;
+  function flush() { sch = false; var a = q; q = []; for (var i = 0; i < a.length; i++) walk(a[i]); }
+  function start() {
+    walk(document.body);
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) {
+        var m = ms[i];
+        if (m.type === 'characterData') q.push(m.target);
+        else if (m.type === 'attributes') q.push(m.target);
+        else for (var j = 0; j < m.addedNodes.length; j++) q.push(m.addedNodes[j]);
+      }
+      if (!sch && q.length) { sch = true; requestAnimationFrame(flush); }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
+  }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();

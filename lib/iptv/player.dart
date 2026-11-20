@@ -8,6 +8,8 @@ import 'package:river_player/river_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../cloudtube/theme.dart';
+import 'archive.dart';
+import 'epg.dart';
 import 'm3u.dart';
 import 'store.dart';
 
@@ -68,16 +70,17 @@ Map<String, String> iptvHeaders(IptvChannel c) {
   };
 }
 
-/// Источник для плеера (общий для превью и полноэкранного плеера).
-Future<BetterPlayerDataSource> iptvSource(IptvChannel c, IptvStream s) async {
+/// Источник для плеера (общий для превью и полноэкранного плеера). [archive] — передача из архива.
+Future<BetterPlayerDataSource> iptvSource(IptvChannel c, IptvStream s, {EpgProg? archive}) async {
   final h = iptvHeaders(c);
-  final f = await iptvFormat(s.url, h);
+  final url = archive == null ? s.url : (iptvArchiveUrl(c, s.url, archive.start, archive.stop) ?? s.url);
+  final f = await iptvFormat(s.url, h); // формат — по живому адресу (архив того же вида)
   return BetterPlayerDataSource(
     BetterPlayerDataSourceType.network,
-    s.url,
+    url,
     headers: h,
     videoFormat: f,
-    liveStream: true,
+    liveStream: archive == null,
     bufferingConfiguration: const BetterPlayerBufferingConfiguration(
       minBufferMs: 3000,
       maxBufferMs: 30000,
@@ -113,8 +116,11 @@ class IptvPlayerScreen extends StatefulWidget {
   /// Вариант, выбранный в меню канала (иначе — по настройкам).
   final String? initialQuality;
 
+  /// Передача из архива (иначе — прямой эфир).
+  final EpgProg? archive;
+
   const IptvPlayerScreen(
-      {super.key, required this.channels, required this.index, required this.all, this.initialQuality});
+      {super.key, required this.channels, required this.index, required this.all, this.initialQuality, this.archive});
 
   @override
   State<IptvPlayerScreen> createState() => _IptvPlayerScreenState();
@@ -138,6 +144,10 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
   Timer? _watchdog;
   int _gen = 0;
   final _focus = FocusNode();
+  EpgProg? _archive;
+  Duration _pos = Duration.zero;
+  bool _paused = false;
+  Timer? _tick;
 
   IptvChannel get _ch => _list[_i];
 
@@ -147,12 +157,18 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
     WakelockPlus.enable();
     _ctl.addEventsListener(_onEvent);
     _quality = widget.initialQuality;
+    _archive = widget.archive;
     _play(keepQuality: widget.initialQuality != null);
+    // плашка «сейчас» обновляется раз в 30 с (смена передачи, полоска прогресса)
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _osd) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     WakelockPlus.disable();
+    _tick?.cancel();
     _osdTimer?.cancel();
     _digitTimer?.cancel();
     _watchdog?.cancel();
@@ -173,8 +189,11 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
             _error = null;
           });
         }
+      case BetterPlayerEventType.progress:
+        final p = e.parameters?['progress'];
+        if (p is Duration) _pos = p;
       case BetterPlayerEventType.exception:
-        _fail('Канал не воспроизводится');
+        _fail(_archive != null ? 'Запись недоступна у провайдера' : 'Канал не воспроизводится');
       default:
     }
   }
@@ -183,7 +202,7 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
     _watchdog?.cancel();
     // есть другой вариант канала — пробуем его, прежде чем показать ошибку
     final others = _ch.streams.where((s) => s.url != _stream?.url).toList();
-    if (others.isNotEmpty && _quality == null) {
+    if (others.isNotEmpty && _quality == null && _archive == null) {
       _log.info('${_ch.name}: ${_stream?.quality} не идёт, пробую ${others.first.quality}');
       _quality = others.first.quality;
       _play(keepQuality: true);
@@ -208,8 +227,10 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
     _showOsd();
     unawaited(IptvStore.I.markWatched(c.key));
     try {
-      final src = await iptvSource(c, s);
+      final src = await iptvSource(c, s, archive: _archive);
       if (!mounted || gen != _gen) return;
+      _paused = false;
+      _pos = Duration.zero;
       await _ctl.setupDataSource(src);
       // мёртвый канал: 12 с без картинки — сообщение вместо вечной крутилки
       _watchdog?.cancel();
@@ -222,10 +243,24 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
   }
 
   void _switchTo(int i) {
-    if (i < 0 || i >= _list.length || i == _i) return;
-    _prev = _i;
+    if (i < 0 || i >= _list.length || (i == _i && _archive == null)) return;
+    if (i != _i) _prev = _i;
     _i = i;
+    _archive = null; // другой канал — прямой эфир
     _play();
+  }
+
+  /// Архив: ◀▶ — на 30 с, ОК — пауза.
+  void _seek(int sec) {
+    final to = _pos + Duration(seconds: sec);
+    _ctl.seekTo(to < Duration.zero ? Duration.zero : to);
+    _showOsd();
+  }
+
+  void _togglePause() {
+    _paused ? _ctl.play() : _ctl.pause();
+    setState(() => _paused = !_paused);
+    _showOsd();
   }
 
   void _step(int d) {
@@ -273,13 +308,19 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
     if (_listOpen) return KeyEventResult.ignored;
     if (e is! KeyDownEvent && e is! KeyRepeatEvent) {
       if (e is KeyUpEvent && (e.logicalKey == LogicalKeyboardKey.select || e.logicalKey == LogicalKeyboardKey.enter)) {
-        _openList();
+        _archive != null ? _togglePause() : _openList();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
     }
     final k = e.logicalKey;
-    if (k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.channelDown) {
+    if (_archive != null && (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.mediaRewind)) {
+      _seek(-30);
+    } else if (_archive != null && (k == LogicalKeyboardKey.arrowRight || k == LogicalKeyboardKey.mediaFastForward)) {
+      _seek(30);
+    } else if (k == LogicalKeyboardKey.mediaPlayPause && _archive != null) {
+      _togglePause();
+    } else if (k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.channelDown) {
       _step(-1);
     } else if (k == LogicalKeyboardKey.arrowDown || k == LogicalKeyboardKey.channelUp) {
       _step(1);
@@ -406,14 +447,12 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
                         if (fav) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.star, color: Colors.amber, size: 20)),
                       ]),
                       const SizedBox(height: 4),
-                      Text(
-                          [
-                            if (c.group.isNotEmpty) c.group,
-                            if (c.hasArchive) 'архив ${c.catchupDays} дн.',
-                          ].join(' · '),
-                          style: text.bodyMedium?.copyWith(color: Colors.white70)),
+                      ..._epgLines(this, c, text),
                       const SizedBox(height: 4),
-                      Text('▲▼ каналы · цифры — номер · 0 — предыдущий · ОК — список · МЕНЮ — качество',
+                      Text(
+                          _archive != null
+                              ? '◀▶ перемотка 30 с · ОК — пауза · ▲▼ — в эфир других каналов'
+                              : '▲▼ каналы · цифры — номер · 0 — предыдущий · ОК — список · МЕНЮ — качество',
                           style: text.bodySmall?.copyWith(color: Colors.white54)),
                     ]),
                   ),
@@ -430,6 +469,42 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
         ]),
       ),
     );
+  }
+}
+
+/// «Сейчас / далее» или передача из архива с полоской прогресса.
+List<Widget> _epgLines(_IptvPlayerScreenState st, IptvChannel c, TextTheme text) {
+  {
+    final a = st._archive;
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final cur = a ?? IptvEpg.I.current(c.key);
+    final next = a == null ? IptvEpg.I.upcoming(c.key, count: 1).firstOrNull : null;
+    if (cur == null) {
+      return [
+        Text([if (c.group.isNotEmpty) c.group, if (c.hasArchive) 'архив ${c.catchupDays} дн.'].join(' · '),
+            style: text.bodyMedium?.copyWith(color: Colors.white70)),
+      ];
+    }
+    final dur = (cur.stop - cur.start).clamp(1, 1 << 30);
+    final progress = a != null ? (st._pos.inSeconds / dur).clamp(0.0, 1.0) : cur.progress(nowSec);
+    return [
+      Text(
+          '${a != null ? (st._paused ? '⏸ Архив · ' : 'Архив · ') : ''}${epgHm(cur.startTime)}–${epgHm(cur.stopTime)}  ${cur.title}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: text.titleSmall?.copyWith(color: Colors.white)),
+      const SizedBox(height: 6),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: LinearProgressIndicator(
+            value: progress, minHeight: 4, color: CtColors.red, backgroundColor: Colors.white24),
+      ),
+      if (next != null) ...[
+        const SizedBox(height: 4),
+        Text('Далее ${epgHm(next.startTime)} · ${next.title}',
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: Colors.white70)),
+      ],
+    ];
   }
 }
 
@@ -517,13 +592,16 @@ class IptvLogo extends StatelessWidget {
       child: Text(ini.toUpperCase(),
           style: TextStyle(color: Colors.white, fontSize: h * 0.36, fontWeight: FontWeight.w700)),
     );
-    if (channel.logo.isEmpty) return fallback;
+    // логотип из плейлиста, иначе — из телепрограммы
+    final url = channel.logo.isNotEmpty ? channel.logo : (IptvEpg.I.logos.value[channel.key] ?? '');
+    if (url.isEmpty) return fallback;
     return SizedBox(
       width: w,
       height: h,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(channel.logo,
+        child: Image.network(url,
+            cacheWidth: (w * 2).round(),
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => fallback,
             frameBuilder: (ctx, child, frame, sync) => frame == null && !sync ? fallback : child),

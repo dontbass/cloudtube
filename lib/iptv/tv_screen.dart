@@ -9,7 +9,9 @@ import '../cloudtube/theme.dart';
 import '../router.dart';
 import '../utils/views/tv/components/tv_button.dart';
 import '../utils/views/tv/components/tv_overscan.dart';
+import 'epg.dart';
 import 'link.dart';
+import 'programme.dart';
 import 'm3u.dart';
 import 'player.dart';
 import 'store.dart';
@@ -48,11 +50,17 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
   @override
   void initState() {
     super.initState();
+    IptvEpg.I.now.addListener(_epgChanged);
     _load();
+  }
+
+  void _epgChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    IptvEpg.I.now.removeListener(_epgChanged);
     _previewTimer?.cancel();
     _digitTimer?.cancel();
     _preview?.dispose(forceDispose: true);
@@ -78,6 +86,8 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
       }
       final d = await _store.channels(p, force: force);
       if (!mounted) return;
+      // телепрограмма: с диска сразу, пересборка в фоне раз в 12 ч
+      unawaited(IptvEpg.I.ensure(p, d));
       setState(() {
         _data = d;
         _loading = false;
@@ -187,6 +197,10 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
           SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'add'), child: const Text('＋ Добавить плейлист')),
           if (_store.current?.url.isNotEmpty == true)
             SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'refresh'), child: const Text('↻ Обновить текущий')),
+          if (_store.current != null)
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'epg'), child: const Text('☰ Источник телепрограммы')),
+          if (_store.current != null)
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'epg-refresh'), child: const Text('↻ Обновить телепрограмму')),
           SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'settings'), child: const Text('⚙ Настройки IPTV')),
           if (_store.current != null)
             SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'del'), child: const Text('✕ Удалить текущий')),
@@ -202,6 +216,22 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
       _add();
     } else if (choice == 'refresh') {
       _load(force: true);
+    } else if (choice == 'epg-refresh') {
+      final p = _store.current, d = _data;
+      if (p != null && d != null) unawaited(IptvEpg.I.ensure(p, d, force: true));
+    } else if (choice == 'epg') {
+      final p = _store.current!;
+      final ctl = TextEditingController(text: p.epgUrl);
+      AutoRouter.of(context).push(TvTextFieldRoute(
+          controller: ctl,
+          autocorrect: false,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (v) async {
+            await _store.update(p.copyWith(epgUrl: v.trim()));
+            final d = _data;
+            if (d != null && _store.current != null) unawaited(IptvEpg.I.ensure(_store.current!, d, force: true));
+          }));
     } else if (choice == 'settings') {
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const IptvSettingsScreen()));
       _load();
@@ -310,6 +340,19 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
                 InputChip(label: Text('Поиск: $_query'), onDeleted: () => setState(() => _query = '')),
               ],
               const Spacer(),
+              ValueListenableBuilder<String?>(
+                valueListenable: IptvEpg.I.busy,
+                builder: (_, b, __) => b == null
+                    ? const SizedBox()
+                    : Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                          const SizedBox(width: 8),
+                          Text(b, style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                        ]),
+                      ),
+              ),
               if (_digits.isNotEmpty)
                 Text('№ $_digits', style: text.headlineSmall?.copyWith(color: ctAccent(colors))),
               const SizedBox(width: 12),
@@ -451,11 +494,7 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
                           const SizedBox(width: 10),
                           IptvLogo(channel: c, size: 32),
                           const SizedBox(width: 10),
-                          Expanded(
-                              child: Text(c.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                          Expanded(child: _nameAndNow(c, colors)),
                           if (fav) const Icon(Icons.star, size: 16, color: Colors.amber),
                           if (c.hasArchive)
                             Padding(
@@ -475,11 +514,41 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
     ]);
   }
 
+  List<Widget> _previewEpg(IptvChannel c, ColorScheme colors, TextTheme text) {
+    final cur = IptvEpg.I.current(c.key);
+    if (cur == null) return const [];
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    return [
+      const SizedBox(height: 10),
+      Text('${epgHm(cur.startTime)}–${epgHm(cur.stopTime)}  ${cur.title}',
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: LinearProgressIndicator(
+            value: cur.progress(nowSec), minHeight: 4, color: CtColors.red, backgroundColor: colors.outlineVariant),
+      ),
+      if (cur.desc.isNotEmpty) ...[
+        const SizedBox(height: 4),
+        Text(cur.desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+      ],
+      const SizedBox(height: 6),
+      for (final p in IptvEpg.I.upcoming(c.key, count: 3))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(children: [
+            SizedBox(width: 48, child: Text(epgHm(p.startTime), style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
+            Expanded(child: Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyMedium)),
+          ]),
+        ),
+    ];
+  }
+
   Widget _previewPanel(List<IptvChannel> list, ColorScheme colors, TextTheme text) {
     if (list.isEmpty || _focused >= list.length) return const SizedBox();
     final c = list[_focused];
     final s = iptvPickStream(c, _store.settings.value);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: AspectRatio(
@@ -511,8 +580,18 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
             if (c.hasArchive) 'архив ${c.catchupDays} дн.',
           ].join('  ·  '),
           style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+      ..._previewEpg(c, colors, text),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
+        _TopButton(
+            icon: Icons.view_list_outlined,
+            label: c.hasArchive ? 'Программа и архив' : 'Программа',
+            onPressed: () {
+              _stopPreview();
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => IptvProgrammeScreen(
+                      channel: c, channels: list, index: list.indexOf(c), all: _data?.channels ?? list)));
+            }),
         _TopButton(
             icon: _store.favorites.value.contains(c.key) ? Icons.star : Icons.star_border,
             label: _store.favorites.value.contains(c.key) ? 'В избранном' : 'В избранное',
@@ -526,8 +605,28 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
       const SizedBox(height: 10),
       Text('ОК — смотреть · МЕНЮ — избранное и качество · цифры — канал по номеру',
           style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-    ]);
+    ]));
   }
+}
+
+/// Название канала, под ним — текущая передача и полоска прогресса.
+Widget _nameAndNow(IptvChannel c, ColorScheme colors) {
+  final cur = IptvEpg.I.current(c.key);
+  final name = Text(c.name,
+      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600));
+  if (cur == null) return Align(alignment: Alignment.centerLeft, child: name);
+  final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+    name,
+    Text(cur.title,
+        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+    const SizedBox(height: 3),
+    ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: LinearProgressIndicator(
+          value: cur.progress(nowSec), minHeight: 2.5, color: CtColors.red, backgroundColor: colors.outlineVariant),
+    ),
+  ]);
 }
 
 class _TopButton extends StatelessWidget {

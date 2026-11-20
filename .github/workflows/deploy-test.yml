@@ -27,11 +27,30 @@ jobs:
           echo "без пароля: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/)"
           echo "приглашение без пароля сайта: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/invite/nonexistent)"
           echo "ctinvite: $(sudo ctinvite new -n test 2>&1 | head -2 | tr '\n' ' ')"
-          sudo systemctl is-active cloudtube-feed cloudtube-live cloudtube-invite nginx docker
+          sudo systemctl is-active cloudtube-feed cloudtube-live cloudtube-invite cloudtube-ytsync nginx docker
           sudo docker ps --format '{{.Names}} {{.Status}}'
+      - name: Подписки YouTube (/ctsubs)
+        run: |
+          H=(-H "Host: ct.test" -u admin:testpass123)
+          P=(-H "Origin: http://ct.test" -H "Content-Type: application/json")
+          st() { curl -s "${H[@]}" http://127.0.0.1/ctsubs/api/state; echo; }
+          echo "страница: $(curl -s -o /dev/null -w '%{http_code} %{size_download}b' "${H[@]}" http://127.0.0.1/ctsubs/)"
+          echo "без пароля: $(curl -s -o /dev/null -w '%{http_code}' -H 'Host: ct.test' http://127.0.0.1/ctsubs/api/state)"
+          echo "чужой сайт: $(curl -s -o /dev/null -w '%{http_code}' "${H[@]}" -H 'Origin: https://evil.example' -X POST http://127.0.0.1/ctsubs/api/clear)"
+          echo "состояние:"; st
+          printf 'Channel Id,Channel Url,Channel Title\nUCX6OQ3DkcsbYNE6H8uQQuVA,http://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA,MrBeast\nUCBR8-60-B28hp2BmDPdntcQ,http://www.youtube.com/channel/UCBR8-60-B28hp2BmDPdntcQ,YouTube\n' > /tmp/subs.csv
+          echo "csv:"; curl -s "${H[@]}" -H "Origin: http://ct.test" -H "Content-Type: text/csv" --data-binary @/tmp/subs.csv http://127.0.0.1/ctsubs/api/csv; echo
+          for i in $(seq 1 30); do sleep 3; s=$(st); echo "$s" | grep -q '"running": true' || break; done; echo "после csv: $s"
+          echo "API подписок Invidious: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select array_to_json(subscriptions) from users where email='admin'")"
+          echo "каналы в базе: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select count(*) from channels")  сессий осталось: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select count(*) from session_ids")"
+          echo "удалить все:"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/clear | head -c 300; echo
+          echo "вернуть:"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/undo | head -c 300; echo
+          echo "вход в YouTube (код):"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/link | grep -o '"login": {[^}]*}' | sed 's/"code": "[^"]*"/"code": "…"/'
+          curl -s -o /dev/null "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/link-cancel
+          sudo journalctl -u cloudtube-ytsync --no-pager | tail -15
       - name: Снимки
         run: |
-          for p in "/" "/login" "/ctadmin/"; do
+          for p in "/" "/login" "/ctadmin/" "/ctsubs/"; do
             n=$(echo "$p" | tr -c 'a-z' '_')
             google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
               --host-resolver-rules="MAP ct.test 127.0.0.1" --window-size=1366,860 \

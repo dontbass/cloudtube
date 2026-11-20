@@ -21,6 +21,7 @@ import '../../videos/models/video.dart';
 import '../../videos/models/format_stream.dart';
 import '../views/components/player_controls.dart';
 import '../views/tv/components/player_controls.dart';
+import '../../cloudtube/afr.dart';
 import '../../cloudtube/trace.dart';
 import '../../cloudtube/hls_local.dart';
 import '../core/recovery.dart';
@@ -81,6 +82,7 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   @override
   disposeControllers() {
     WakelockPlus.disable();
+    unawaited(CtAfr.restore());
     log.fine("Disposing video controller");
     var state = this.state.copyWith();
     videoController?.exitFullScreen();
@@ -387,6 +389,9 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
         _ctDashHeight = choice.kind == CtStreamKind.ownDash ? choice.height : null;
         _ctCurHeight = choice.fixedQuality ? choice.height : null;
         if (choice.kind == CtStreamKind.ownDash) _ctCurItag = choice.itag;
+        // ТВ: частота экрана под ролик (25/50 к/с — 50 Гц, 24 — 24 Гц, 30/60 — 60 Гц)
+        if (choice.kind == CtStreamKind.ownDash) unawaited(CtAfr.forFps(CtDashLocal.fpsOf(id, choice.itag)));
+        final uhd = (choice.height ?? 0) >= 1440;
         final progressiveRes = choice.progressiveResolution;
         if (progressiveRes != null) {
           newState = newState.copyWith(selectedNonDashTrack: progressiveRes);
@@ -421,13 +426,21 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
                   selectedByDefault: s.label == lastSubtitle))
               .toList(),
           resolutions: resolutions.isNotEmpty ? resolutions : null,
-          // старт по первым ~0,6 с данных (по умолчанию ExoPlayer ждёт 2,5 с буфера — это и есть пауза перед стартом)
-          bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-            minBufferMs: 8000,
-            maxBufferMs: 40000,
-            bufferForPlaybackMs: 600,
-            bufferForPlaybackAfterRebufferMs: 2000,
-          ),
+          // старт по первым ~0,6 с данных (по умолчанию ExoPlayer ждёт 2,5 с буфера — это и есть пауза перед стартом).
+          // 1440p/4K: VP9 15–40 Мбит/с — буфер длиннее и старт после 1,5 с, иначе на Wi-Fi подкачки
+          bufferingConfiguration: uhd
+              ? const BetterPlayerBufferingConfiguration(
+                  minBufferMs: 15000,
+                  maxBufferMs: 60000,
+                  bufferForPlaybackMs: 1500,
+                  bufferForPlaybackAfterRebufferMs: 4000,
+                )
+              : const BetterPlayerBufferingConfiguration(
+                  minBufferMs: 8000,
+                  maxBufferMs: 40000,
+                  bufferForPlaybackMs: 600,
+                  bufferForPlaybackAfterRebufferMs: 2000,
+                ),
         );
       }
 

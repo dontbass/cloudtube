@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:river_player/river_player.dart';
 
+import '../cloudtube/media_caps.dart';
+import '../cloudtube/prefs.dart';
 import '../cloudtube/theme.dart';
 import '../router.dart';
 import '../utils/views/tv/components/tv_button.dart';
@@ -51,6 +53,7 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
   void initState() {
     super.initState();
     IptvEpg.I.now.addListener(_epgChanged);
+    unawaited(CtMediaCaps.load());
     _load();
   }
 
@@ -674,16 +677,28 @@ class _IptvSettingsScreenState extends State<IptvSettingsScreen> {
         child: ListView(children: [
           Text('Настройки IPTV', style: text.headlineSmall),
           const SizedBox(height: 12),
-          sw('Максимальное качество по умолчанию',
-              'Выкл — «совместимое» (HD со звуком AAC, играет на любой приставке). Вкл — FHD/4K: звук MP2 декодируют не все устройства',
-              s.preferMax, (v) => _set(s.copyWith(preferMax: v)),
-              autofocus: true),
+          ListTile(
+            autofocus: true,
+            title: Text('Качество по умолчанию: ${switch (s.quality) { 1 => 'совместимое', 2 => 'максимальное', _ => 'авто' }}'),
+            subtitle: Text(switch (s.quality) {
+              1 => 'HD со звуком AAC — играет на любой приставке',
+              2 => 'FHD/4K всегда: звук MP2 декодируют не все устройства',
+              _ => 'По декодерам приставки: ${CtMediaCaps.I.mp2 ? 'MP2 есть — FHD' : 'MP2 нет — HD'}'
+                  '${CtMediaCaps.I.avc4k ? ', 4K H.264 тянет — 4K' : ''}',
+            }),
+            onTap: () => _set(s.copyWith(quality: (s.quality + 1) % 3)),
+          ),
           sw('Объединять варианты канала', 'HD / FHD / 4K одного канала — одной строкой, качество выбирается в меню',
               s.merge, (v) => _set(s.copyWith(merge: v))),
           sw('Показывать 4K', 'На слабых приставках 4K в H.264 может идти рывками', s.show4k,
               (v) => _set(s.copyWith(show4k: v))),
           sw('Открывать последний канал', 'При входе в «ТВ-каналы» сразу включать канал, который смотрели',
               s.resumeLast, (v) => _set(s.copyWith(resumeLast: v))),
+          sw('Частота экрана под видео', 'На время просмотра 50 Гц для эфира (25/50 кадров) — без рывков; после — как было',
+              CtPrefs.afr.value, (v) async {
+            await CtPrefs.afr.set(v);
+            if (mounted) setState(() {});
+          }),
           ListTile(
             title: const Text('Обновлять плейлист'),
             subtitle: Text('Если старше ${s.refreshHours} ч — при входе в раздел'),

@@ -7,6 +7,8 @@ import 'package:logging/logging.dart';
 import 'package:river_player/river_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../cloudtube/afr.dart';
+import '../cloudtube/media_caps.dart';
 import '../cloudtube/theme.dart';
 import 'archive.dart';
 import 'epg.dart';
@@ -15,19 +17,42 @@ import 'store.dart';
 
 final _log = Logger('IptvPlayer');
 
-/// Вариант канала по настройкам: «совместимый» (HD со звуком AAC) или максимальный.
-IptvStream iptvPickStream(IptvChannel c, IptvSettings s, {String? quality}) {
+final _uhdRe = RegExp('uhd|4k|8k|2160', caseSensitive: false);
+
+bool iptvIsUhd(IptvStream s) => _uhdRe.hasMatch(s.quality) || _uhdRe.hasMatch(s.url);
+
+/// Брать максимальный вариант (FHD/4K со звуком MP2): явно в настройках или «авто» и декодер MP2 есть.
+bool iptvPreferMax(IptvSettings s, [CtMediaCaps? caps]) {
+  final c = caps ?? CtMediaCaps.I;
+  return s.quality == 2 || (s.quality == 0 && c.mp2);
+}
+
+/// Пускать ли 4K: выключатель «Показывать 4K»; в «авто» — только если декодер тянет 4K H.264.
+bool iptvAllow4k(IptvSettings s, [CtMediaCaps? caps]) {
+  final c = caps ?? CtMediaCaps.I;
+  return s.show4k && (s.quality == 2 || (s.quality == 0 && c.mp2 && c.avc4k));
+}
+
+/// Вариант канала по настройкам: «совместимый» (HD со звуком AAC), максимальный или авто по декодерам.
+IptvStream iptvPickStream(IptvChannel c, IptvSettings s, {String? quality, CtMediaCaps? caps}) {
   if (quality != null) {
     final q = c.streams.where((x) => x.quality == quality).firstOrNull;
     if (q != null) return q;
   }
-  final list = c.streams
-      .where((x) => s.show4k || !RegExp('uhd|4k|8k', caseSensitive: false).hasMatch(x.quality))
-      .toList();
+  final max = iptvPreferMax(s, caps);
+  final allow4k = iptvAllow4k(s, caps);
+  final list = c.streams.where((x) => allow4k || !iptvIsUhd(x)).toList();
   final pool = list.isEmpty ? c.streams : list;
   final sorted = [...pool]
-    ..sort((a, b) => qualityRank(a.quality, preferMax: s.preferMax).compareTo(qualityRank(b.quality, preferMax: s.preferMax)));
+    ..sort((a, b) => qualityRank(a.quality, preferMax: max).compareTo(qualityRank(b.quality, preferMax: max)));
   return sorted.first;
+}
+
+/// Частота кадров эфирного канала для AFR: у нас (и в Европе) эфир 25/50 к/с, у американских — 30/60.
+double iptvFps(IptvChannel c) {
+  final g = '${c.group} ${c.name}'.toLowerCase();
+  if (RegExp(r'\busa\b|сша|\bus\b|america|канада|canada').hasMatch(g)) return 59.94;
+  return 50;
 }
 
 final _formatCache = <String, BetterPlayerVideoFormat>{};
@@ -81,12 +106,20 @@ Future<BetterPlayerDataSource> iptvSource(IptvChannel c, IptvStream s, {EpgProg?
     headers: h,
     videoFormat: f,
     liveStream: archive == null,
-    bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-      minBufferMs: 3000,
-      maxBufferMs: 30000,
-      bufferForPlaybackMs: 1000,
-      bufferForPlaybackAfterRebufferMs: 2500,
-    ),
+    // 4K: битрейт 20–40 Мбит/с — копим больше перед стартом и после подгрузки, иначе на Wi-Fi рывки
+    bufferingConfiguration: iptvIsUhd(s)
+        ? const BetterPlayerBufferingConfiguration(
+            minBufferMs: 6000,
+            maxBufferMs: 50000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000,
+          )
+        : const BetterPlayerBufferingConfiguration(
+            minBufferMs: 3000,
+            maxBufferMs: 30000,
+            bufferForPlaybackMs: 1000,
+            bufferForPlaybackAfterRebufferMs: 2500,
+          ),
   );
 }
 
@@ -168,6 +201,7 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
   @override
   void dispose() {
     WakelockPlus.disable();
+    unawaited(CtAfr.restore());
     _tick?.cancel();
     _osdTimer?.cancel();
     _digitTimer?.cancel();
@@ -218,7 +252,10 @@ class _IptvPlayerScreenState extends State<IptvPlayerScreen> {
     final gen = ++_gen;
     if (!keepQuality) _quality = null;
     final c = _ch;
+    await CtMediaCaps.load();
+    if (!mounted || gen != _gen) return;
     final s = iptvPickStream(c, IptvStore.I.settings.value, quality: _quality);
+    unawaited(CtAfr.forFps(iptvFps(c)));
     setState(() {
       _stream = s;
       _loading = true;

@@ -1,4 +1,7 @@
+import 'package:cloudtube/cloudtube/media_caps.dart';
 import 'package:cloudtube/iptv/m3u.dart';
+import 'package:cloudtube/iptv/player.dart';
+import 'package:cloudtube/iptv/store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const edem = '''#EXTM3U
@@ -68,5 +71,29 @@ void main() {
     int best(bool max) => c.streams.map((s) => qualityRank(s.quality, preferMax: max)).reduce((a, b) => a < b ? a : b);
     expect(c.streams.firstWhere((s) => qualityRank(s.quality) == best(false)).quality, 'HD');
     expect(c.streams.firstWhere((s) => qualityRank(s.quality, preferMax: true) == best(true)).quality, 'UHD');
+  });
+
+  test('авто-качество — по декодерам приставки', () {
+    final c = parseM3u(edem).channels.first;
+    const auto = IptvSettings();
+    String pick(IptvSettings s, CtMediaCaps caps) => iptvPickStream(c, s, caps: caps).quality;
+    // слабая приставка без MP2 — HD (звук AAC)
+    expect(pick(auto, const CtMediaCaps()), 'HD');
+    // MP2 есть, 4K H.264 нет — FHD
+    expect(pick(auto, const CtMediaCaps(mp2: true)), 'FHD');
+    // RockTek G2 и подобные: MP2 и 4K H.264 — 4K
+    expect(pick(auto, const CtMediaCaps(mp2: true, avc4k: true)), 'UHD');
+    // 4K выключен в настройках — FHD
+    expect(pick(auto.copyWith(show4k: false), const CtMediaCaps(mp2: true, avc4k: true)), 'FHD');
+    // «совместимое» — всегда HD, «максимальное» — всегда 4K
+    expect(pick(auto.copyWith(quality: 1), const CtMediaCaps(mp2: true, avc4k: true)), 'HD');
+    expect(pick(auto.copyWith(quality: 2), const CtMediaCaps()), 'UHD');
+    // старые настройки: 'max': true — максимальное
+    expect(IptvSettings.fromJson({'max': true}).quality, 2);
+  });
+
+  test('частота кадров канала для AFR', () {
+    final c = parseM3u(edem).channels.first;
+    expect(iptvFps(c), 50);
   });
 }

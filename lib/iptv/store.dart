@@ -51,9 +51,9 @@ class IptvPlaylist {
 
 /// Настройки IPTV.
 class IptvSettings {
-  /// Качество по умолчанию: false — «совместимое» (HD со звуком AAC, работает на любой приставке),
-  /// true — максимальное (FHD/4K; звук MP2 декодируют не все приставки).
-  final bool preferMax;
+  /// Качество по умолчанию: 0 — авто (по декодерам устройства: есть MP2 — FHD, тянет 4K H.264 — 4K),
+  /// 1 — «совместимое» (HD со звуком AAC, работает на любой приставке), 2 — максимальное.
+  final int quality;
 
   /// Объединять варианты одного канала (HD / FHD / 4K) в одну строку.
   final bool merge;
@@ -71,7 +71,7 @@ class IptvSettings {
   final String defaultEpg;
 
   const IptvSettings({
-    this.preferMax = false,
+    this.quality = 0,
     this.merge = true,
     this.show4k = true,
     this.resumeLast = false,
@@ -80,9 +80,9 @@ class IptvSettings {
   });
 
   IptvSettings copyWith(
-          {bool? preferMax, bool? merge, bool? show4k, bool? resumeLast, int? refreshHours, String? defaultEpg}) =>
+          {int? quality, bool? merge, bool? show4k, bool? resumeLast, int? refreshHours, String? defaultEpg}) =>
       IptvSettings(
-          preferMax: preferMax ?? this.preferMax,
+          quality: quality ?? this.quality,
           merge: merge ?? this.merge,
           show4k: show4k ?? this.show4k,
           resumeLast: resumeLast ?? this.resumeLast,
@@ -90,7 +90,7 @@ class IptvSettings {
           defaultEpg: defaultEpg ?? this.defaultEpg);
 
   Map<String, Object?> toJson() => {
-        'max': preferMax,
+        'q': quality,
         'merge': merge,
         '4k': show4k,
         'resume': resumeLast,
@@ -99,7 +99,7 @@ class IptvSettings {
       };
 
   static IptvSettings fromJson(Map m) => IptvSettings(
-        preferMax: m['max'] == true,
+        quality: (m['q'] as num?)?.toInt() ?? (m['max'] == true ? 2 : 0),
         merge: m['merge'] != false,
         show4k: m['4k'] != false,
         resumeLast: m['resume'] == true,

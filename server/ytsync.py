@@ -463,6 +463,50 @@ def scheduler():
         time.sleep(600)
 
 
+# ------------------------------------------------------------------ полоса каналов на странице «Подписки»
+FRESH_DAYS = 3
+
+
+def strip(name):
+    """Каналы подписок как в приложении: сколько новых роликов (за 3 дня, не просмотренных) и когда был последний.
+    Порядок: сначала со свежими (по времени последнего ролика), остальные по алфавиту."""
+    raw = psql(f"""with u as (select coalesce(subscriptions, '{{}}') s, coalesce(watched, '{{}}') w from users where email = :'u'),
+        ids as (select distinct unnest(s) id from u)
+        select coalesce(json_agg(t), '[]') from (
+          select ids.id, coalesce(c.author, (select author from channel_videos where ucid = ids.id limit 1), ids.id) author,
+                 coalesce((select extract(epoch from max(published))::bigint from channel_videos v where v.ucid = ids.id), 0) latest,
+                 (select count(*) from channel_videos v where v.ucid = ids.id
+                    and v.published > now() - interval '{FRESH_DAYS} days' and not (v.id = any((select w from u)))) fresh
+          from ids left join channels c on c.id = ids.id) t;""", u=name)
+    rows = json.loads(raw or "[]")
+    rows.sort(key=lambda r: (0, -r["latest"]) if r["fresh"] else (1, (r["author"] or "").lower()))
+    return rows
+
+
+def channel_videos(cid, page):
+    off = max(0, page - 1) * 30
+    raw = psql(f"""select coalesce(json_agg(t), '[]') from (
+          select id "videoId", title, author, ucid "authorId", extract(epoch from published)::bigint published,
+                 length_seconds "lengthSeconds", live_now "liveNow", views "viewCount",
+                 coalesce(premiere_timestamp > now(), false) upcoming
+          from channel_videos where ucid = :'c' order by published desc limit 30 offset {off}) t;""", c=cid)
+    vids = json.loads(raw or "[]")
+    if vids or page > 1:
+        return vids
+    # канал ещё не обновлялся Invidious — берём ролики у него напрямую
+    try:
+        with urllib.request.urlopen(f"{INV}/api/v1/channels/{cid}/videos?hl={HL}&region={GL}", timeout=25) as r:
+            j = json.load(r)
+        out = []
+        for v in (j.get("videos") if isinstance(j, dict) else j) or []:
+            out.append({k: v.get(k) for k in ("videoId", "title", "author", "authorId", "published", "lengthSeconds",
+                                              "liveNow", "viewCount")} | {"upcoming": bool(v.get("isUpcoming"))})
+        return out
+    except Exception as e:
+        log("channel", cid, e)
+        return []
+
+
 # ------------------------------------------------------------------ веб
 _resolved = {}
 
@@ -660,6 +704,22 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, PAGE.encode(), "text/html; charset=utf-8")
         if p == "/ctsubs/api/state":
             return self.send(200, state(name))
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        try:
+            if p == "/ctsubs/api/strip":
+                return self.send(200, strip(name))
+            if p == "/ctsubs/api/channel":
+                cid = (q.get("id") or [""])[0]
+                if not UC_RE.match(cid):
+                    return self.send(400, {"error": "нет такого канала"})
+                try:
+                    page = min(50, max(1, int((q.get("page") or ["1"])[0])))
+                except ValueError:
+                    page = 1
+                return self.send(200, channel_videos(cid, page))
+        except Exception as e:
+            log(name, p, e)
+            return self.send(500, {"error": str(e)})
         self.send(404, {"error": "нет такой страницы"})
 
     def do_POST(self):

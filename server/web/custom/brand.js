@@ -556,3 +556,176 @@
   function start() { ensure(); setInterval(ensure, 500); }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+/* ---- «Подписки»: плитки каналов над лентой, как в приложении CloudTube.
+        «Все» — обычная лента; канал — его последние ролики там же. Данные — /ctsubs/api (сервис ytsync) ---- */
+(function () {
+  var D = document.documentElement, list = null, listAt = 0, loading = false, order = null;
+  var sel = null, vids = [], page = 1, more = true, vLoading = false, lastKey = '';
+  try { sel = sessionStorage.getItem('ctSubSel') || null; } catch (e) {}
+  var AV = {}; try { AV = JSON.parse(localStorage.getItem('ctAv2') || '{}'); } catch (e) {}
+  var avWant = {}, avBusy = false, avFailed = {};
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function onPage() { return location.pathname.replace(/\/+$/, '') === '/subscriptions'; }
+  function spaGo(href) {
+    var t = document.getElementById('top-content') || document.body, a = document.createElement('a');
+    a.href = href; a.style.display = 'none'; t.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 0);
+  }
+  function setSel(id) {
+    sel = id; vids = []; page = 1; more = true; lastKey = '';
+    try { id ? sessionStorage.setItem('ctSubSel', id) : sessionStorage.removeItem('ctSubSel'); } catch (e) {}
+    if (id) loadVideos(); render();
+    var s = document.querySelector('#main-content .ct-substrip');
+    if (s) window.scrollTo({ top: Math.max(0, s.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' });
+  }
+  function ago(t) {
+    var d = Date.now() / 1000 - t; if (!t || d < 0) return '';
+    var u = [[31536000, 'год', 'года', 'лет'], [2592000, 'месяц', 'месяца', 'месяцев'], [604800, 'неделю', 'недели', 'недель'],
+             [86400, 'день', 'дня', 'дней'], [3600, 'час', 'часа', 'часов'], [60, 'минуту', 'минуты', 'минут']];
+    for (var i = 0; i < u.length; i++) {
+      var n = Math.floor(d / u[i][0]); if (n < 1) continue;
+      var m = n % 10, h = n % 100, w = m === 1 && h !== 11 ? u[i][1] : m >= 2 && m <= 4 && (h < 10 || h >= 20) ? u[i][2] : u[i][3];
+      return n + ' ' + w + ' назад';
+    }
+    return 'только что';
+  }
+  function views(n) {
+    if (!n) return '';
+    function f(x) { return x.toFixed(1).replace(/\.0$/, '').replace('.', ','); }
+    return (n >= 1e9 ? f(n / 1e9) + ' млрд' : n >= 1e6 ? f(n / 1e6) + ' млн' : n >= 1e3 ? Math.floor(n / 1e3) + ' тыс.' : String(n)) + ' просмотров';
+  }
+  function dur(s) {
+    if (!s) return '';
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (x < 10 ? '0' : '') + x;
+  }
+  function loadList(force) {
+    if (loading || (!force && list && Date.now() - listAt < 120e3)) return;
+    loading = true;
+    fetch('/ctsubs/api/strip', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (l) { if (Array.isArray(l)) { list = l; listAt = Date.now(); lastKey = ''; render(); } })
+      .catch(function () {}).then(function () { loading = false; });
+  }
+  function loadVideos() {
+    if (!sel || vLoading || !more) return;
+    vLoading = true; var want = sel, p = page;
+    fetch('/ctsubs/api/channel?id=' + encodeURIComponent(want) + '&page=' + p, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (l) {
+        if (want !== sel) return;
+        l = Array.isArray(l) ? l : [];
+        vids = vids.concat(l); page = p + 1; more = l.length >= 30; lastKey = ''; render();
+      })
+      .catch(function () { more = false; }).then(function () { vLoading = false; lastKey = ''; render(); });
+  }
+  function pullAv() {
+    if (avBusy) return;
+    var ids = Object.keys(avWant).slice(0, 40); if (!ids.length) return;
+    ids.forEach(function (i) { delete avWant[i]; }); avBusy = true;
+    fetch('/ct-api/avatars?ids=' + ids.join(','), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (j) {
+        var now = Date.now();
+        ids.forEach(function (i) {
+          if (!j[i]) { avFailed[i] = now; return; }
+          AV[i] = { u: j[i], t: now };
+          document.querySelectorAll('.ct-substrip img[data-id="' + i + '"]').forEach(function (im) { im.src = j[i]; im.classList.remove('ct-noav'); });
+        });
+        try { var C = JSON.parse(localStorage.getItem('ctAv2') || '{}'); ids.forEach(function (i) { if (AV[i]) C[i] = AV[i]; }); localStorage.setItem('ctAv2', JSON.stringify(C)); } catch (e) {}
+      })
+      .catch(function () {}).then(function () { avBusy = false; pullAv(); });
+  }
+  function avatar(c) {
+    var a = AV[c.id];
+    if (!a && !avFailed[c.id]) avWant[c.id] = 1;
+    var letter = esc((c.author || '?').trim().charAt(0).toUpperCase());
+    return '<span class="ct-sav"><b>' + letter + '</b>' + (a && a.u ? '<img data-id="' + esc(c.id) + '" src="' + esc(a.u) + '" alt="" loading="lazy">' :
+           '<img class="ct-noav" data-id="' + esc(c.id) + '" alt="">') + '</span>';
+  }
+  function ordered() {
+    if (!list) return [];
+    if (!order) order = list.map(function (c) { return c.id; });   // порядок не прыгает, пока страница открыта
+    var pos = {}; order.forEach(function (id, i) { pos[id] = i; });
+    return list.slice().sort(function (a, b) { return (pos[a.id] == null ? 1e9 : pos[a.id]) - (pos[b.id] == null ? 1e9 : pos[b.id]); });
+  }
+  function cards() {
+    var h = '';
+    vids.forEach(function (v) {
+      var meta = [views(v.viewCount), v.upcoming ? 'Премьера' : v.liveNow ? 'В эфире' : ago(v.published)].filter(Boolean).join(' • ');
+      h += '<a class="ct-scard" href="/watch?v=' + esc(v.videoId) + '" data-v="' + esc(v.videoId) + '">' +
+        '<span class="ct-sthumb"><img src="/vi/' + esc(v.videoId) + '/mqdefault.jpg" alt="" loading="lazy">' +
+        (v.liveNow ? '<em class="live">В ЭФИРЕ</em>' : v.lengthSeconds ? '<em>' + dur(v.lengthSeconds) + '</em>' : '') + '</span>' +
+        '<span class="ct-stitle">' + esc(v.title) + '</span><span class="ct-smeta">' + esc(meta) + '</span></a>';
+    });
+    return h;
+  }
+  function render() {
+    var main = document.getElementById('main-content');
+    var strip = main && main.querySelector(':scope > .ct-substrip'), box = main && main.querySelector(':scope > .ct-subch');
+    if (!onPage() || !main) {
+      if (strip) strip.remove(); if (box) box.remove();
+      document.querySelectorAll('[data-ct-hid]').forEach(function (e) { e.removeAttribute('data-ct-hid'); });
+      D.classList.remove('ct-subsel'); order = null; return;
+    }
+    var anchor = main.querySelector(':scope > nav.right-align') || main.querySelector(':scope > .space');
+    if (!anchor || !list || !list.length) return;
+    var chans = ordered();
+    if (sel && !chans.some(function (c) { return c.id === sel; })) { sel = null; try { sessionStorage.removeItem('ctSubSel'); } catch (e) {} }
+    var key = chans.map(function (c) { return c.id + c.fresh; }).join() + '|' + sel + '|' + vids.length + '|' + vLoading + '|' + more;
+    if (!strip) {
+      strip = document.createElement('div'); strip.className = 'ct-substrip'; strip.setAttribute('role', 'tablist');
+      strip.addEventListener('click', function (e) {
+        var t = e.target.closest('[data-ch]'); if (!t) return; e.preventDefault();
+        var id = t.getAttribute('data-ch'); setSel(!id || id === sel ? null : id);
+      });
+      lastKey = '';
+    }
+    if (strip.previousElementSibling !== anchor) anchor.after(strip);
+    if (key !== lastKey) {
+      lastKey = key;
+      var sl = strip.scrollLeft;
+      var h = '<button class="ct-stile' + (sel ? '' : ' on') + '" data-ch=""><span class="ct-sav ct-all"><i>grid_view</i></span><span class="ct-sname">Все</span></button>';
+      chans.forEach(function (c) {
+        h += '<button class="ct-stile' + (c.id === sel ? ' on' : '') + '" data-ch="' + esc(c.id) + '" title="' + esc(c.author) + '">' + avatar(c) +
+          (c.fresh ? '<span class="ct-fresh">' + (c.fresh > 9 ? '9+' : c.fresh) + '</span>' : '') + '<span class="ct-sname">' + esc(c.author) + '</span></button>';
+      });
+      strip.innerHTML = h; strip.scrollLeft = sl;
+      strip.querySelectorAll('img.ct-noav').forEach(function (im) { im.addEventListener('error', function () { im.remove(); }); });
+      pullAv();
+      if (sel) {
+        var c = chans.filter(function (x) { return x.id === sel; })[0];
+        if (!box) {
+          box = document.createElement('div'); box.className = 'ct-subch';
+          box.addEventListener('click', function (e) {
+            var a = e.target.closest('a[href]'); if (a) { e.preventDefault(); spaGo(a.getAttribute('href')); return; }
+            if (e.target.closest('.ct-smore')) loadVideos();
+          });
+        }
+        box.innerHTML = '<div class="ct-shead"><div><b>' + esc(c.author) + '</b><small>' + (c.fresh ? c.fresh + ' новых · последние ролики' : 'Последние ролики') +
+          '</small></div><a class="ct-sgo" href="/channel/' + esc(c.id) + '">На канал<i>chevron_right</i></a></div>' +
+          '<div class="ct-sgrid">' + cards() + '</div>' +
+          (vLoading ? '<div class="ct-sload"><progress class="circle small indeterminate"></progress></div>' :
+           !vids.length ? '<p class="ct-sempty">Роликов пока нет — Invidious ещё не загрузил этот канал.</p>' :
+           more ? '<button class="ct-smore">Показать ещё</button>' : '');
+      } else if (box) { box.remove(); box = null; }
+    }
+    if (box && box.previousElementSibling !== strip) strip.after(box);
+    // родная лента Materialious скрыта, пока выбран канал
+    var hide = !!sel, n = (box || strip).nextElementSibling;
+    D.classList.toggle('ct-subsel', hide);
+    while (n) { if (hide) n.setAttribute('data-ct-hid', ''); else n.removeAttribute('data-ct-hid'); n = n.nextElementSibling; }
+  }
+  var lastPath = '';
+  function tick() {
+    if (location.pathname !== lastPath) { lastPath = location.pathname; if (onPage()) loadList(true); }
+    if (onPage()) loadList(false);
+    render();
+  }
+  window.addEventListener('scroll', function () {
+    if (!sel || !more || vLoading || !onPage()) return;
+    if (window.innerHeight + window.scrollY > document.body.scrollHeight - 600) loadVideos();
+  }, { passive: true });
+  function start() { tick(); setInterval(tick, 500); }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();

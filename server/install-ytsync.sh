@@ -4,7 +4,7 @@
 # Что делает:
 #   • ставит ytsync.py в /opt/cloudtube-addons и сервис cloudtube-ytsync (127.0.0.1:3500);
 #   • добавляет в nginx location /ctsubs (если находит конфиг CloudTube, иначе печатает, что вставить);
-#   • обновляет brand.js сайта (пункт «Импорт подписок» в меню), если сайт ставился deploy.sh.
+#   • обновляет brand.js и yt.css сайта (пункт «Импорт подписок», плитки каналов на «Подписках»).
 # Параметры (необязательно): INV_URL DB_CONTAINER SYNC_PORT SYNC_HOURS REGION HL CT_DOMAIN CT_REPO NGINX_CONF WEB
 #   SYNC_USER_MAP="логин_сайта=аккаунт_invidious,…" — если логин сайта не совпадает с аккаунтом Invidious
 set -euo pipefail
@@ -90,8 +90,10 @@ systemctl enable --now cloudtube-ytsync >/dev/null
 systemctl restart cloudtube-ytsync
 
 if [ -n "${WEB:-}" ] && [ -d "$WEB/custom" ]; then
-  echo "[*] brand.js → $WEB/custom"
-  curl -fsSL "$CT_REPO/server/web/custom/brand.js" -o "$WEB/custom/brand.js.new" && mv "$WEB/custom/brand.js.new" "$WEB/custom/brand.js"
+  echo "[*] оформление сайта (brand.js, yt.css) → $WEB/custom"
+  for f in brand.js yt.css; do
+    curl -fsSL "$CT_REPO/server/web/custom/$f" -o "$WEB/custom/$f.new" && mv "$WEB/custom/$f.new" "$WEB/custom/$f"
+  done
 fi
 
 BLOCK='    # «Подписки YouTube»: перенос подписок с YouTube и удаление всех (для каждого пользователя сайта)

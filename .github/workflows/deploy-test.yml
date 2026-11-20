@@ -43,6 +43,8 @@ jobs:
           for i in $(seq 1 30); do sleep 3; s=$(st); echo "$s" | grep -q '"running": true' || break; done; echo "после csv: $s"
           echo "API подписок Invidious: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select array_to_json(subscriptions) from users where email='admin'")"
           echo "каналы в базе: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select count(*) from channels")  сессий осталось: $(sudo docker exec invidious-db psql -U kemal -d invidious -Atc "select count(*) from session_ids")"
+          echo "плитки: $(curl -s "${H[@]}" http://127.0.0.1/ctsubs/api/strip | head -c 400)"
+          echo "ролики канала: $(curl -s "${H[@]}" 'http://127.0.0.1/ctsubs/api/channel?id=UCBR8-60-B28hp2BmDPdntcQ' | head -c 300)"
           echo "удалить все:"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/clear | head -c 300; echo
           echo "вернуть:"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/undo | head -c 300; echo
           echo "вход в YouTube (код):"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/link | grep -o '"login": {[^}]*}' | sed 's/"code": "[^"]*"/"code": "…"/'

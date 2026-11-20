@@ -59,6 +59,26 @@ List<CtSubChannel> ctRankSubChannels(List<(String, String)> subs, List<Video> fe
   return out;
 }
 
+/// Порядок плиток фиксируется после первой расстановки: лента догружается, а плитки не
+/// переезжают под фокусом/пальцем (раньше ОК на ТВ мог открыть соседний канал).
+/// [reset] — при обновлении ленты/списка подписок порядок считается заново.
+class CtStableOrder {
+  List<String>? _ids;
+
+  void reset() => _ids = null;
+
+  List<CtSubChannel> apply(List<CtSubChannel> ranked, {required bool hasFeed}) {
+    final ids = _ids;
+    if (ids == null) {
+      if (hasFeed && ranked.isNotEmpty) _ids = [for (final c in ranked) c.id];
+      return ranked;
+    }
+    final pos = {for (var i = 0; i < ids.length; i++) ids[i]: i};
+    final out = [...ranked]..sort((a, b) => (pos[a.id] ?? 1 << 20).compareTo(pos[b.id] ?? 1 << 20));
+    return out;
+  }
+}
+
 /// Обёртка ленты: отдаёт ролики как есть и складывает загруженное в [feed] — для счётчиков на плитках.
 class CtFeedTap extends PaginatedVideoList {
   final PaginatedVideoList inner;
@@ -69,22 +89,35 @@ class CtFeedTap extends PaginatedVideoList {
 
   CtFeedTap(this.inner, this.feed, {this.onReload});
 
+  /// Экран закрыли, пока лента грузилась: notifier уже освобождён — не трогаем.
+  void _set(List<Video> v) {
+    try {
+      feed.value = v;
+    } catch (_) {}
+  }
+
   @override
   Future<List<Video>> getItems() async {
     onReload?.call();
-    return feed.value = await inner.getItems();
+    final v = await inner.getItems();
+    _set(v);
+    return v;
   }
 
   @override
   Future<List<Video>> refresh() async {
     onReload?.call();
-    return feed.value = await inner.refresh();
+    final v = await inner.refresh();
+    _set(v);
+    return v;
   }
 
   @override
   Future<List<Video>> getMoreItems() async {
     final more = await inner.getMoreItems();
-    feed.value = [...feed.value, ...more];
+    try {
+      _set([...feed.value, ...more]);
+    } catch (_) {}
     return more;
   }
 
@@ -144,15 +177,27 @@ class CtSubStrip extends StatelessWidget {
   final String? selected;
   final ValueChanged<String?> onSelect;
 
-  const CtSubStrip({super.key, required this.channels, required this.selected, required this.onSelect});
+  /// Компактный вид (невысокий экран): «таблетки» высотой 52 — аватар слева, название справа.
+  final bool compact;
+
+  const CtSubStrip(
+      {super.key, required this.channels, required this.selected, required this.onSelect, this.compact = false});
 
   static const _w = 84.0, _h = 108.0;
+
+  /// Контрастный цвет текста на выбранной (светлой/тёмной) плитке — не colors.surface:
+  /// в «Стекле» он давал бледную подпись «Все».
+  static Color _onSelected(ColorScheme c) =>
+      c.onSurface.computeLuminance() > 0.5 ? const Color(0xFF111111) : Colors.white;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    Widget tile({required bool on, required VoidCallback onTap, required Widget top, required String label, int fresh = 0}) {
+    if (compact) return _ctCompactStrip(this, context, colors);
+    Widget tile(
+        {Key? key, required bool on, required VoidCallback onTap, required Widget top, required String label, int fresh = 0}) {
       return Semantics(
+        key: key,
         button: true,
         selected: on,
         label: label,
@@ -179,7 +224,7 @@ class CtSubStrip extends StatelessWidget {
                             fontSize: 12,
                             height: 1.2,
                             fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                            color: on ? colors.surface : colors.onSurface)),
+                            color: on ? _onSelected(colors) : colors.onSurface)),
                   ]),
                 ),
                 if (fresh > 0) Positioned(top: 6, right: 6, child: _FreshBadge(fresh)),
@@ -205,16 +250,94 @@ class CtSubStrip extends StatelessWidget {
                 onTap: () => onSelect(null),
                 top: SizedBox(
                     height: 48,
-                    child: Icon(Icons.grid_view_rounded, size: 28, color: on ? colors.surface : colors.onSurface)),
+                    child: Icon(Icons.grid_view_rounded, size: 28, color: on ? _onSelected(colors) : colors.onSurface)),
                 label: 'Все');
           }
           final c = channels[i - 1];
           return tile(
+              key: ValueKey(c.id),
               on: selected == c.id,
               onTap: () => onSelect(selected == c.id ? null : c.id),
               top: CtChannelAvatar(channelId: c.id, author: c.name, size: 48),
               label: c.name,
               fresh: c.fresh);
+        },
+      ),
+    );
+  }
+}
+
+Widget _ctCompactStrip(CtSubStrip w, BuildContext context, ColorScheme colors) {
+  final channels = w.channels, selected = w.selected, onSelect = w.onSelect;
+  {
+    Widget pill({Key? key, required bool on, required VoidCallback onTap, required Widget lead, required String label,
+        int fresh = 0, double? width}) {
+      final fg = on ? CtSubStrip._onSelected(colors) : colors.onSurface;
+      return Semantics(
+        key: key,
+        button: true,
+        selected: on,
+        label: label,
+        child: Material(
+          color: on ? colors.onSurface : colors.surfaceContainerHigh,
+          shape: StadiumBorder(side: on ? BorderSide.none : BorderSide(color: colors.outlineVariant, width: 0.6)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 52,
+              width: width,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Stack(clipBehavior: Clip.none, children: [
+                    lead,
+                    if (fresh > 0) Positioned(top: -4, right: -6, child: _FreshBadge(fresh)),
+                  ]),
+                  const SizedBox(width: 9),
+                  Flexible(
+                    child: Text(label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13,
+                            height: 1.2,
+                            color: fg,
+                            fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 64,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        itemCount: channels.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          if (i == 0) {
+            final on = selected == null;
+            return pill(
+                on: on,
+                onTap: () => onSelect(null),
+                lead: Icon(Icons.grid_view_rounded, size: 22, color: on ? CtSubStrip._onSelected(colors) : colors.onSurface),
+                label: 'Все');
+          }
+          final c = channels[i - 1];
+          return pill(
+              key: ValueKey(c.id),
+              on: selected == c.id,
+              onTap: () => onSelect(selected == c.id ? null : c.id),
+              lead: CtChannelAvatar(channelId: c.id, author: c.name, size: 36),
+              label: c.name,
+              fresh: c.fresh,
+              width: 152);
         },
       ),
     );
@@ -267,8 +390,9 @@ class CtTvSubStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     Widget tile(
-        {required bool on, required VoidCallback onTap, required Widget top, required String label, int fresh = 0}) {
+        {Key? key, required bool on, required VoidCallback onTap, required Widget top, required String label, int fresh = 0}) {
       return TvButton(
+        key: key,
         borderRadius: 20,
         unfocusedColor: on ? colors.onSurface.withValues(alpha: 0.22) : colors.surfaceContainerHigh,
         onPressed: (_) => onTap(),
@@ -324,6 +448,7 @@ class CtTvSubStrip extends StatelessWidget {
             }
             final c = channels[i - 1];
             return tile(
+                key: ValueKey(c.id),
                 on: selected == c.id,
                 onTap: () => onSelect(c.id),
                 top: CtChannelAvatar(channelId: c.id, author: c.name, size: 72, slow: true),

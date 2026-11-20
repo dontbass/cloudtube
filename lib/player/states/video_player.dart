@@ -652,14 +652,23 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
   }
 
   /// Дорожки ролика (оригинал / дубляжи), если их несколько — выбор через перезапуск потока.
-  List<CtAudioTrack> get _ctAudio => state.video == null ? const [] : CtAudio.tracks(state.video!.videoId);
+  List<CtAudioTrack> get _ctAudio => state.offlineVideo != null || state.video == null
+      ? const [] // скачанный ролик — дорожка одна (иначе в меню были дорожки прошлого ролика)
+      : CtAudio.tracks(state.video!.videoId);
 
   /// Есть выбор звуковой дорожки (оригинал / дубляжи).
   bool get ctHasAudioChoice => _ctAudio.length > 1;
 
   @override
   List<String> getAudioTracks() {
-    if (_ctAudio.length > 1) return _ctAudio.map((t) => t.label).toList();
+    if (_ctAudio.length > 1) {
+      // одинаковые подписи (две «English») различаем по id — иначе на ТВ выбиралась первая
+      final labels = _ctAudio.map((t) => t.label).toList();
+      return [
+        for (var i = 0; i < labels.length; i++)
+          labels.where((l) => l == labels[i]).length > 1 ? '${labels[i]} · ${_ctAudio[i].id}' : labels[i]
+      ];
+    }
     if (state.video != null) {
       if (videoController?.betterPlayerAsmsAudioTracks?.isNotEmpty ?? false) {
         return videoController?.betterPlayerAsmsAudioTracks

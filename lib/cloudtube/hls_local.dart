@@ -171,6 +171,11 @@ class CtDashLocal {
         'url': urlFor(f),
         'initRange': {'start': '${init.$1}', 'end': '${init.$2}'},
         'indexRange': {'start': '${index.$1}', 'end': '${index.$2}'},
+        if (m['audioTrack'] is Map)
+          'audioTrack': {
+            ...(m['audioTrack'] as Map),
+            'audioIsDefault': (m['audioTrack'] as Map)['audioIsDefault'] ?? (m['audioTrack'] as Map)['isDefault'],
+          },
       });
     }
     remember(id, out, durationMs);

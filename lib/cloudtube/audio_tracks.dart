@@ -117,7 +117,7 @@ class CtAudio {
       out[id] = CtAudioTrack(id, name, lang,
           original: CtAudioTrack._isOriginal(xt, name),
           autoDub: CtAudioTrack._isAutoDub(xt, name),
-          isDefault: at['audioIsDefault'] == true);
+          isDefault: at['audioIsDefault'] == true || at['isDefault'] == true);
     }
     final list = out.values.toList();
     _remember(videoId, list.length > 1 ? list : const []);

@@ -379,6 +379,9 @@ ThemeData ctGlassTheme(ThemeData t) {
             shape: WidgetStatePropertyAll(shape(16)))),
     chipTheme: t.chipTheme.copyWith(backgroundColor: c.surfaceContainerHigh, side: edge),
     dividerTheme: DividerThemeData(color: c.outlineVariant),
+    timePickerTheme: t.timePickerTheme.copyWith(backgroundColor: panel, shape: shape(24)),
+    datePickerTheme: t.datePickerTheme.copyWith(backgroundColor: panel, shape: shape(24)),
+    snackBarTheme: t.snackBarTheme,
   );
 }
 

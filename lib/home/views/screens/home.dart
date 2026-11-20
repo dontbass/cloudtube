@@ -19,6 +19,7 @@ import 'package:cloudtube/utils/views/components/app_icon.dart';
 import 'package:logging/logging.dart';
 import 'package:cloudtube/cloudtube/logo.dart';
 import 'package:cloudtube/cloudtube/theme.dart';
+import 'package:cloudtube/cloudtube/compact.dart';
 import 'package:flutter/services.dart';
 import 'package:cloudtube/cloudtube/shorts.dart';
 import 'package:cloudtube/cloudtube/shorts_icon.dart';
@@ -58,6 +59,51 @@ Widget _ctNavTheme(BuildContext context, bool dark, Widget nav) {
     ),
     child: nav,
   );
+}
+
+/// Меню слева в компактном виде: те же 4 раздела, что в нижней панели телефона.
+class _CtCompactRail extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onSelect;
+  const _CtCompactRail({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+          border: Border(right: ctIsGlass(c) ? ctGlassEdge(c) : BorderSide(color: c.outlineVariant, width: 0.5))),
+      child: NavigationRail(
+        minWidth: 76,
+        groupAlignment: 0,
+        labelType: NavigationRailLabelType.all,
+        selectedIndex: selected,
+        onDestinationSelected: onSelect,
+        destinations: const [
+          NavigationRailDestination(
+              icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Главная')),
+          NavigationRailDestination(
+              icon: CtShortsIcon(), selectedIcon: CtShortsIcon(filled: true), label: Text('Shorts')),
+          NavigationRailDestination(
+              icon: Icon(Icons.subscriptions_outlined),
+              selectedIcon: Icon(Icons.subscriptions),
+              label: Text('Подписки')),
+          NavigationRailDestination(
+              icon: Icon(Icons.account_circle_outlined),
+              selectedIcon: Icon(Icons.account_circle),
+              label: Text('Профиль')),
+        ],
+      ),
+    );
+  }
+}
+
+/// Содержимое раздела телефона в компактном виде (Shorts / подсказка / Профиль / вкладка).
+Widget _ctPhoneBody(int ct, Widget child, int subsIdx) {
+  if (ct == 1) return const SafeArea(bottom: false, child: CtShortsPage());
+  if (ct == 2 && subsIdx < 0) return const CtSubsHint();
+  if (ct == 3) return const CtYouPage();
+  return child;
 }
 
 class _MainScreenState extends State<MainContentScreen> {
@@ -179,25 +225,28 @@ class _MainScreenState extends State<MainContentScreen> {
                 final subsIdx =
                     allowedPages.indexOf(HomeDataSource.subscription);
                 final ctPhone = deviceType == DeviceType.phone;
+                // невысокий горизонтальный экран (магнитола 1024×600…): меню слева, шапка ниже
+                final ctCompact = ctPhone && ctIsCompact(context);
+                void ctGo(int i) {
+                  setState(() => _ct = i);
+                  if (i == 0 && homeIdx >= 0) {
+                    tabsRouter.setActiveIndex(homeIdx);
+                  } else if (i == 2 && subsIdx >= 0) {
+                    tabsRouter.setActiveIndex(subsIdx);
+                  }
+                }
                 // широкий экран (ПК, планшет в альбомной): шапка и меню как на сайте
                 final ctWide = !ctPhone && MediaQuery.of(context).size.width >= 900;
                 return Scaffold(
                     // so we rebuild the view if the server changes
                     backgroundColor:
                         _ct == 1 ? Colors.black : ctBg(colorScheme),
-                    bottomNavigationBar: ctPhone
+                    bottomNavigationBar: ctPhone && !ctCompact
                         ? _ctNavTheme(context, _ct == 1, KeyedSubtree(key: CtTourKeys.navBar, child: NavigationBar(
                             labelBehavior: NavigationDestinationLabelBehavior
                                 .alwaysShow,
                             selectedIndex: _ct,
-                            onDestinationSelected: (i) {
-                              setState(() => _ct = i);
-                              if (i == 0 && homeIdx >= 0) {
-                                tabsRouter.setActiveIndex(homeIdx);
-                              } else if (i == 2 && subsIdx >= 0) {
-                                tabsRouter.setActiveIndex(subsIdx);
-                              }
-                            },
+                            onDestinationSelected: ctGo,
                             destinations: const [
                               NavigationDestination(
                                   icon: Icon(Icons.home_outlined),
@@ -221,6 +270,10 @@ class _MainScreenState extends State<MainContentScreen> {
                     appBar: ctPhone && _ct == 1
                         ? null
                         : AppBar(
+                      toolbarHeight: ctCompact ? 44 : null,
+                      titleTextStyle: ctCompact
+                          ? Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 19, fontWeight: FontWeight.w600)
+                          : null,
                       titleSpacing: ctWide ? 4 : 12,
                       leading: ctWide &&
                               context.read<SettingsCubit>().state.appLayout
@@ -315,7 +368,12 @@ class _MainScreenState extends State<MainContentScreen> {
                         ),
                       ],
                     ),
-                    body: ctPhone && _ct == 1
+                    body: ctCompact
+                        ? Row(children: [
+                            _CtCompactRail(selected: _ct, onSelect: ctGo),
+                            Expanded(child: _ctPhoneBody(_ct, child, subsIdx)),
+                          ])
+                        : ctPhone && _ct == 1
                         ? const AnnotatedRegion<SystemUiOverlayStyle>(
                             value: SystemUiOverlayStyle(
                                 statusBarColor: Colors.black,

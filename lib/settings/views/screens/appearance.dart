@@ -5,6 +5,7 @@ import 'package:cloudtube/l10n/generated/app_localizations.dart';
 import 'package:cloudtube/settings/states/settings.dart';
 import 'package:cloudtube/settings/views/screens/settings.dart';
 import 'package:cloudtube/cloudtube/settings_ui.dart';
+import 'package:cloudtube/cloudtube/compact.dart';
 
 import '../../../utils/views/components/select_list_dialog.dart';
 
@@ -108,6 +109,25 @@ class AppearanceSettingsScreen extends StatelessWidget {
                     value: Text(getNavigationLabelText(
                         context, state.navigationBarLabelBehavior)),
                     onPressed: (ctx) => customizeNavigationLabel(ctx),
+                  ),
+                  // невысокие экраны (магнитолы 7–9″): меню слева, низкая шапка, 3 колонки
+                  SettingsTile(
+                    leading: const Icon(Icons.view_compact_outlined),
+                    title: const Text('Компактный вид'),
+                    description: const Text('Для невысоких горизонтальных экранов (магнитолы 7–9″). '
+                        'Авто — включается сам, когда экран лежит горизонтально и ниже 600 точек'),
+                    value: ValueListenableBuilder<CtCompactMode>(
+                        valueListenable: ctCompactMode, builder: (_, m, __) => Text(m.label)),
+                    onPressed: (ctx) => SelectList.show<CtCompactMode>(ctx,
+                        values: CtCompactMode.values,
+                        value: ctCompactMode.value,
+                        itemBuilder: (value, selected) => Text(value.label,
+                            style: Theme.of(ctx)
+                                .textTheme
+                                .bodyLarge
+                                ?.copyWith(color: selected ? Theme.of(ctx).colorScheme.primary : null)),
+                        onSelect: ctSetCompactMode,
+                        title: 'Компактный вид'),
                   ),
                   SettingsTile.switchTile(
                     leading: const Icon(Icons.tv),

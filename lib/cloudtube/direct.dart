@@ -527,16 +527,17 @@ class _CtDirect {
   List<Map<String, dynamic>>? _subsCache;
   DateTime _subsAt = DateTime(2000);
 
+  /// Каналы из левой колонки «Подписок» (часть списка) — отдельно от полного [_subsCache]:
+  /// раньше перезагрузка ленты затирала полный список коротким.
+  List<Map<String, dynamic>>? _subsColumn;
+
   Future<List<Map<String, dynamic>>> _tvPage(String browseId, int page) async {
     final refresh = _refresh!;
     final key = '$browseId|${refresh.hashCode}';
     var pg = _tvPagers[key];
     if (pg == null || page == 1 && DateTime.now().difference(pg.at) > const Duration(minutes: 3)) {
       final first = await CtYtAccount.browse(refresh, browseId: browseId);
-      if (browseId == 'FEsubscriptions' && first.channels.isNotEmpty) {
-        _subsCache = first.channels;
-        _subsAt = DateTime.now();
-      }
+      if (browseId == 'FEsubscriptions' && first.channels.isNotEmpty) _subsColumn = first.channels;
       pg = (pages: [first.videos], next: first.continuation, at: DateTime.now());
       _tvPagers[key] = pg;
     }
@@ -575,9 +576,10 @@ class _CtDirect {
       if (e is CtYtAuthError) rethrow;
     }
     try {
-      _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
-      await _tvPage('FEsubscriptions', 1); // заполняет _subsCache каналами из колонки
-      add(_subsCache ?? const []);
+      // колонка — из уже загруженной ленты (пейджер ленты не сбрасываем: иначе её
+      // следующие страницы пошли бы с другого снимка — повторы и пропуски)
+      if (_subsColumn == null) await _tvPage('FEsubscriptions', 1);
+      add(_subsColumn ?? const []);
     } catch (e) {
       _log.warning('подписки аккаунта (колонка): $e');
       if (out.isEmpty) rethrow;
@@ -599,6 +601,7 @@ class _CtDirect {
           if (method == 'POST' || method == 'DELETE') {
             await CtYtAccount.subscribe(_refresh!, p[4], method == 'POST');
             _subsCache = null;
+            _subsColumn = null;
             _tvPagers.removeWhere((k, _) => k.startsWith('FEsubscriptions'));
             return {};
           }

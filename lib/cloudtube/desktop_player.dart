@@ -180,10 +180,7 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
         if (cur == null || prefer == 1) byHeight[h] = _Quality(f.qualityLabel ?? '${h}p', f.itag, h);
       }
       _qualities = byHeight.values.toList()..sort((a, b) => b.height - a.height);
-      final audio = (v.adaptiveFormats ?? const <AdaptiveFormat>[]).where((f) => f.type.startsWith('audio/')).toList()
-        ..sort((a, b) => (int.tryParse(b.bitrate ?? '') ?? 0).compareTo(int.tryParse(a.bitrate ?? '') ?? 0));
-      final m4a = audio.where((f) => f.type.contains('mp4')).toList();
-      _audioItag = (m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null))?.itag;
+      _audioItag = _pickAudio(v)?.itag;
       _quality = _qualities.isEmpty
           ? null
           : _qualities.firstWhere((q) => q.height <= CtPrefs.desktopQuality.value, orElse: () => _qualities.last);
@@ -224,23 +221,29 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     }
     String url;
     String? audio;
+    String? uaSource; // адрес YouTube, по которому выбирается User-Agent (локальный плейлист его не несёт)
     if (ctDirectActive && (v.hlsUrl ?? '').isNotEmpty) {
       // без сервера: HLS от YouTube — один поток со звуком, стартует быстро; при нескольких
       // звуковых дорожках — только выбранная (по умолчанию оригинал, а не автодубляж)
+      uaSource = v.hlsUrl!;
       url = await CtHlsLocal.audioFiltered(v.videoId, v.hlsUrl!, ctDirectStreamHeaders(v.hlsUrl!)) ?? v.hlsUrl!;
       if (stale()) return;
       if (CtAudio.tracks(v.videoId).length > 1) setState(() {}); // показать меню «Звук»
       audio = null;
     } else if (ctDirectActive && _quality != null && _audioItag != null) {
       url = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _quality!.videoItag).url;
-      final a = (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _audioItag).url;
-      audio = a;
+      // у дорожек разных языков itag одинаковый — берём сам формат выбранной дорожки
+      audio = (_pickAudio(v) ?? (v.adaptiveFormats ?? const []).firstWhere((f) => f.itag == _audioItag)).url;
     } else if (v.liveNow == true && (v.hlsUrl ?? '').isNotEmpty) {
       url = v.hlsUrl!;
       audio = null;
     } else if (_quality != null && _quality!.videoItag.isNotEmpty && _audioItag != null) {
       url = _stream(server, v.videoId, _quality!.videoItag);
-      audio = _stream(server, v.videoId, _audioItag!);
+      final a = _pickAudio(v);
+      // несколько дорожек: по itag сервер отдал бы любую — берём адрес формата нужной дорожки
+      audio = CtAudio.tracks(v.videoId).length > 1 && a != null && a.url.startsWith('/')
+          ? '${server.url}${a.url}'
+          : _stream(server, v.videoId, _audioItag!);
     } else if ((v.formatStreams ?? const []).isNotEmpty) {
       url = _stream(server, v.videoId, v.formatStreams!.last.itag);
       audio = null;
@@ -257,7 +260,10 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     if (np is NativePlayer) {
       // User-Agent того клиента YouTube, для которого выдана ссылка (иначе 403)
       await np.setProperty(
-          'user-agent', ctDirectActive ? (ctDirectStreamHeaders(url)['User-Agent'] ?? kCtIosUserAgent) : 'Mozilla/5.0 CloudTube');
+          'user-agent',
+          ctDirectActive
+              ? (ctDirectStreamHeaders(uaSource ?? url)['User-Agent'] ?? kCtIosUserAgent)
+              : 'Mozilla/5.0 CloudTube');
     }
     if (stale()) return;
     _guard.start();
@@ -354,6 +360,17 @@ class _CtDesktopPlayerState extends State<CtDesktopPlayer> {
     }
     if (!mounted) return;
     await _play(at: pos > const Duration(seconds: 1) ? pos : null);
+  }
+
+  /// Звуковой формат: лучший m4a выбранной дорожки (по умолчанию оригинал, не автодубляж).
+  AdaptiveFormat? _pickAudio(Video v) {
+    var audio = (v.adaptiveFormats ?? const <AdaptiveFormat>[]).where((f) => f.type.startsWith('audio/')).toList()
+      ..sort((a, b) => (int.tryParse(b.bitrate ?? '') ?? 0).compareTo(int.tryParse(a.bitrate ?? '') ?? 0));
+    final raw = [for (final f in audio) <String, Object?>{'mimeType': f.type, 'audioTrack': f.audioTrack, 'f': f}];
+    final kept = CtAudio.filterFormats(v.videoId, raw).map((m) => m['f']).toSet();
+    if (kept.isNotEmpty) audio = audio.where(kept.contains).toList();
+    final m4a = audio.where((f) => f.type.contains('mp4')).toList();
+    return m4a.isNotEmpty ? m4a.first : (audio.isNotEmpty ? audio.first : null);
   }
 
   String _stream(Server s, String id, String itag) => '${s.url}/latest_version?id=$id&itag=$itag&local=true';

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:cloudtube/settings/models/db/settings.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:cloudtube/cloudtube/compact.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloudtube/l10n/generated/app_localizations.dart';
@@ -218,6 +219,8 @@ Future<bool> isDeviceTv() async {
 
 int getGridCount(BuildContext context) {
   double width = MediaQuery.of(context).size.width;
+  // компактный вид (магнитола 1024×600 и т. п.): 3 колонки — превью меньше, подписи прежние
+  if (ctIsCompact(context) && width >= 700) return 3;
   if (width < phoneMax) {
     return 1;
   }

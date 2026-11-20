@@ -345,6 +345,8 @@ class CtYtFast {
             if (f['height'] != null) 'resolution': '${f['height']}p',
             if (f['width'] != null) 'size': '${f['width']}x${f['height']}',
             if (f['audioQuality'] != null) 'audioQuality': '${f['audioQuality']}',
+            // звуковая дорожка (оригинал / дубляж) — для выбора дорожки
+            if (f['audioTrack'] is Map) 'audioTrack': f['audioTrack'],
           }
     ];
     // сырые форматы (с initRange/indexRange) — для своего DASH на ТВ

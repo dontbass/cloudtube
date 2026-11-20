@@ -21,7 +21,7 @@ AdaptiveFormat _$AdaptiveFormatFromJson(Map<String, dynamic> json) =>
       json['encoding'] as String?,
       json['qualityLabel'] as String?,
       json['resolution'] as String?,
-    );
+    )..audioTrack = json['audioTrack'] as Map<String, dynamic>?;
 
 Map<String, dynamic> _$AdaptiveFormatToJson(AdaptiveFormat instance) =>
     <String, dynamic>{
@@ -38,4 +38,5 @@ Map<String, dynamic> _$AdaptiveFormatToJson(AdaptiveFormat instance) =>
       'encoding': instance.encoding,
       'qualityLabel': instance.qualityLabel,
       'resolution': instance.resolution,
+      'audioTrack': instance.audioTrack,
     };

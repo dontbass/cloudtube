@@ -32,6 +32,7 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
   String _group = _kAll;
   String _query = '';
   int _focused = 0;
+  bool _firstFocusDone = false;
 
   // превью справа: запускается, когда фокус задержался на канале
   BetterPlayerController? _preview;
@@ -131,12 +132,15 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
     if (!mounted || _previewCh?.key == c.key) return;
     _previewCh = c;
     _previewReady = false;
-    final ctl = _preview ??= iptvController(preview: true)
-      ..addEventsListener((e) {
+    var ctl = _preview;
+    if (ctl == null) {
+      ctl = _preview = iptvController(preview: true);
+      ctl.addEventsListener((e) {
         if (e.betterPlayerEventType == BetterPlayerEventType.initialized && mounted) {
           setState(() => _previewReady = true);
         }
       });
+    }
     setState(() {});
     try {
       final src = await iptvSource(c, iptvPickStream(c, _store.settings.value));
@@ -424,10 +428,15 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: TvButton(
                       key: ValueKey('${_group}_${c.key}'),
+                      // фокус на первый канал — только при первом открытии раздела
+                      autofocus: i == 0 && !_firstFocusDone,
                       borderRadius: 12,
                       unfocusedColor: Colors.transparent,
                       onFocusChanged: (f) {
-                        if (f) _focusChannel(c, i);
+                        if (f) {
+                          _firstFocusDone = true;
+                          _focusChannel(c, i);
+                        }
                       },
                       onPressed: (_) => _open(list, i),
                       child: SizedBox(
@@ -502,6 +511,18 @@ class _IptvTvScreenState extends State<IptvTvScreen> {
             if (c.hasArchive) 'архив ${c.catchupDays} дн.',
           ].join('  ·  '),
           style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _TopButton(
+            icon: _store.favorites.value.contains(c.key) ? Icons.star : Icons.star_border,
+            label: _store.favorites.value.contains(c.key) ? 'В избранном' : 'В избранное',
+            onPressed: () async {
+              await _store.toggleFavorite(c.key);
+              if (mounted) setState(() {});
+            }),
+        if (c.streams.length > 1)
+          _TopButton(icon: Icons.hd_outlined, label: 'Качество', onPressed: () => _channelMenu(c)),
+      ]),
       const SizedBox(height: 10),
       Text('ОК — смотреть · МЕНЮ — избранное и качество · цифры — канал по номеру',
           style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant)),

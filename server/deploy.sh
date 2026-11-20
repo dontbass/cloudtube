@@ -5,6 +5,7 @@
 # с оформлением CloudTube (логотип, тема, PWA), nginx, сертификат Let's Encrypt, пароль сайта (Basic Auth),
 # аккаунт Invidious с тем же логином и паролем, серверные дополнения CloudTube (лента, Shorts, эфиры, аватарки),
 # приглашения для друзей: «Доступ для друзей» на сайте (для администратора) или `ctinvite new` в консоли.
+# присмотр за companion: перезапуск, если перестал отдавать видео, и свежий образ каждую ночь.
 # «Подписки YouTube» (/ctsubs/): перенос подписок с YouTube (вход кодом или файл Takeout), автозагрузка, «удалить все».
 #
 # Параметры — переменные окружения или файл /root/.ct-deploy.env:
@@ -498,6 +499,13 @@ EOF
   systemctl daemon-reload; systemctl enable --now cloudtube-ytsync >/dev/null 2>&1; systemctl restart cloudtube-ytsync
 else
   echo "ytsync.py не скачался" >> /var/log/ct-deploy.debug
+fi
+
+P 94 "Ставлю присмотр за companion (автоперезапуск и ночное обновление)"
+if curl -fsSL "$CT_REPO/server/install-guard.sh" -o /tmp/ct-install-guard.sh; then
+  CT_REPO="$CT_REPO" COMP_URL=http://127.0.0.1:8282/companion bash /tmp/ct-install-guard.sh >>/var/log/ct-deploy.debug 2>&1 ||
+    echo "guard не установился" >> /var/log/ct-deploy.debug
+  rm -f /tmp/ct-install-guard.sh
 fi
 
 P 95 "Проверяю сервер снаружи"

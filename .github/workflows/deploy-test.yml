@@ -50,6 +50,13 @@ jobs:
           echo "вход в YouTube (код):"; curl -s "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/link | grep -o '"login": {[^}]*}' | sed 's/"code": "[^"]*"/"code": "…"/'
           curl -s -o /dev/null "${H[@]}" "${P[@]}" -d '{}' http://127.0.0.1/ctsubs/api/link-cancel
           sudo journalctl -u cloudtube-ytsync --no-pager | tail -15
+      - name: Присмотр за companion
+        run: |
+          systemctl list-timers --all | grep -E 'cloudtube-(guard|update)' || echo "таймеров нет"
+          sudo cat /etc/cloudtube-guard.env
+          sudo /opt/cloudtube-addons/guard.sh check; sudo /opt/cloudtube-addons/guard.sh status
+          sudo /opt/cloudtube-addons/guard.sh update
+          sudo tail -20 /var/log/ct-deploy.debug | grep -i guard || true
       - name: Снимки
         run: |
           for p in "/" "/login" "/ctadmin/" "/ctsubs/"; do

@@ -476,8 +476,8 @@ def strip(name):
           select ids.id, coalesce(c.author, (select author from channel_videos where ucid = ids.id limit 1), ids.id) author,
                  coalesce((select extract(epoch from max(published))::bigint from channel_videos v where v.ucid = ids.id), 0) latest,
                  (select count(*) from channel_videos v where v.ucid = ids.id
-                    and v.published > now() - interval '{FRESH_DAYS} days' and not (v.id = any((select w from u)))) fresh
-          from ids left join channels c on c.id = ids.id) t;""", u=name)
+                    and v.published > now() - interval '{FRESH_DAYS} days' and not (v.id = any(u.w))) fresh
+          from ids cross join u left join channels c on c.id = ids.id) t;""", u=name)
     rows = json.loads(raw or "[]")
     rows.sort(key=lambda r: (0, -r["latest"]) if r["fresh"] else (1, (r["author"] or "").lower()))
     return rows

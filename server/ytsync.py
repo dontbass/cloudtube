@@ -19,6 +19,8 @@ DOMAIN = os.environ.get("DOMAIN", "")
 EVERY_H = max(1, int(os.environ.get("SYNC_HOURS", "6")))
 HL = os.environ.get("HL", "ru")
 GL = os.environ.get("REGION", "RU")
+# логин сайта → аккаунт Invidious, если они разные: "admin=vladimir,guest=anna"
+USER_MAP = dict(x.split("=", 1) for x in os.environ.get("SYNC_USER_MAP", "").replace(" ", "").split(",") if "=" in x)
 
 TV_UA = ("Mozilla/5.0 (Linux armeabi-v7a; Android 7.1.2; Fire OS 6.0) Cobalt/22.lts.3.306369-gold (unlike Gecko) "
          "v8/8.8.278.8-jit gles Starboard/13, Amazon_ATV_mediatek8695_2019/NS6294 (Amazon, AFTMM, Wireless) "
@@ -462,6 +464,30 @@ def scheduler():
 
 
 # ------------------------------------------------------------------ веб
+_resolved = {}
+
+
+def resolve_user(login):
+    """Логин сайта → аккаунт Invidious: тот же логин; иначе SYNC_USER_MAP; иначе, если аккаунт на сервере
+    один (личный сервер, пароль сайта задан отдельно), — он."""
+    if login in USER_MAP:
+        return USER_MAP[login]
+    hit = _resolved.get(login)
+    if hit and hit[1] > time.time():
+        return hit[0]
+    name = login
+    try:
+        if not account_exists(login):
+            only = psql("select email from users limit 2;").splitlines()
+            if len(only) == 1:
+                name = only[0]
+    except Exception as e:
+        log("аккаунт:", e)
+        return login
+    _resolved[login] = (name, time.time() + 300)
+    return name
+
+
 def state(name):
     cfg = user_cfg(name)
     try:
@@ -602,7 +628,9 @@ class H(BaseHTTPRequestHandler):
 
     def user(self):
         u = self.headers.get("X-Remote-User", "").strip()
-        return u if re.match(r"^[A-Za-z0-9._@-]{1,64}$", u) else None
+        if not re.match(r"^[A-Za-z0-9._@-]{1,64}$", u):
+            return None
+        return resolve_user(u)
 
     def same_origin(self):
         if self.headers.get("Sec-Fetch-Site") == "same-origin":

@@ -24,10 +24,10 @@ container() {
 probe() {   # 0 — companion отдаёт видео
   local id code size
   for id in $TEST_IDS; do
-    read -r code size < <(curl -s -L -m 40 -r 0-65535 -o /dev/null -w '%{http_code} %{size_download}' \
+    read -r code size < <(curl -s -L -m 40 -r 0-65535 -o "$STATE/probe" -w '%{http_code} %{size_download}' \
       "$COMP_URL/latest_version?id=$id&itag=18&local=true" 2>/dev/null || echo "000 0")
-    if { [ "$code" = 200 ] || [ "$code" = 206 ]; } && [ "${size%.*}" -gt 1000 ]; then return 0; fi
-    log "проверка $id: HTTP $code, $size байт"
+    if { [ "$code" = 200 ] || [ "$code" = 206 ]; } && [ "${size%.*}" -gt 1000 ]; then rm -f "$STATE/probe"; return 0; fi
+    log "проверка $id: HTTP $code — $(head -c 160 "$STATE/probe" 2>/dev/null | tr -d '\r' | tr '\n' ' ')"
   done
   return 1
 }

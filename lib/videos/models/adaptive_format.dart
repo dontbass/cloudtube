@@ -18,6 +18,10 @@ class AdaptiveFormat {
   String? qualityLabel;
   String? resolution;
 
+  /// Звуковая дорожка ролика с несколькими дорожками: {id, displayName, isDefault /
+  /// audioIsDefault} — оригинал или дубляж.
+  Map<String, dynamic>? audioTrack;
+
   AdaptiveFormat(
       this.index,
       this.bitrate,

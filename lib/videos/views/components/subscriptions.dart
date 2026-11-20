@@ -42,6 +42,7 @@ class _SubscriptionsWithChannels extends StatefulWidget {
 
 class _SubscriptionsWithChannelsState extends State<_SubscriptionsWithChannels> {
   final _feed = ValueNotifier<List<Video>>(const []);
+  final _order = CtStableOrder();
   List<(String, String)> _subs = const [];
   String? _selected;
   bool _stripHidden = false;
@@ -50,7 +51,12 @@ class _SubscriptionsWithChannelsState extends State<_SubscriptionsWithChannels> 
   // список каналов обновляется вместе с лентой (первая загрузка, «потянуть вниз», возврат к «Все»)
   void _loadSubs() {
     ctSubscribedChannels().then((v) {
-      if (mounted) setState(() => _subs = v);
+      if (mounted) {
+        setState(() {
+          _subs = v;
+          _order.reset();
+        });
+      }
     });
   }
 
@@ -74,7 +80,7 @@ class _SubscriptionsWithChannelsState extends State<_SubscriptionsWithChannels> 
     return ValueListenableBuilder<List<Video>>(
       valueListenable: _feed,
       builder: (context, feed, _) {
-        final channels = ctRankSubChannels(_subs, feed);
+        final channels = _order.apply(ctRankSubChannels(_subs, feed), hasFeed: feed.isNotEmpty);
         final sel = _selected == null ? null : channels.where((c) => c.id == _selected).firstOrNull;
         final compact = ctIsCompact(context);
         final list = VideoList(

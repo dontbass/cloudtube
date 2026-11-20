@@ -1,3 +1,4 @@
+import 'package:cloudtube/cloudtube/direct.dart' show ctDirectActive;
 import 'package:cloudtube/channels/models/channel_videos.dart';
 import 'package:cloudtube/search/models/search_results.dart';
 import 'package:cloudtube/search/models/search_sort_by.dart';
@@ -134,18 +135,26 @@ class SubscriptionVideoList extends PaginatedVideoList {
   bool hasMoreOnline = true;
   Map<String, String> continuations = {};
 
+  /// Последняя загруженная страница ленты аккаунта: когда лента кончилась, «ещё» больше
+  /// не запрашивает ту же страницу заново (раньше последние ролики дублировались).
+  int _fetchedPage = 0;
+
   @override
   Future<List<Video>> getItems() async {
     final isLoggedIn = await service.isLoggedIn();
 
     List<Video> videos = [];
 
-    if (isLoggedIn) {
+    if (!isLoggedIn) {
+      hasMoreOnline = false; // без аккаунта — только подписки на устройстве
+    } else if (page != _fetchedPage) {
       UserFeed feed =
           await service.getUserFeed(page: page, maxResults: maxResults);
       videos.addAll(feed.notifications ?? []);
       videos.addAll(feed.videos ?? []);
-      hasMoreOnline = videos.length >= maxResults;
+      _fetchedPage = page;
+      // аккаунт YouTube (без сервера) отдаёт страницы своего размера — конец по пустой странице
+      hasMoreOnline = ctDirectActive ? videos.isNotEmpty : videos.length >= maxResults;
     }
 
     final offlineSubs = await db.getOfflineSubscriptions();
@@ -195,6 +204,8 @@ class SubscriptionVideoList extends PaginatedVideoList {
   @override
   Future<List<Video>> refresh() async {
     page = 1;
+    _fetchedPage = 0;
+    hasMoreOnline = true;
     continuations = {};
     return getItems();
   }

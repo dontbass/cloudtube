@@ -1,4 +1,4 @@
-import '../../cloudtube/direct.dart' show ctDirectStreamHeaders;
+import '../../cloudtube/direct.dart' show ctDirectStreamHeaders, ctDirectActive;
 import '../../cloudtube/hls_local.dart';
 import '../../videos/models/format_stream.dart';
 
@@ -148,7 +148,8 @@ Future<CtStreamChoice> ctPickStream(CtStreamRequest r) async {
   }
   if (isHls) {
     // несколько звуковых дорожек — плееру только выбранная (по умолчанию оригинал)
-    final a = await CtHlsLocal.audioFiltered(r.videoId, url, headers);
+    // (только YouTube напрямую: трансляции своего сервера с одной дорожкой не ждут лишний запрос)
+    final a = ctDirectActive ? await CtHlsLocal.audioFiltered(r.videoId, url, headers) : null;
     return CtStreamChoice(kind: CtStreamKind.hls, url: a ?? url, headers: headers);
   }
   if (r.useServerDash) return CtStreamChoice(kind: CtStreamKind.serverDash, url: url, headers: headers);

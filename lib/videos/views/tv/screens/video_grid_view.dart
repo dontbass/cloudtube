@@ -34,6 +34,7 @@ class TvGridScreen extends StatefulWidget {
 
 class _TvGridScreenState extends State<TvGridScreen> {
   final _feed = ValueNotifier<List<Video>>(const []);
+  final _order = CtStableOrder();
   List<(String, String)> _subs = const [];
   String? _selected;
   late PaginatedList<Video> _list = widget.showChannels && widget.paginatedVideoList is PaginatedVideoList
@@ -43,7 +44,12 @@ class _TvGridScreenState extends State<TvGridScreen> {
   // список каналов обновляется вместе с лентой (первая загрузка, «потянуть вниз», возврат к «Все»)
   void _loadSubs() {
     ctSubscribedChannels().then((v) {
-      if (mounted) setState(() => _subs = v);
+      if (mounted) {
+        setState(() {
+          _subs = v;
+          _order.reset();
+        });
+      }
     });
   }
 
@@ -70,7 +76,9 @@ class _TvGridScreenState extends State<TvGridScreen> {
         child: ValueListenableBuilder<List<Video>>(
             valueListenable: _feed,
             builder: (context, feed, _) {
-              final channels = widget.showChannels ? ctRankSubChannels(_subs, feed) : const <CtSubChannel>[];
+              final channels = widget.showChannels
+                  ? _order.apply(ctRankSubChannels(_subs, feed), hasFeed: feed.isNotEmpty)
+                  : const <CtSubChannel>[];
               final sel = _selected == null ? null : channels.where((c) => c.id == _selected).firstOrNull;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

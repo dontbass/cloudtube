@@ -223,14 +223,16 @@ class PlayerControls extends StatelessWidget {
     var textTheme = Theme.of(context).textTheme;
     var player = context.read<PlayerCubit>();
     return Theme(
-      data: ThemeData(
+      // через ctGlassTheme: в «Стекле» меню плеера (качество, звук, скорость) — матовые панели,
+      // а не почти прозрачные поверх видео
+      data: ctGlassTheme(ThemeData(
           useMaterial3: true,
           colorScheme: darkColorScheme,
           sliderTheme: SliderThemeData(
               inactiveTrackColor: darkColorScheme.secondaryContainer),
           progressIndicatorTheme: ProgressIndicatorThemeData(
               circularTrackColor:
-                  ctAlpha(darkColorScheme.secondaryContainer, 0.8))),
+                  ctAlpha(darkColorScheme.secondaryContainer, 0.8)))),
       child: BlocProvider(
         create: (context) =>
             PlayerControlsCubit(const PlayerControlsState(), player),

@@ -5,6 +5,7 @@
 # с оформлением CloudTube (логотип, тема, PWA), nginx, сертификат Let's Encrypt, пароль сайта (Basic Auth),
 # аккаунт Invidious с тем же логином и паролем, серверные дополнения CloudTube (лента, Shorts, эфиры, аватарки),
 # приглашения для друзей: «Доступ для друзей» на сайте (для администратора) или `ctinvite new` в консоли.
+# «Подписки YouTube» (/ctsubs/): перенос подписок с YouTube (вход кодом или файл Takeout), автозагрузка, «удалить все».
 #
 # Параметры — переменные окружения или файл /root/.ct-deploy.env:
 #   CT_DOMAIN=video.example.com   домен (A-запись уже указывает на этот сервер)
@@ -330,6 +331,13 @@ server {
         proxy_set_header X-Remote-User \$remote_user;
         proxy_pass http://127.0.0.1:3400;
     }
+    # «Подписки YouTube»: перенос подписок с YouTube и удаление всех (для каждого пользователя сайта)
+    location ^~ /ctsubs {
+        limit_except GET POST { deny all; }
+        include snippets/cloudtube-proxy.conf;
+        proxy_set_header X-Remote-User \$remote_user;
+        proxy_pass http://127.0.0.1:3500;
+    }
 
     # оформление и логотип
     location ^~ /custom/ { alias $WEB/custom/; expires 1h; }
@@ -463,6 +471,33 @@ EOF
   systemctl daemon-reload; systemctl enable --now cloudtube-invite >/dev/null 2>&1; systemctl restart cloudtube-invite
 else
   echo "invite.py не скачался" >> /var/log/ct-deploy.debug
+fi
+
+P 94 "Ставлю перенос подписок с YouTube (cloudtube-ytsync)"
+if curl -fsSL "$CT_REPO/server/ytsync.py" -o /opt/cloudtube-addons/ytsync.py; then
+  chmod 755 /opt/cloudtube-addons/ytsync.py
+  cat > /etc/systemd/system/cloudtube-ytsync.service <<EOF
+[Unit]
+Description=CloudTube: подписки YouTube (перенос, автозагрузка, удаление всех)
+After=network-online.target docker.service
+[Service]
+Environment=INV_URL=http://127.0.0.1:3000
+Environment=SYNC_PORT=3500
+Environment=SYNC_DB=/opt/cloudtube-addons/ytsync.json
+Environment=SYNC_HOURS=6
+Environment=DOMAIN=$CT_DOMAIN
+Environment=REGION=$CT_REGION
+Environment=HL=$CT_LANG
+Environment=DB_CONTAINER=invidious-db
+ExecStart=/usr/bin/python3 /opt/cloudtube-addons/ytsync.py
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload; systemctl enable --now cloudtube-ytsync >/dev/null 2>&1; systemctl restart cloudtube-ytsync
+else
+  echo "ytsync.py не скачался" >> /var/log/ct-deploy.debug
 fi
 
 P 95 "Проверяю сервер снаружи"

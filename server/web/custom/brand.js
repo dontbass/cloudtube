@@ -80,6 +80,21 @@
     }).catch(function () {});
 })();
 
+/* ---- пункт «Подписки YouTube» (перенос с YouTube, удалить все) — для всех пользователей ---- */
+(function () {
+  function addLink() {
+    var nav = document.getElementById('left-nav');
+    if (!nav || nav.querySelector('a.ct-ytsubs')) return;
+    var a = document.createElement('a');
+    a.className = 'ct-ytsubs'; a.href = '/ctsubs/'; a.title = 'Перенести подписки с YouTube или удалить все';
+    a.innerHTML = '<i>sync_alt</i><div>Импорт подписок</div>';
+    var subs = nav.querySelector(':scope > a[href$="/subscriptions"]'), links = nav.querySelectorAll(':scope > a:not(.ct-admin)');
+    if (subs) subs.after(a); else if (links.length) links[links.length - 1].after(a); else nav.appendChild(a);
+  }
+  function start() { addLink(); new MutationObserver(addLink).observe(document.body, { childList: true, subtree: true }); }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+
 /* ---- SponsorBlock: понятные русские названия сегментов в уведомлении ---- */
 (function () {
   var CAT = { sponsor: 'реклама', selfpromo: 'самопиар', interaction: 'просьба подписаться', intro: 'заставка', outro: 'концовка',
@@ -400,7 +415,8 @@
     var h = '<div class="ct-grip"></div><div class="ct-who"><span class="ct-me">' + (u ? u.charAt(0) : '<i>person</i>') + '</span><div><b>' +
       (u || 'Гость') + '</b><small>CloudTube</small></div></div>';
     h += '<button data-go="/history"><i>history</i>История</button><button data-go="/playlists"><i>video_library</i>Плейлисты</button>' +
-         '<button data-go="/subscriptions"><i>subscriptions</i>Подписки</button><hr>';
+         '<button data-go="/subscriptions"><i>subscriptions</i>Подписки</button>' +
+         '<button data-href="/ctsubs/"><i>sync_alt</i>Импорт подписок с YouTube</button><hr>';
     h += '<button data-act="premium"><i>workspace_premium</i>Premium-режим<span class="ct-badge' + (prem ? ' on">ВКЛ' : '">ВЫКЛ') + '</span></button>';
     if (admin) h += '<button data-href="/ctadmin/"><i>group_add</i>Доступ для друзей</button>';
     h += '<button data-act="settings"><i>settings</i>Настройки</button>';

@@ -151,7 +151,6 @@ IptvParsed parseM3u(String text, {bool merge = true}) {
   String? extinf;
   String? grp;
   final vlc = <String, String>{};
-  var n = 0;
 
   for (final raw in lines) {
     final l = raw.trim();
@@ -221,7 +220,6 @@ IptvParsed parseM3u(String text, {bool merge = true}) {
     final days = int.tryParse(attrs['catchup-days'] ?? attrs['tvg-rec'] ?? attrs['timeshift'] ?? '') ?? defDays;
     final catchup = attrs['catchup'] ?? attrs['catchup-type'] ?? defCatchup;
     final source = attrs['catchup-source'] ?? defCatchupSource;
-    n++;
     final (base, q) = merge ? splitQuality(title) : (title, '');
     final key = '${group.toLowerCase()}|${base.toLowerCase()}';
     final stream = IptvStream(q, url, title);

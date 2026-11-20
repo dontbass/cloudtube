@@ -173,20 +173,33 @@ String epgNorm(String s) {
   return x.replaceAll(RegExp(r'\s+'), '');
 }
 
+/// Запасное сопоставление: без уточнений в скобках и кода страны в конце
+/// («Кинозал 1 (Триколор)» → «кинозал1», «24 Канал UA» → «24канал»).
+String epgNormLoose(String s) {
+  var x = s.replaceAll(RegExp(r'\([^)]*\)'), ' ');
+  x = x.replaceAll(RegExp(r'\s(UA|PK|CN|KZ|BY|MD|UZ|AZ|AM|GE|US|UK|TR|DE|IL)\s*$'), ' ');
+  return epgNorm(x);
+}
+
 /// Скачать XMLTV и разобрать потоком (без DOM: файл бывает 400+ МБ). Возвращает краткую сводку.
 Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir, String plId) async {
   final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
   // ключи каналов плейлиста по id и по названию
   final byId = <String, List<String>>{};
   final byName = <String, List<String>>{};
+  final byLoose = <String, List<String>>{};
   final archiveDays = <String, int>{};
+  final nameOf = <String, String>{};
   for (final c in chans) {
     final key = c[0] as String;
     archiveDays[key] = c[4] as int;
+    nameOf[key] = c[3] as String;
     if ((c[1] as String).isNotEmpty) (byId[(c[1] as String).toLowerCase()] ??= []).add(key);
     for (final n in [c[2] as String, c[3] as String]) {
       final k = epgNorm(n);
       if (k.isNotEmpty) (byName[k] ??= []).add(key);
+      final l = epgNormLoose(n);
+      if (l.isNotEmpty) (byLoose[l] ??= []).add(key);
     }
   }
   final idMap = <String, List<String>>{}; // id канала в XMLTV → ключи плейлиста
@@ -195,6 +208,7 @@ Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir
   var progCount = 0, chanCount = 0;
 
   for (final url in urls) {
+    var chanDone = false;
     final client = http.Client();
     try {
       final res = await client
@@ -205,58 +219,72 @@ Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir
       final gz = url.toLowerCase().endsWith('.gz') || (res.headers['content-type'] ?? '').contains('gzip');
       final Stream<List<int>> plain = gz ? bytes.transform(gzip.decoder) : bytes;
       var pending = '';
+      var pos = 0;
       await for (final chunk in plain.transform(const Utf8Decoder(allowMalformed: true))) {
-        pending += chunk;
-        var pos = 0;
+        pending = pos < pending.length ? pending.substring(pos) + chunk : chunk;
+        pos = 0;
         while (true) {
+          // ищем ближайший блок без регулярных выражений: файл бывает на сотни мегабайт
           final pi = pending.indexOf('<programme', pos);
-          final ci = pending.indexOf('<channel', pos);
-          int at;
-          bool isProg;
-          if (pi < 0 && ci < 0) break;
-          if (ci >= 0 && (pi < 0 || ci < pi)) {
-            at = ci;
-            isProg = false;
-          } else {
-            at = pi;
-            isProg = true;
+          final ci = chanDone ? -1 : pending.indexOf('<channel', pos);
+          if (pi < 0 && ci < 0) {
+            // хвост может содержать начало тега — оставляем немного
+            pos = pending.length > 16 ? pending.length - 16 : 0;
+            break;
           }
+          final isProg = ci < 0 || (pi >= 0 && pi < ci);
+          final at = isProg ? pi : ci;
           final endTag = isProg ? '</programme>' : '</channel>';
           final end = pending.indexOf(endTag, at);
           if (end < 0) {
             pos = at;
             break;
           }
-          final block = pending.substring(at, end + endTag.length);
           pos = end + endTag.length;
           if (isProg) {
-            final id = _attr(block, 'channel').toLowerCase();
-            final keys = idMap[id];
+            chanDone = true; // в XMLTV каналы идут перед передачами
+            final ca = pending.indexOf('channel="', at);
+            if (ca < 0 || ca > end) continue;
+            final cq = pending.indexOf('"', ca + 9);
+            final id = pending.substring(ca + 9, cq);
+            final keys = idMap[id] ?? idMap[id.toLowerCase()];
             if (keys == null) continue;
+            final block = pending.substring(at, pos);
             final start = _xmltvTime(_attr(block, 'start'));
             final stop = _xmltvTime(_attr(block, 'stop'));
             if (start == 0 || stop <= start) continue;
-            // окно: вперёд на 2 суток; назад — глубина архива (минимум 6 часов)
-            if (start > nowSec + 2 * 86400) continue;
+            // окно: вперёд на сутки; назад — глубина архива (минимум 4 часа)
+            if (start > nowSec + 26 * 3600) continue;
             final title = _tag(block, 'title');
             if (title.isEmpty) continue;
-            var desc = _tag(block, 'desc');
-            if (desc.length > 220) desc = '${desc.substring(0, 217)}…';
+            // описание — только у идущих и ближайших передач (память приставки не резиновая)
+            var desc = stop > nowSec && start < nowSec + 6 * 3600 ? _tag(block, 'desc') : '';
+            if (desc.length > 160) desc = '${desc.substring(0, 157)}…';
             for (final k in keys) {
-              final back = ((archiveDays[k] ?? 0) * 86400).clamp(6 * 3600, 8 * 86400);
+              final back = ((archiveDays[k] ?? 0) * 86400).clamp(4 * 3600, 8 * 86400);
               if (stop < nowSec - back) continue;
               (progs[k] ??= []).add(EpgProg(start, stop, title, desc));
               progCount++;
             }
           } else {
             chanCount++;
-            final id = _attr(block, 'id').toLowerCase();
-            final keys = <String>{...?byId[id]};
-            for (final m in RegExp(r'<display-name[^>]*>([^<]*)</display-name>').allMatches(block)) {
-              keys.addAll(byName[epgNorm(_unescape(m.group(1)!))] ?? const []);
+            final block = pending.substring(at, pos);
+            final id = _attr(block, 'id');
+            final keys = <String>{...?byId[id.toLowerCase()]};
+            final names = [
+              for (final m in RegExp(r'<display-name[^>]*>([^<]*)</display-name>').allMatches(block)) _unescape(m.group(1)!)
+            ];
+            for (final n in names) {
+              keys.addAll(byName[epgNorm(n)] ?? const []);
+            }
+            if (keys.isEmpty) {
+              for (final n in names) {
+                keys.addAll(byLoose[epgNormLoose(n)] ?? const []);
+              }
             }
             if (keys.isEmpty) continue;
             (idMap[id] ??= []).addAll(keys);
+            if (id.toLowerCase() != id) (idMap[id.toLowerCase()] ??= []).addAll(keys);
             final icon = RegExp(r'<icon[^>]*src="([^"]+)"').firstMatch(block)?.group(1);
             if (icon != null) {
               for (final k in keys) {
@@ -265,9 +293,8 @@ Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir
             }
           }
         }
-        pending = pending.substring(pos);
         // защита от «рваного» файла без закрывающих тегов
-        if (pending.length > 4 * 1024 * 1024) pending = '';
+        if (pending.length - pos > 4 * 1024 * 1024) pos = pending.length;
       }
     } catch (e) {
       // следующий источник
@@ -277,7 +304,22 @@ Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir
     if (progs.isNotEmpty) break; // первый рабочий источник
   }
 
-  // на диск: сутки для списка и полная программа по каналам
+  // «Первый канал +2»: если своей программы нет — программа основного канала со сдвигом
+  final keyByNorm = <String, String>{};
+  for (final k in progs.keys) {
+    keyByNorm.putIfAbsent(epgNorm(nameOf[k] ?? ''), () => k);
+  }
+  for (final e in nameOf.entries) {
+    if (progs.containsKey(e.key)) continue;
+    final m = RegExp(r'^(.*?)\s*\+(\d{1,2})\b').firstMatch(e.value);
+    if (m == null) continue;
+    final base = keyByNorm[epgNorm(m.group(1)!)];
+    if (base == null) continue;
+    final h = int.parse(m.group(2)!) * 3600;
+    progs[e.key] = [for (final p in progs[base]!) EpgProg(p.start + h, p.stop + h, p.title, p.desc)];
+  }
+
+  // на диск: «сейчас и далее» для списка и полная программа по каналам
   final short = <String, List<List<Object>>>{};
   final chDir = Directory('$dir/epg_$plId');
   if (await chDir.exists()) await chDir.delete(recursive: true);
@@ -291,10 +333,11 @@ Future<String> _buildEpg(List<String> urls, List<List<Object>> chans, String dir
     }
     short[e.key] = [
       for (final p in dedup)
-        if (p.stop > nowSec - 3 * 3600 && p.start < nowSec + 26 * 3600) p.toJson()
+        if (p.stop > nowSec - 2 * 3600 && p.start < nowSec + 12 * 3600) p.toJson()
     ];
+    // полная программа — без описаний (архив на неделю × сотни каналов)
     await File('${chDir.path}/${IptvEpg._fileName(e.key)}.json')
-        .writeAsString(jsonEncode([for (final p in dedup) p.toJson()]));
+        .writeAsString(jsonEncode([for (final p in dedup) [p.start, p.stop, p.title]]));
   }
   final f = File('$dir/epg_$plId.json');
   await File('${f.path}.tmp').writeAsString(jsonEncode({'ch': short, 'logo': logos}));

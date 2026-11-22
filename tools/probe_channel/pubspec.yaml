@@ -1,0 +1,6 @@
+name: probe_channel
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  youtube_explode_dart:
+    path: ../../third_party/youtube_explode_dart

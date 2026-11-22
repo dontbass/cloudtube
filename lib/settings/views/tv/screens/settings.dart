@@ -284,18 +284,6 @@ class TVSettingsScreen extends StatelessWidget {
                   onSelected: (context) => cubit.setPlayRecommendedNext(!state.playRecommendedNext),
                   trailing: Switch(onChanged: (value) {}, value: state.playRecommendedNext),
                 ),
-                StatefulBuilder(
-                  builder: (context, setLocal) => SettingsTile(
-                    title: 'Частота экрана под видео',
-                    leading: const Icon(Icons.motion_photos_auto_outlined),
-                    description: 'На время ролика или канала: 25/50 кадров — 50 Гц, 24 — 24 Гц, 30/60 — 60 Гц. Без рывков; после — как было',
-                    onSelected: (context) async {
-                      await CtPrefs.afr.set(!CtPrefs.afr.value);
-                      setLocal(() {});
-                    },
-                    trailing: Switch(onChanged: (value) {}, value: CtPrefs.afr.value),
-                  ),
-                ),
                 SettingsTile(
                   title: locals.useDash,
                   leading: const Icon(Icons.high_quality_outlined),

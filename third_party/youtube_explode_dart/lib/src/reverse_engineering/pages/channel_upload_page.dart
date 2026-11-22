@@ -246,6 +246,7 @@ class _InitialData extends InitialData {
     }
 
     collect(meta);
+    print('PARTS $id: $parts');
     final viewsText = parts.firstWhereOrNull(
             (t) => RegExp(r'просмотр|view|зрител|watching', caseSensitive: false).hasMatch(t)) ??
         '';

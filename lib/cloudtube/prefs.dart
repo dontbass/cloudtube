@@ -91,9 +91,6 @@ abstract final class CtPrefs {
     await themeVariant.set(v.name);
   }
 
-  /// ТВ: переключать частоту экрана под видео (50 Гц для эфирных каналов и т. п.).
-  static final afr = _bool('ct-afr', true);
-
   /// Компактный вид для невысоких экранов: auto / on / off.
   static final compactMode = _string('ct-compact');
 

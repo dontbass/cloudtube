@@ -37,6 +37,7 @@ import 'package:cloudtube/utils/sembast_sqflite_database.dart';
 import 'package:cloudtube/workmanager.dart';
 import 'package:logging/logging.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'settings/models/db/app_logs.dart';
 import 'cloudtube/prefs.dart';
@@ -140,6 +141,13 @@ Future<void> main() async {
   // ExoPlayer держит на 360p и выбрать качество в нём нельзя
   CtYtFast.wantAdaptive = !ctDesktop;
   if (isTv) ctLoadTvScale();
+  // IPTV убран: плейлисты и телепрограмма прошлых версий (до десятков МБ) больше не нужны
+  unawaited(() async {
+    try {
+      final d = Directory('${(await getApplicationSupportDirectory()).path}/iptv');
+      if (await d.exists()) await d.delete(recursive: true);
+    } catch (_) {}
+  }());
   ctLoadQuality(tv: isTv);
   await ctSponsorDefaults();
   WidgetsBinding.instance.addPostFrameCallback((_) => CtPerf.firstFrame());

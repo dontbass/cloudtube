@@ -186,6 +186,98 @@ class _InitialData extends InitialData {
     return null;
   }
 
+  // CloudTube: новая разметка YouTube (lockupViewModel) — название, длительность, просмотры и дата
+  // лежат глубже и в других полях, чем раньше; ищем их по структуре, а не по жёсткому пути.
+  static dynamic _deep(dynamic n, bool Function(String k, dynamic v) test) {
+    if (n is Map) {
+      for (final e in n.entries) {
+        if (test('${e.key}', e.value)) return e.value;
+      }
+      for (final v in n.values) {
+        final r = _deep(v, test);
+        if (r != null) return r;
+      }
+    } else if (n is List) {
+      for (final v in n) {
+        final r = _deep(v, test);
+        if (r != null) return r;
+      }
+    }
+    return null;
+  }
+
+  static final _durRe = RegExp(r'^\d+(:\d+)+$');
+
+  ChannelVideo? _parseLockup(JsonMap video) {
+    final id = video.getJson<String>(
+            'rendererContext/commandContext/onTap/innertubeCommand/watchEndpoint/videoId') ??
+        video['contentId'] as String? ??
+        _deep(video, (k, v) => k == 'videoId' && v is String) as String?;
+    if (id == null) return null;
+    final meta = _deep(video['metadata'], (k, v) => k == 'lockupMetadataViewModel') as Map?;
+    final title = '${(meta?['title'] as Map?)?['content'] ??
+        video.getJson<String>('metadata/primaryText/content') ?? ''}';
+    // длительность — бейдж «12:34» на превью
+    var duration = Duration.zero;
+    final badge = _deep(video['contentImage'] ?? video, (k, v) =>
+        k == 'text' && v is String && _durRe.hasMatch(v.trim()));
+    if (badge is String) {
+      final p = badge.trim().split(':').map(int.parse).toList();
+      var sec = 0;
+      for (final x in p) {
+        sec = sec * 60 + x;
+      }
+      duration = Duration(seconds: sec);
+    }
+    final parts = <String>[];
+    void collect(dynamic n) {
+      if (n is Map) {
+        final mp = n['metadataParts'];
+        if (mp is List) {
+          for (final x in mp) {
+            final t = ((x as Map?)?['text'] as Map?)?['content'];
+            if (t is String && t.trim().isNotEmpty) parts.add(t.trim());
+          }
+        }
+        n.values.forEach(collect);
+      } else if (n is List) {
+        n.forEach(collect);
+      }
+    }
+
+    collect(meta);
+    // просмотры — «30K», «1,2 млн», «12 тыс. просмотров», «1.2K views»
+    final viewsText = parts.firstWhereOrNull((t) => RegExp(
+                r'^[\d.,\s ]+\s*(тыс\.?|млн|млрд|K|M|B)?\s*(просмотр\S*|views?|зрител\S*|watching)?$',
+                caseSensitive: false)
+            .hasMatch(t)) ??
+        '';
+    final published = parts.firstWhereOrNull(
+            (t) => RegExp(r'назад|ago|трансл|stream|премьер|premiere', caseSensitive: false).hasMatch(t)) ??
+        video.getJson<String>('metadata/metadataParts/1/text/content') ??
+        '';
+    final thumb = _deep(video['contentImage'] ?? video, (k, v) => k == 'url' && v is String && v.contains('ytimg')) as String? ??
+        video.getJson<String>('thumbnailViewModel/thumbnailViewModel/image/sources/0/url') ??
+        '';
+    return ChannelVideo(
+      VideoId(id),
+      title,
+      duration,
+      thumb,
+      published,
+      _views(viewsText),
+    );
+  }
+
+  static int _views(String s) {
+    final m = RegExp(r'([\d.,\s ]+)\s*(тыс|млн|млрд|K|M|B)?', caseSensitive: false).firstMatch(s);
+    if (m == null) return 0;
+    final x = double.tryParse(m.group(1)!.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.')) ?? 0;
+    final u = (m.group(2) ?? '').toLowerCase();
+    final k = switch (u) { 'тыс' || 'k' => 1e3, 'млн' || 'm' => 1e6, 'млрд' || 'b' => 1e9, _ => 1 };
+    return (x * k).round();
+  }
+
   ChannelVideo? _parseContent(JsonMap? content) {
     if (content == null) {
       return null;
@@ -232,21 +324,7 @@ class _InitialData extends InitialData {
     }
 
     if (isLockup) {
-      return ChannelVideo(
-        VideoId(video.getJson<String>(
-            'rendererContext/commandContext/onTap/innertubeCommand/watchEndpoint/videoId')!),
-        video.getJson<String>('metadata/primaryText/content') ?? '',
-        video
-                .getJson<String>(
-                    'imageOverlays/0/thumbnailOverlayTimeStatusRenderer/text/simpleText')
-                ?.toDuration() ??
-            Duration.zero,
-        video.getJson<String>(
-                'thumbnailViewModel/thumbnailViewModel/image/sources/0/url') ??
-            '',
-        video.getJson<String>('metadata/metadataParts/1/text/content') ?? '',
-        video.getJson<String>('metadata/metadataText/content').parseInt() ?? 0,
-      );
+      return _parseLockup(video);
     }
 
     return ChannelVideo(

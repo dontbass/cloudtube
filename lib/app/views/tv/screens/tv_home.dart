@@ -2,7 +2,6 @@ import 'package:cloudtube/cloudtube/theme.dart';
 import '../../../../cloudtube/updater.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:cloudtube/iptv/tv_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -277,20 +276,6 @@ class TvHomeScreen extends StatelessWidget {
                                           ),
                                         )
                                         .toList()),
-                                // IPTV: свои плейлисты M3U, телепрограмма, архив
-                                TvButton(
-                                  onFocusChanged: homeCubit.menuItemFocusChanged,
-                                  onPressed: (context) => Navigator.of(context)
-                                      .push(MaterialPageRoute(builder: (_) => const IptvTvScreen())),
-                                  unfocusedColor: colors.secondaryContainer.withValues(alpha: 0.0),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                                    child: Row(children: [
-                                      const Padding(padding: EdgeInsets.only(right: 8.0), child: Icon(Icons.live_tv)),
-                                      if (homeState) const MenuItemText('ТВ-каналы'),
-                                    ]),
-                                  ),
-                                ),
                                 TvButton(
                                   onFocusChanged:
                                       homeCubit.menuItemFocusChanged,

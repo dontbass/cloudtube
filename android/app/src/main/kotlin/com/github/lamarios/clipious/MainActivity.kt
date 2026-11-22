@@ -21,47 +21,9 @@ import java.nio.ByteBuffer
 class MainActivity : AudioServiceActivity() {
     private var callbackHelper = PipCallbackHelper()
 
-    private fun mediaCaps(): Map<String, Any> {
-        val list = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).codecInfos.filter { !it.isEncoder }
-        fun video4k(mime: String): Boolean = list.any { info ->
-            info.supportedTypes.any { it.equals(mime, true) } && try {
-                info.getCapabilitiesForType(mime).videoCapabilities?.isSizeSupported(3840, 2160) == true
-            } catch (_: Exception) { false }
-        }
-        fun audio(mime: String): Boolean = list.any { info -> info.supportedTypes.any { it.equals(mime, true) } }
-        fun tunneling(mime: String): Boolean = list.any { info ->
-            info.supportedTypes.any { it.equals(mime, true) } && try {
-                info.getCapabilitiesForType(mime).isFeatureSupported(android.media.MediaCodecInfo.CodecCapabilities.FEATURE_TunneledPlayback)
-            } catch (_: Exception) { false }
-        }
-        return mapOf(
-            "avc4k" to video4k("video/avc"),
-            "hevc4k" to video4k("video/hevc"),
-            "vp94k" to video4k("video/x-vnd.on2.vp9"),
-            "av14k" to video4k("video/av01"),
-            "mp2" to audio("audio/mpeg-L2"),
-            "ac3" to audio("audio/ac3"),
-            "eac3" to audio("audio/eac3"),
-            "tunnel" to tunneling("video/avc"),
-            "decoders" to list.map { it.name + ":" + it.supportedTypes.joinToString(",") }.take(80)
-        )
-    }
-
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         callbackHelper.configureFlutterEngine(flutterEngine)
-
-        // CloudTube: что умеют декодеры устройства (4K, звук MP2/AC-3) — для выбора качества IPTV и YouTube
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cloudtube/media").setMethodCallHandler { call, result ->
-            try {
-                when (call.method) {
-                    "caps" -> result.success(mediaCaps())
-                    else -> result.notImplemented()
-                }
-            } catch (e: Exception) {
-                result.error("media", e.message, null)
-            }
-        }
 
         // CloudTube: обновление приложения из самого приложения
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cloudtube/update").setMethodCallHandler { call, result ->

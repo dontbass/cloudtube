@@ -217,14 +217,6 @@ class CtDashLocal {
 
   static bool _av1(Map f) => '${f['mimeType']}'.contains('av01');
 
-  /// Частота кадров выбранного формата (для автопереключения частоты экрана), 0 — неизвестна.
-  static double fpsOf(String id, String? itag) {
-    final e = _raw[id];
-    if (e == null || itag == null) return 0;
-    final f = e.$1.whereType<Map>().where((f) => '${f['itag']}' == itag).firstOrNull;
-    return (f?['fps'] as num?)?.toDouble() ?? 0;
-  }
-
   /// Все видеоформаты ролика для меню (как «Видеоформат» в SmartTube): выше качество — выше в списке.
   static List<Map> formats(String id) {
     final e = _raw[id];

@@ -260,8 +260,8 @@ class TvVideoItem extends StatelessWidget {
                                                                 colors.primary,
                                                           ),
                                                         ),
-                                                      if (video.lengthSeconds !=
-                                                          null)
+                                                      // 0 — длительность неизвестна: «00:00» не показываем
+                                                      if ((video.lengthSeconds ?? 0) > 0)
                                                         Container(
                                                           decoration: BoxDecoration(
                                                               color: Colors

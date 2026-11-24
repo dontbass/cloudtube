@@ -421,7 +421,8 @@ class VideoPlayerCubit extends MediaPlayerCubit<VideoPlayerState> {
           subtitles: newState.video!.captions
               .map((s) => BetterPlayerSubtitlesSource(
                   type: BetterPlayerSubtitlesSourceType.network,
-                  urls: ['$baseUrl${s.url}'],
+                  // без сервера адрес субтитров полный (YouTube), со своим сервером — путь на нём
+                  urls: [s.url.startsWith('http') ? s.url : '$baseUrl${s.url}'],
                   name: s.label,
                   selectedByDefault: s.label == lastSubtitle))
               .toList(),

@@ -89,6 +89,16 @@ class CtHlsLocal {
     }
   }
 
+  /// Только узнать звуковые дорожки из HLS-мастера (для меню «Звук», когда свой DASH отдал одну).
+  static Future<void> probeAudio(String videoId, String masterUrl, Map<String, String> headers) async {
+    try {
+      final r = await http.get(Uri.parse(masterUrl), headers: headers).timeout(const Duration(seconds: 6));
+      if (r.statusCode == 200 && r.body.contains('#EXT-X-STREAM-INF')) CtAudio.fromHls(videoId, r.body);
+    } catch (e) {
+      _log.info('HLS дорожки: $e');
+    }
+  }
+
   /// Мастер-плейлист как есть, но только с выбранной звуковой дорожкой. null — дорожка одна
   /// (или плейлист не получен): играть исходный адрес.
   static Future<String?> audioFiltered(String videoId, String masterUrl, Map<String, String> headers) async {
@@ -132,6 +142,9 @@ class CtDashLocal {
   static final _raw = <String, (List, int)>{};
 
   /// Запомнить адаптивные форматы ролика (сырые, из ответа player) — вызывается адаптером.
+  /// Сколько звуковых дорожек в своих DASH-форматах ролика (0 — форматов нет).
+  static int audioTrackCount(String id) => CtAudio.formatTrackCount(_raw[id]?.$1 ?? const []);
+
   static void remember(String id, List? formats, int durationMs) {
     if (formats == null || formats.isEmpty) return;
     _raw[id] = (formats, durationMs);

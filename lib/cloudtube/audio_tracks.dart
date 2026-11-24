@@ -47,9 +47,43 @@ class CtAudio {
   /// Дорожки ролика (пусто или одна — выбирать нечего).
   static List<CtAudioTrack> tracks(String videoId) => _tracks[videoId] ?? const [];
 
-  static void _remember(String videoId, List<CtAudioTrack> t) {
-    _tracks[videoId] = t;
-    if (_tracks.length > 40) _tracks.remove(_tracks.keys.first);
+  /// Ролики, у которых дорожки известны только из HLS: свой DASH (клиент VISIONOS) отдал одну
+  /// дорожку, а в HLS-мастере (клиент iOS) их несколько — например, есть автодубляж.
+  static final _hlsOnly = <String>{};
+
+  static void _remember(String videoId, List<CtAudioTrack> t, {required bool hls}) {
+    if (t.length < 2) {
+      // DASH с одной дорожкой не затирает список, найденный в HLS, — иначе пропадал автодубляж
+      if (!hls && _hlsOnly.contains(videoId)) return;
+      _tracks[videoId] = const [];
+      _hlsOnly.remove(videoId);
+    } else {
+      _tracks[videoId] = t;
+      if (hls) {
+        _hlsOnly.add(videoId);
+      } else {
+        _hlsOnly.remove(videoId);
+      }
+    }
+    if (_tracks.length > 40) {
+      final old = _tracks.keys.first;
+      _tracks.remove(old);
+      _hlsOnly.remove(old);
+    }
+  }
+
+  /// Выбранная дорожка есть только в HLS — свой DASH её не сыграет, играть HLS.
+  static bool needsHls(String videoId) {
+    if (!_hlsOnly.contains(videoId)) return false;
+    final p = pick(videoId, tracks(videoId));
+    return p != null && !p.original;
+  }
+
+  /// В прошлый раз выбрали не оригинал (язык дубляжа) — для нового ролика стоит заранее
+  /// посмотреть дорожки в HLS.
+  static bool get prefersDub {
+    final pref = CtPrefs.audioLang.value;
+    return pref.isNotEmpty && pref != 'original';
   }
 
   /// Выбрать дорожку в меню: для этого ролика — она, для следующих — её язык
@@ -120,9 +154,15 @@ class CtAudio {
           isDefault: at['audioIsDefault'] == true || at['isDefault'] == true);
     }
     final list = out.values.toList();
-    _remember(videoId, list.length > 1 ? list : const []);
+    _remember(videoId, list, hls: false);
     return list;
   }
+
+  /// Сколько звуковых дорожек в сырых адаптивных форматах (без запоминания).
+  static int formatTrackCount(List formats) => {
+        for (final f in formats.whereType<Map>())
+          if ('${f['mimeType']}'.startsWith('audio/')) formatTrackId(f) ?? ''
+      }.length;
 
   /// Оставить звуковые форматы только выбранной дорожки (если дорожек несколько).
   static List<Map> filterFormats(String videoId, List<Map> audios) {
@@ -163,7 +203,7 @@ class CtAudio {
           isDefault: _attr(l, 'DEFAULT') == 'YES');
     }
     final list = out.values.toList();
-    _remember(videoId, list.length > 1 ? list : const []);
+    _remember(videoId, list, hls: true);
     return list;
   }
 

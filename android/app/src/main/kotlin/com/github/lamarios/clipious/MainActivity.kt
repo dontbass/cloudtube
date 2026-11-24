@@ -51,7 +51,7 @@ class MainActivity : AudioServiceActivity() {
         super.configureFlutterEngine(flutterEngine)
         callbackHelper.configureFlutterEngine(flutterEngine)
 
-        // CloudTube: что умеют декодеры устройства (4K, звук MP2/AC-3) — для выбора качества IPTV и YouTube
+        // CloudTube: что умеют декодеры устройства (4K, звук MP2/AC-3) — для выбора качества YouTube
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cloudtube/media").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {

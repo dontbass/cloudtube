@@ -138,7 +138,11 @@ class _TvGrid extends StatelessWidget {
                   TvVideoItem(key: ValueKey(e.videoId), video: e, autoFocus: false, compact: true)),
               if (state.loading) ...repeatWidget(() => const TvVideoItemPlaceHolder(), count: 10)
             ];
-            return GridView.builder(
+            // Сверху режем: иначе при прокрутке ряды уезжают поверх полосы каналов. По бокам и снизу —
+            // нет, чтобы увеличенная в фокусе плитка не обрезалась.
+            return ClipRect(
+                clipper: const _ClipTopOnly(),
+                child: GridView.builder(
               controller: cubit.scrollController,
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 24),
               clipBehavior: Clip.none,
@@ -151,8 +155,18 @@ class _TvGrid extends StatelessWidget {
               ),
               itemCount: items.length,
               itemBuilder: (context, i) => items[i],
-            );
+            ));
           });
         });
   }
+}
+
+class _ClipTopOnly extends CustomClipper<Rect> {
+  const _ClipTopOnly();
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(-size.width, 0, size.width * 2, size.height * 2);
+
+  @override
+  bool shouldReclip(_ClipTopOnly oldClipper) => false;
 }

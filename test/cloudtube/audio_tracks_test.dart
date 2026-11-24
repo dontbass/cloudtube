@@ -36,4 +36,17 @@ void main() {
     expect(CtAudio.filterHls('vid3', one), one);
     expect(CtAudio.tracks('vid3'), isEmpty);
   });
+
+  test('DASH с одной дорожкой не затирает дорожки из HLS (автодубляж)', () async {
+    final t = CtAudio.fromHls('vid4', master);
+    expect(t.length, 2);
+    final dashOne = [
+      {'itag': 140, 'mimeType': 'audio/mp4; codecs="mp4a.40.2"'},
+    ];
+    expect(CtAudio.formatTrackCount(dashOne), 1);
+    CtAudio.filterFormats('vid4', dashOne);
+    expect(CtAudio.tracks('vid4').length, 2);
+    // по умолчанию оригинал — DASH годится
+    expect(CtAudio.needsHls('vid4'), isFalse);
+  });
 }

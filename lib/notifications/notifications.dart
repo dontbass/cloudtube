@@ -51,9 +51,11 @@ enum NotificationTypes {
       this.importance = NotificationImportance.Default});
 }
 
-initializeNotifications() {
+/// Каналы уведомлений. Нужны и в фоновой проверке: она идёт в отдельном изоляте, где
+/// без этого createNotification ничего не показывал.
+Future<bool> initializeNotificationChannels() {
   var defaultIcon = 'resource://drawable/app_icon';
-  AwesomeNotifications().initialize(
+  return AwesomeNotifications().initialize(
       defaultIcon,
       NotificationTypes.values
           .map((e) => NotificationChannel(
@@ -66,7 +68,10 @@ initializeNotifications() {
               importance: e.importance))
           .toList(),
       debug: kDebugMode);
+}
 
+initializeNotifications() {
+  initializeNotificationChannels();
   AwesomeNotifications()
       .getInitialNotificationAction(removeFromActionEvents: false)
       .then((value) {
@@ -139,7 +144,8 @@ sendNotification(String title, String message,
     {required NotificationTypes type,
     Map<String, String>? payload,
     int id = 0}) async {
-  AwesomeNotifications().createNotification(
+  // ждём: в фоновой задаче изолят мог завершиться раньше, чем уведомление создано
+  await AwesomeNotifications().createNotification(
       content: NotificationContent(
           id: type.idSpace + id,
           payload: payload,

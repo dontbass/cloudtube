@@ -68,6 +68,7 @@ _backgroundCheck() async {
           '[${record.level.name}] [${record.loggerName}] ${record.message}');
     });
     db = FileDB();
+    await initializeNotificationChannels();
     // CloudTube: фоновая задача работает в отдельном изоляте — режим «без сервера» и вход
     // в YouTube нужно поднять заново, иначе уведомления работали только со своим сервером
     try {
@@ -184,7 +185,7 @@ Future<void> _handleSubscriptionsNotifications() async {
         var locals = await getLocalization();
 
         if (kDebugMode || videosToNotifyAbout > 0) {
-          sendNotification(locals.subscriptionNotificationTitle,
+          await sendNotification(locals.subscriptionNotificationTitle,
               locals.subscriptionNotificationContent(videosToNotifyAbout),
               type: NotificationTypes.subscription,
               payload: {lastSeenVideo: videos.first.videoId});

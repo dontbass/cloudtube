@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import '../../cloudtube/audio_tracks.dart';
 import '../../cloudtube/direct.dart' show ctDirectStreamHeaders, ctDirectActive;
 import '../../cloudtube/hls_local.dart';
 import '../../videos/models/format_stream.dart';
@@ -124,9 +127,16 @@ Future<CtStreamChoice> ctPickStream(CtStreamRequest r) async {
   if (!r.useServerDash && r.useProxy) url = url.replaceFirst(_googleCdn, '${r.serverUrl}/');
   final headers = <String, String>{...?r.serverHeaders(url), ...ctDirectStreamHeaders(url)};
 
-  if (r.tvDirect && !r.noOwnDash) {
+  // Свой DASH (VISIONOS) иногда отдаёт одну звуковую дорожку, а HLS (iOS) — ещё и автодубляж.
+  // Если в прошлый раз выбирали дубляж, сначала смотрим дорожки в HLS; иначе — в фоне, для меню.
+  final dashOneTrack = r.tvDirect && !r.noOwnDash && isHls && CtDashLocal.audioTrackCount(r.videoId) == 1;
+  if (dashOneTrack && CtAudio.prefersDub) await CtHlsLocal.probeAudio(r.videoId, url, headers);
+  if (r.tvDirect && !r.noOwnDash && !CtAudio.needsHls(r.videoId)) {
     final d = await CtDashLocal.build(r.videoId, cap: r.cap, itag: r.itag);
     if (d != null) {
+      if (dashOneTrack && CtAudio.tracks(r.videoId).length < 2) {
+        unawaited(CtHlsLocal.probeAudio(r.videoId, url, headers));
+      }
       final f = CtDashLocal.formats(r.videoId).where((f) => '${f['itag']}' == d.$4).firstOrNull;
       return CtStreamChoice(
         kind: CtStreamKind.ownDash,

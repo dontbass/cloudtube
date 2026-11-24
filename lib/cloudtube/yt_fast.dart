@@ -308,6 +308,9 @@ class CtYtFast {
     final pdt = pd is String ? DateTime.tryParse(pd) : null;
     if (pdt != null) j['published'] = pdt.millisecondsSinceEpoch ~/ 1000;
 
+    // субтитры: раньше адаптер их не передавал — в меню был только «Default subtitles»
+    j['captions'] = captions(ios) ?? captions(vr) ?? captions(vis) ?? const <Map<String, dynamic>>[];
+
     final hls = (ios?['streamingData'] as Map?)?['hlsManifestUrl'] ?? (vr?['streamingData'] as Map?)?['hlsManifestUrl'];
     if (hls is String) j['hlsUrl'] = hls;
     // адаптивные потоки — от VISIONOS (не рвутся через минуту), иначе от VR/ANDROID
@@ -372,6 +375,46 @@ class CtYtFast {
     _log.info('fast $id: потоки ${streamsMs}мс, всего ${sw.elapsedMilliseconds}мс, '
         'hls=${j['hlsUrl'] != null} muxed=${(j['formatStreams'] as List).length} rec=${(j['recommendedVideos'] as List).length}');
     return j;
+  }
+
+  /// Субтитры из ответа «player» в виде Invidious ({label, languageCode, url}), формат WebVTT —
+  /// его понимает плеер. Если русских нет, а перевод возможен, — ещё «Русский (автоперевод)».
+  /// null — у ролика субтитров нет (или клиент их не отдал).
+  static List<Map<String, dynamic>>? captions(Map<String, dynamic>? p) {
+    final r = (p?['captions'] as Map?)?['playerCaptionsTracklistRenderer'] as Map?;
+    final tracks = r?['captionTracks'] as List?;
+    if (tracks == null || tracks.isEmpty) return null;
+    String vtt(String u) => u.contains('fmt=') ? u.replaceAll(RegExp(r'fmt=[^&]*'), 'fmt=vtt') : '$u&fmt=vtt';
+    String name(Object? n) {
+      if (n is! Map) return '';
+      if (n['simpleText'] is String) return n['simpleText'] as String;
+      final runs = n['runs'];
+      return runs is List ? runs.map((e) => e is Map ? '${e['text'] ?? ''}' : '').join() : '';
+    }
+
+    final out = <Map<String, dynamic>>[];
+    Map? translatable;
+    for (final t in tracks.whereType<Map>()) {
+      final url = t['baseUrl'];
+      if (url is! String || url.isEmpty) continue;
+      final lang = '${t['languageCode'] ?? ''}';
+      var label = name(t['name']);
+      if (label.isEmpty) label = lang;
+      if (t['kind'] == 'asr' && !RegExp('авто|auto', caseSensitive: false).hasMatch(label)) {
+        label = '$label (автоматические)';
+      }
+      out.add({'label': label, 'languageCode': lang, 'url': vtt(url)});
+      if (t['isTranslatable'] == true) translatable ??= t;
+    }
+    if (out.isEmpty) return null;
+    if (translatable != null && !out.any((c) => '${c['languageCode']}'.startsWith('ru'))) {
+      out.add({
+        'label': 'Русский (автоперевод)',
+        'languageCode': 'ru',
+        'url': '${vtt(translatable['baseUrl'] as String)}&tlang=ru',
+      });
+    }
+    return out;
   }
 
   static void _applyNext(Map<String, dynamic> j, Map<String, dynamic> n) {

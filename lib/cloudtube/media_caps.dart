@@ -6,7 +6,7 @@ import 'package:logging/logging.dart';
 final _log = Logger('CtMediaCaps');
 
 /// Что умеют аппаратные декодеры устройства — от этого зависит, какое качество включать
-/// по умолчанию (4K, варианты IPTV со звуком MP2/AC-3).
+/// по умолчанию (4K, звук MP2/AC-3).
 class CtMediaCaps {
   final bool avc4k, hevc4k, vp94k, av14k, mp2, ac3, eac3, tunnel;
   const CtMediaCaps({

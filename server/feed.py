@@ -14,6 +14,9 @@ LISTEN = int(os.environ.get("FEED_PORT", "3200"))
 REGION = os.environ.get("REGION", "RU")
 HL = os.environ.get("HL", "ru")
 TTL = int(os.environ.get("TTL", "600"))
+# Без зрителей фоновые сборки не идут: после IDLE_MIN минут тишины сервер не ходит в YouTube
+# (раньше лента, разделы и Shorts пересобирались круглосуточно — тысячи запросов в сутки с одного IP).
+IDLE_MIN = int(os.environ.get("IDLE_MIN", "90"))
 DB_CONTAINER = os.environ.get("DB_CONTAINER", "invidious-db")
 HISTORY_N = int(os.environ.get("HISTORY_N", "10"))
 PER_VIDEO = int(os.environ.get("PER_VIDEO", "8"))
@@ -21,6 +24,16 @@ PER_VIDEO = int(os.environ.get("PER_VIDEO", "8"))
 _cache = {"t": 0.0, "body": b"[]"}
 _details = {}                      # videoId -> (ts, dict)
 _lock = threading.Lock()
+_last_use = [0.0]                  # когда последний раз открывали ленту/разделы
+
+
+def touch():
+    _last_use[0] = time.time()
+
+
+def active():
+    """Кто-то пользовался лентой недавно — фоновое обновление имеет смысл."""
+    return time.time() - _last_use[0] < IDLE_MIN * 60
 
 
 def log(*a):
@@ -378,7 +391,12 @@ def get_body():
 
 
 def warmer():
+    """Держит ленту свежей, пока ей пользуются. В простое — ничего не запрашивает;
+    первый заход после простоя мгновенно получает прошлую ленту и запускает пересборку."""
     while True:
+        if not active():
+            time.sleep(60)
+            continue
         rebuild()
         time.sleep(max(60, TTL - 30))
 
@@ -706,6 +724,9 @@ def section_page(name, page):
 def section_warmer():
     time.sleep(20)
     while True:
+        if not active():                                      # простой — разделы обновятся при заходе
+            time.sleep(60)
+            continue
         for n in SECTIONS:
             section_bg(n); time.sleep(5)
         time.sleep(max(300, SEC_TTL - 300))
@@ -719,6 +740,8 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(u.query)
         q = (qs.get("q") or [""])[0]
+        if not u.path.startswith("/ct-api/caps"):            # проверка дополнений при запуске — не просмотр
+            touch()
         if u.path.startswith("/ct-api/caps"):            # приложение CloudTube проверяет, есть ли дополнения
             body = json.dumps({"cloudtube": 1, "sections": sorted(SECTIONS), "comments": True, "avatars": True}).encode()
         elif u.path.startswith("/ct-api/comments"):
@@ -751,7 +774,7 @@ class H(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    log(f":{LISTEN} <- {INV} region={REGION} hl={HL}")
+    log(f":{LISTEN} <- {INV} region={REGION} hl={HL} ttl={TTL}s idle={IDLE_MIN}m")
     threading.Thread(target=warmer, daemon=True).start()   # лента всегда готова заранее
     threading.Thread(target=section_warmer, daemon=True).start()
     threading.Thread(target=av_saver, daemon=True).start()
